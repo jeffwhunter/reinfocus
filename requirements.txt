@@ -89,6 +89,7 @@ https://repo.anaconda.com/pkgs/main/win-64/filelock-3.9.0-py311haa95532_0.conda
 https://conda.anaconda.org/conda-forge/win-64/freetype-2.10.4-h546665d_1.tar.bz2
 https://repo.anaconda.com/pkgs/main/win-64/greenlet-2.0.1-py311hd77b12b_0.conda
 https://repo.anaconda.com/pkgs/main/win-64/gstreamer-1.18.5-hd78058f_0.conda
+https://conda.anaconda.org/conda-forge/noarch/jupyterlab_widgets-3.0.9-pyhd8ed1ab_0.conda
 https://repo.anaconda.com/pkgs/main/win-64/kiwisolver-1.4.4-py311hd77b12b_0.conda
 https://repo.anaconda.com/pkgs/main/win-64/libtiff-4.5.1-hd77b12b_0.conda
 https://repo.anaconda.com/pkgs/main/win-64/libxslt-1.1.37-h2bbff1b_1.conda
@@ -126,6 +127,7 @@ https://conda.anaconda.org/anaconda/win-64/traitlets-5.7.1-py311haa95532_0.tar.b
 https://repo.anaconda.com/pkgs/main/win-64/typing_extensions-4.7.1-py311haa95532_0.conda
 https://conda.anaconda.org/anaconda/noarch/wcwidth-0.2.5-pyhd3eb1b0_0.tar.bz2
 https://repo.anaconda.com/pkgs/main/win-64/wheel-0.41.2-py311haa95532_0.conda
+https://conda.anaconda.org/conda-forge/noarch/widgetsnbextension-4.0.9-pyhd8ed1ab_0.conda
 https://conda.anaconda.org/conda-forge/noarch/zipp-3.17.0-pyhd8ed1ab_0.conda
 https://conda.anaconda.org/anaconda/noarch/asttokens-2.0.5-pyhd3eb1b0_0.tar.bz2
 https://conda.anaconda.org/conda-forge/win-64/colorlog-6.7.0-py311h1ea47a8_2.conda
@@ -162,6 +164,7 @@ https://repo.anaconda.com/pkgs/main/win-64/pyqt-5.15.10-py311hd77b12b_0.conda
 https://repo.anaconda.com/pkgs/main/win-64/qt-webengine-5.15.9-h5bd16bc_7.conda
 https://conda.anaconda.org/anaconda/win-64/ipykernel-6.25.0-py311h746a85d_0.tar.bz2
 https://repo.anaconda.com/pkgs/main/win-64/qtwebkit-5.212-h2bbfb41_5.conda
+https://conda.anaconda.org/conda-forge/noarch/ipywidgets-8.0.3-pyhd8ed1ab_0.conda
 https://conda.anaconda.org/conda-forge/noarch/jax-jumpy-1.0.0-pyhd8ed1ab_0.conda
 https://conda.anaconda.org/conda-forge/noarch/optuna-3.4.0-pyhd8ed1ab_0.conda
 https://conda.anaconda.org/conda-forge/win-64/gymnasium-0.28.1-py311h3810d55_0.conda
