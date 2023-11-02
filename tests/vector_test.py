@@ -14,7 +14,7 @@ class VectorTest(CUDATestCase):
         self.assertIsNone(np.testing.assert_allclose(v, [1, 2, 3]))
 
     def test_gpu_vector(self):
-        """Checks that gpu_vector construct a GPU vector with the expected elements."""
+        """Checks that gpu_vector constructs a GPU vector with the expected elements."""
         @cuda.jit()
         def get_vector(v, x, y, z):
             i = cuda.grid(1)
