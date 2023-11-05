@@ -7,7 +7,7 @@ from reinfocus import vector as vec
 from tests import numba_test_case as ntc
 from tests import numba_test_utils as ntu
 
-class GPURayTest(ntc.NumbaTestCase):
+class RayTest(ntc.NumbaTestCase):
     """TestCases for reinfocus.ray."""
     # pylint: disable=no-value-for-parameter
 
@@ -18,7 +18,7 @@ class GPURayTest(ntc.NumbaTestCase):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
                 r = ray.gpu_ray(origin, direction)
-                target[i] = r[0] + r[1]
+                target[i] = r[ray.ORIGIN] + r[ray.DIRECTION]
 
         cpu_array = ntu.cpu_target(ndim=6)
 
