@@ -14,12 +14,12 @@ Y = 1
 Z = 2
 
 def cpu_vector(x, y, z):
-    """Creates a 3D vector on the CPU."""
+    """Makes a 3D vector on the CPU."""
     return (np.float32(x), np.float32(y), np.float32(z))
 
 @cuda.jit
 def gpu_vector(x, y, z):
-    """Creates a 3D vector on the GPU."""
+    """Makes a 3D vector on the GPU."""
     return (nb.float32(x), nb.float32(y), nb.float32(z))
 
 @cuda.jit
