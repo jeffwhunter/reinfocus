@@ -5,6 +5,8 @@
 
 import numpy as np
 
+import numba as nb
+
 from numba import cuda
 from numba.cuda.testing import unittest
 
@@ -30,7 +32,7 @@ class HitRecordTest(ntc.NumbaTestCase):
         def make_empty_record(target):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = flatten_hit_record(hr.empty_record())
+                target[i] = flatten_hit_record(hr.gpu_empty_hit_record())
 
         cpu_array = ntu.cpu_target(ndim=10)
 
@@ -46,12 +48,12 @@ class HitRecordTest(ntc.NumbaTestCase):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
                 target[i] = flatten_hit_record(
-                    hr.hit_record(
+                    hr.gpu_hit_record(
                         cuda.float32x3(args[hr.P][0], args[hr.P][1], args[hr.P][2]),
                         cuda.float32x3(args[hr.N][0], args[hr.N][1], args[hr.N][2]),
-                        args[hr.T],
+                        nb.float32(args[hr.T]),
                         cuda.float32x2(args[hr.UV][0], args[hr.UV][1]),
-                        args[hr.M]))
+                        nb.float32(args[hr.M])))
 
         cpu_array = ntu.cpu_target(ndim=10)
 
