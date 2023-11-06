@@ -1,3 +1,6 @@
+# pylint: disable=no-member
+# type: ignore
+
 """Contains tests for reinfocus.hit_record."""
 
 import numpy as np
