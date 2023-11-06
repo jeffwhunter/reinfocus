@@ -1,4 +1,5 @@
 """Contains tests for reinfocus.vector."""
+
 from math import sqrt
 from numba import cuda
 from numba.cuda.testing import unittest
@@ -11,7 +12,7 @@ class CPUVectorTest(ntc.NumbaTestCase):
     """TestCases for reinfocus.vector."""
 
     def test_cpu_vector(self):
-        """Tests that cpu_vector constructs a CPU vector with the expected elements."""
+        """Tests that cpu_vector makes a CPU vector with the expected elements."""
         self.arrays_close(vec.cpu_vector(1, 2, 3), vec.cpu_vector(1, 2, 3))
         self.arrays_not_close(vec.cpu_vector(1, 2, 3), vec.cpu_vector(2, 2, 2))
 
@@ -56,16 +57,30 @@ class GPUVectorTest(ntc.NumbaTestCase):
     # pylint: disable=no-value-for-parameter
 
     def test_gpu_vector(self):
-        """Tests that gpu_vector constructs a GPU vector with the expected elements."""
+        """Tests that gpu_vector makes a GPU vector with the expected elements."""
         @cuda.jit()
         def copy_gpu_vector(target, source):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_vector(*source)
+                target[i] = vec.to_cpu_vector(vec.gpu_vector(*source))
 
         cpu_array = ntu.cpu_target()
 
         copy_gpu_vector[1, 1](cpu_array, vec.cpu_vector(1, 2, 3)) # type: ignore
+
+        self.arrays_close(cpu_array[0], vec.cpu_vector(1, 2, 3))
+
+    def test_to_gpu_vector(self):
+        """Tests that to_gpu_vector makes a GPU vector with elements from the CPU vector."""
+        @cuda.jit()
+        def copy_gpu_from_cpu_vector(target, source):
+            i = cuda.grid(1) # type: ignore
+            if i < target.size:
+                target[i] = vec.to_cpu_vector(vec.to_gpu_vector(source))
+
+        cpu_array = ntu.cpu_target()
+
+        copy_gpu_from_cpu_vector[1, 1](cpu_array, vec.cpu_vector(1, 2, 3)) # type: ignore
 
         self.arrays_close(cpu_array[0], vec.cpu_vector(1, 2, 3))
 
@@ -75,7 +90,7 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def add_2_gpu_vectors(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_add(vec.gpu_vector(*a), vec.gpu_vector(*b))
+                target[i] = vec.to_cpu_vector(vec.gpu_add(vec.gpu_vector(*a), vec.gpu_vector(*b)))
 
         cpu_array = ntu.cpu_target()
 
@@ -92,7 +107,8 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def add_3_gpu_vectors(target, a, b, c):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_add3(vec.gpu_vector(*a), vec.gpu_vector(*b), vec.gpu_vector(*c))
+                target[i] = vec.to_cpu_vector(
+                    vec.gpu_add3(vec.gpu_vector(*a), vec.gpu_vector(*b), vec.gpu_vector(*c)))
 
         cpu_array = ntu.cpu_target()
 
@@ -110,7 +126,7 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def negate_gpu_vector(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_neg(vec.gpu_vector(*a))
+                target[i] = vec.to_cpu_vector(vec.gpu_neg(vec.gpu_vector(*a)))
 
         cpu_array = ntu.cpu_target()
 
@@ -124,7 +140,7 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def subtract_gpu_vectors(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_sub(vec.gpu_vector(*a), vec.gpu_vector(*b))
+                target[i] = vec.to_cpu_vector(vec.gpu_sub(vec.gpu_vector(*a), vec.gpu_vector(*b)))
 
         cpu_array = ntu.cpu_target()
 
@@ -141,7 +157,7 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def scale_gpu_vector(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_smul(vec.gpu_vector(*a), b)
+                target[i] = vec.to_cpu_vector(vec.gpu_smul(vec.gpu_vector(*a), b))
 
         cpu_array = ntu.cpu_target()
 
@@ -155,7 +171,7 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def multiply_vectors_elementwise(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_vmul(vec.gpu_vector(*a), vec.gpu_vector(*b))
+                target[i] = vec.to_cpu_vector(vec.gpu_vmul(vec.gpu_vector(*a), vec.gpu_vector(*b)))
 
         cpu_array = ntu.cpu_target()
 
@@ -172,7 +188,7 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def divide_gpu_vector(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_div(vec.gpu_vector(*a), b)
+                target[i] = vec.to_cpu_vector(vec.gpu_div(vec.gpu_vector(*a), b))
 
         cpu_array = ntu.cpu_target()
 
@@ -203,7 +219,7 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def cross_multiply_gpu_vectors(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_cross(vec.gpu_vector(*a), vec.gpu_vector(*b))
+                target[i] = vec.to_cpu_vector(vec.gpu_cross(vec.gpu_vector(*a), vec.gpu_vector(*b)))
 
         cpu_array = ntu.cpu_target()
 
@@ -248,7 +264,7 @@ class GPUVectorTest(ntc.NumbaTestCase):
         def normalize_gpu_vector(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_norm_vector(vec.gpu_vector(*a))
+                target[i] = vec.to_cpu_vector(vec.gpu_norm_vector(vec.gpu_vector(*a)))
 
         cpu_array = ntu.cpu_target()
 

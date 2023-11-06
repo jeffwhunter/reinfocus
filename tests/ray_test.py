@@ -1,4 +1,5 @@
 """Contains tests for reinfocus.ray."""
+
 from numba import cuda
 from numba.cuda.testing import unittest
 
@@ -17,8 +18,8 @@ class RayTest(ntc.NumbaTestCase):
         def copy_gpu_ray(target, origin, direction):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                r = ray.gpu_ray(origin, direction)
-                target[i] = r[ray.ORIGIN] + r[ray.DIRECTION]
+                target[i] = ntu.flatten_ray(
+                    ray.gpu_ray(vec.to_gpu_vector(origin), vec.to_gpu_vector(direction)))
 
         cpu_array = ntu.cpu_target(ndim=6)
 
@@ -35,7 +36,10 @@ class RayTest(ntc.NumbaTestCase):
         def find_gpu_point_at_parameter(target, origin, direction, t):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = ray.gpu_point_at_parameter(ray.gpu_ray(origin, direction), t)
+                target[i] =  vec.to_cpu_vector(
+                    ray.gpu_point_at_parameter(
+                        ray.gpu_ray(vec.to_gpu_vector(origin), vec.to_gpu_vector(direction)),
+                        t))
 
         cpu_array = ntu.cpu_target()
 

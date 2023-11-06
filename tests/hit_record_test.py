@@ -1,4 +1,5 @@
 """Contains tests for reinfocus.hit_record."""
+
 import numpy as np
 
 from numba import cuda

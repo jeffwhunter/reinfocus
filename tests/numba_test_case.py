@@ -1,4 +1,5 @@
 """Contains utilities for numba based unit tests."""
+
 from numba.cuda.testing import CUDATestCase
 from numpy import testing as npt
 

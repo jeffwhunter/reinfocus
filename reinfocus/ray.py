@@ -1,4 +1,5 @@
 """Methods relating to 3D rays."""
+
 from numba import cuda
 
 from reinfocus import vector as vc

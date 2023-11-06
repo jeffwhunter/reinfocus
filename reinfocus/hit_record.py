@@ -1,4 +1,8 @@
+# pylint: disable=no-member
+# type: ignore
+
 """Hit records hold information about rays hitting objects."""
+
 import numba as nb
 
 from numba import cuda
