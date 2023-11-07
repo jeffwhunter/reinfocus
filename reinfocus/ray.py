@@ -1,7 +1,8 @@
 """Methods relating to 3D rays."""
 
 from numba import cuda
-from reinfocus import types as typ, vector as vec
+from reinfocus import types as typ
+from reinfocus import vector as vec
 
 ORIGIN = 0
 DIRECTION = 1

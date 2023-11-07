@@ -1,6 +1,6 @@
 # pylint: disable=no-member
 
-"""Methods relating to 3D vectors."""
+"""Methods relating to [2|3]D vectors."""
 
 import math
 

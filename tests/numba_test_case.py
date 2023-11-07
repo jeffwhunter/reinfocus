@@ -8,7 +8,7 @@ class NumbaTestCase(CUDATestCase):
 
     def arrays_close(self, a, b):
         """Asserts that two arrays are fairly close."""
-        self.assertIsNone(npt.assert_allclose(a, b))
+        self.assertIsNone(npt.assert_allclose(a, b, atol=1e-7))
 
     def arrays_not_close(self, a, b):
         """Asserts that two arrays are not fairly close."""

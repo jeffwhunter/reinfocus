@@ -12,7 +12,10 @@ M = 4
 
 @cuda.jit
 def gpu_empty_hit_record() -> typ.GpuHitRecord:
-    """Makes an empty hit record on the GPU."""
+    """Makes an empty hit record on the GPU.
+
+    Returns:
+        An GPU representation of a ray not hitting anything."""
     return (
         vec.empty_g3f(),
         vec.empty_g3f(),
@@ -36,5 +39,7 @@ def gpu_hit_record(
         t: How close the hit is to maximum ray length.
         uv: The texture coordinates of the hit.
         m: What got hit: SPHERE or RECTANGLE.
-    """
+
+    Returns:
+        A GPU representation of a ray tracer hit."""
     return (p, n, t, uv, m)

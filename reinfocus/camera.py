@@ -7,7 +7,8 @@ from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 from reinfocus import ray
-from reinfocus import types as typ, vector as vec
+from reinfocus import types as typ
+from reinfocus import vector as vec
 
 LOWER_LEFT = 0
 HORIZONTAL = 1
@@ -52,7 +53,13 @@ class CameraLens:
 
 @cuda.jit()
 def to_gpu_camera(camera: typ.CpuCamera) -> typ.GpuCamera:
-    """Moves a camera from the GPU to the CPU."""
+    """Moves a camera from the GPU to the CPU.
+    
+    Args:
+        camera: The CPU representation of a camera.
+
+    Returns:
+        A GPU representation of that camera."""
     return (
         vec.c3f_to_g3f(camera[LOWER_LEFT]),
         vec.c3f_to_g3f(camera[HORIZONTAL]),
@@ -73,7 +80,10 @@ def cpu_camera(
     Args:
         orientation: The camera's orientation.
         view: The geometry of the camera's final output image.
-        lens: The camera's lens."""
+        lens: The camera's lens.
+
+    Returns:
+        A CPU retresentation of a camera."""
     half_height = math.tan((view.vfov * math.pi / 180.0) / 2.0)
     half_width = view.aspect * half_height
     w = vec.norm_c3f(vec.sub_c3f(orientation.look_from, orientation.look_at))
@@ -104,7 +114,10 @@ def random_in_unit_disc(
 
     Args:
         random_states: An array of RNG states.
-        pixel_index: Which RNG state to use."""
+        pixel_index: Which RNG state to use.
+
+    Returns:
+        A 2D GPU vector somewhere in the unit disc."""
     while True:
         p = vec.sub_g2f(
             vec.smul_g2f(
@@ -132,7 +145,10 @@ def get_ray(
         s: The horizontal coordinate of the pixel the ray will pass through.
         t: The vertical coordinate of the pixel the ray will pass through.
         random_states: An array of RNG states.
-        pixel_index: Which RNG state to use."""
+        pixel_index: Which RNG state to use.
+
+    Returns:
+        A ray shooting out of camera through (s, t)."""
     rd = vec.smul_g2f(random_in_unit_disc(random_states, pixel_index), camera[LENS_RADIUS])
     offset_origin = vec.add3_g3f(
         camera[ORIGIN],
