@@ -15,7 +15,6 @@ G3F = NewType('G3F', cuda.float32x3) # type: ignore
 GpuHitRecord = Tuple[G3F, G3F, nb.float32, G2F, nb.float32] # type: ignore
 GpuRay = Tuple[G3F, G3F]
 
-
 CpuCamera = Tuple[
     C3F,
     C3F,

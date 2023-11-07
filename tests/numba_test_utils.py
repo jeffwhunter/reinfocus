@@ -5,9 +5,9 @@ from numba import cuda
 
 from reinfocus import ray
 
-def cpu_target(ndim=3):
+def cpu_target(ndim=3, nrow=1):
     """Makes a single vector target array for GPU test output."""
-    return np.array([(0.0,) * ndim])
+    return np.array([(0.0,) * ndim] * nrow)
 
 @cuda.jit
 def flatten_ray(r):

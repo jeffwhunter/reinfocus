@@ -9,8 +9,9 @@ from reinfocus import vector as vec
 from tests import numba_test_case as ntc
 from tests import numba_test_utils as ntu
 
-class CPUVectorTest(ntc.NumbaTestCase):
-    """TestCases for CPU functions from reinfocus.vector."""
+class VectorTest(ntc.NumbaTestCase):
+    """TestCases for reinfocus.vector."""
+    # pylint: disable=no-value-for-parameter
 
     def test_c3f(self):
         """Tests that c3f makes a CPU vector with the expected elements."""
@@ -52,10 +53,6 @@ class CPUVectorTest(ntc.NumbaTestCase):
         self.arrays_close(
             vec.norm_c3f(vec.c3f(1, -1, 2)),
             vec.c3f(1 / sqrt(6), -1 / sqrt(6), sqrt(2 / 3)))
-
-class GPUVectorTest(ntc.NumbaTestCase):
-    """TestCases for GPU functions from reinfocus.vector."""
-    # pylint: disable=no-value-for-parameter
 
     def test_empty_g2f(self):
         """Tests that g2f makes a 2D GPU vector with the expected elements."""

@@ -1,7 +1,6 @@
 """Methods that relate to 3D cameras."""
 
 import math
-
 from dataclasses import dataclass
 
 from numba import cuda
@@ -50,6 +49,19 @@ class CameraLens:
         focus_dist: Distance from look_from of plane of perfect focus."""
     aperture: float
     focus_dist: float
+
+@cuda.jit()
+def to_gpu_camera(camera: typ.CpuCamera) -> typ.GpuCamera:
+    """Moves a camera from the GPU to the CPU."""
+    return (
+        vec.c3f_to_g3f(camera[LOWER_LEFT]),
+        vec.c3f_to_g3f(camera[HORIZONTAL]),
+        vec.c3f_to_g3f(camera[VERTICAL]),
+        vec.c3f_to_g3f(camera[ORIGIN]),
+        vec.c3f_to_g3f(camera[CAM_U]),
+        vec.c3f_to_g3f(camera[CAM_V]),
+        vec.c3f_to_g3f(camera[CAM_W]),
+        camera[LENS_RADIUS])
 
 def cpu_camera(
     orientation: CameraOrientation,
