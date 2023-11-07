@@ -32,7 +32,8 @@ class HitRecordTest(ntc.NumbaTestCase):
         def make_empty_record(target):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = flatten_hit_record(hr.gpu_empty_hit_record())
+                rec = hr.gpu_empty_hit_record()
+                target[i] = flatten_hit_record(rec)
 
         cpu_array = ntu.cpu_target(ndim=10)
 

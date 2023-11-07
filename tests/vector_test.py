@@ -1,6 +1,7 @@
 """Contains tests for reinfocus.vector."""
 
 from math import sqrt
+
 from numba import cuda
 from numba.cuda.testing import unittest
 
@@ -9,268 +10,310 @@ from tests import numba_test_case as ntc
 from tests import numba_test_utils as ntu
 
 class CPUVectorTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.vector."""
+    """TestCases for CPU functions from reinfocus.vector."""
 
-    def test_cpu_vector(self):
-        """Tests that cpu_vector makes a CPU vector with the expected elements."""
-        self.arrays_close(vec.cpu_vector(1, 2, 3), vec.cpu_vector(1, 2, 3))
-        self.arrays_not_close(vec.cpu_vector(1, 2, 3), vec.cpu_vector(2, 2, 2))
+    def test_c3f(self):
+        """Tests that c3f makes a CPU vector with the expected elements."""
+        self.arrays_close(vec.c3f(1, 2, 3), vec.c3f(1, 2, 3))
+        self.arrays_not_close(vec.c3f(1, 2, 3), vec.c3f(2, 2, 2))
 
-    def test_cpu_add3(self):
-        """Tests that cpu_add3 properly adds three CPU vectors."""
+    def test_add3_c3f(self):
+        """Tests that add3_c3f properly adds three CPU vectors."""
         self.arrays_close(
-            vec.cpu_add3(vec.cpu_vector(1, 2, 3), vec.cpu_vector(4, 5, 6), vec.cpu_vector(7, 8, 9)),
-            vec.cpu_vector(12, 15, 18))
+            vec.add3_c3f(vec.c3f(1, 2, 3), vec.c3f(4, 5, 6), vec.c3f(7, 8, 9)),
+            vec.c3f(12, 15, 18))
 
-    def test_cpu_sub(self):
-        """Tests that cpu_sub properly subtracts one CPU vector from another."""
+    def test_sub_c3f(self):
+        """Tests that sub_c3f properly subtracts one CPU vector from another."""
         self.arrays_close(
-            vec.cpu_sub(vec.cpu_vector(4, 5, 6), vec.cpu_vector(3, 2, 1)),
-            vec.cpu_vector(1, 3, 5))
+            vec.sub_c3f(vec.c3f(4, 5, 6), vec.c3f(3, 2, 1)),
+            vec.c3f(1, 3, 5))
 
-    def test_cpu_smul(self):
-        """Tests that cpu_smul properly multiplies a CPU vector by a scalar."""
-        self.arrays_close(vec.cpu_smul(vec.cpu_vector(1, 2, 3), 3), vec.cpu_vector(3, 6, 9))
+    def test_smul_c3f(self):
+        """Tests that smul_c3f properly multiplies a CPU vector by a scalar."""
+        self.arrays_close(vec.smul_c3f(vec.c3f(1, 2, 3), 3), vec.c3f(3, 6, 9))
 
-    def test_cpu_div(self):
-        """Tests that cpu_div properly divides a CPU vector by a scalar."""
-        self.arrays_close(vec.cpu_div(vec.cpu_vector(3, 6, 9), 3), vec.cpu_vector(1, 2, 3))
+    def test_div_c3f(self):
+        """Tests that div_c3f properly divides a CPU vector by a scalar."""
+        self.arrays_close(vec.div_c3f(vec.c3f(3, 6, 9), 3), vec.c3f(1, 2, 3))
 
-    def test_cpu_cross(self):
-        """Tests that cpu_cross properly produces the cross product of two CPU vectors."""
+    def test_cross_c3f(self):
+        """Tests that cross_c3f properly produces the cross product of two CPU vectors."""
         self.arrays_close(
-            vec.cpu_cross(vec.cpu_vector(1, 2, 3), vec.cpu_vector(4, 5, 6)),
-            vec.cpu_vector(-3, 6, -3))
+            vec.cross_c3f(vec.c3f(1, 2, 3), vec.c3f(4, 5, 6)),
+            vec.c3f(-3, 6, -3))
 
-    def test_cpu_length(self):
-        """Tests that cpu_length properly produces the length of a CPU vector."""
-        self.assertAlmostEqual(vec.cpu_length(vec.cpu_vector(2, 3, 6)), 7)
+    def test_length_c3f(self):
+        """Tests that length_c3f properly produces the length of a CPU vector."""
+        self.assertAlmostEqual(vec.length_c3f(vec.c3f(2, 3, 6)), 7)
 
-    def test_cpu_norm_vector(self):
-        """Tests that cpu_norm_vector properly normalizes a CPU vector."""
+    def test_norm_c3f(self):
+        """Tests that norm_c3f properly normalizes a CPU vector."""
         self.arrays_close(
-            vec.cpu_norm_vector(vec.cpu_vector(1, -1, 2)),
-            vec.cpu_vector(1 / sqrt(6), -1 / sqrt(6), sqrt(2 / 3)))
+            vec.norm_c3f(vec.c3f(1, -1, 2)),
+            vec.c3f(1 / sqrt(6), -1 / sqrt(6), sqrt(2 / 3)))
 
 class GPUVectorTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.vector."""
+    """TestCases for GPU functions from reinfocus.vector."""
     # pylint: disable=no-value-for-parameter
 
-    def test_gpu_vector(self):
-        """Tests that gpu_vector makes a GPU vector with the expected elements."""
+    def test_empty_g2f(self):
+        """Tests that g2f makes a 2D GPU vector with the expected elements."""
         @cuda.jit()
-        def copy_gpu_vector(target, source):
+        def copy_empty_g2f(target):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_vector(*source))
+                target[i] = vec.g2f_to_c2f(vec.empty_g2f())
+
+        cpu_array = ntu.cpu_target(ndim=2)
+
+        copy_empty_g2f[1, 1](cpu_array) # type: ignore
+
+        self.arrays_close(cpu_array[0], vec.c2f(0, 0))
+
+    def test_g2f(self):
+        """Tests that g2f makes a 2D GPU vector with the expected elements."""
+        @cuda.jit()
+        def copy_g2f(target, source):
+            i = cuda.grid(1) # type: ignore
+            if i < target.size:
+                target[i] = vec.g2f_to_c2f(vec.g2f(*source))
+
+        cpu_array = ntu.cpu_target(ndim=2)
+
+        copy_g2f[1, 1](cpu_array, vec.c2f(1, 2)) # type: ignore
+
+        self.arrays_close(cpu_array[0], vec.c2f(1, 2))
+
+    def test_empty_g3f(self):
+        """Tests that g3f makes an empty 3D GPU vector."""
+        @cuda.jit()
+        def copy_empty_g3f(target):
+            i = cuda.grid(1) # type: ignore
+            if i < target.size:
+                target[i] = vec.g3f_to_c3f(vec.empty_g3f())
 
         cpu_array = ntu.cpu_target()
 
-        copy_gpu_vector[1, 1](cpu_array, vec.cpu_vector(1, 2, 3)) # type: ignore
+        copy_empty_g3f[1, 1](cpu_array) # type: ignore
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(1, 2, 3))
+        self.arrays_close(cpu_array[0], vec.c3f(0, 0, 0))
 
-    def test_to_gpu_vector(self):
-        """Tests that to_gpu_vector makes a GPU vector with elements from the CPU vector."""
+    def test_g3f(self):
+        """Tests that g3f makes a GPU vector with the expected elements."""
         @cuda.jit()
-        def copy_gpu_from_cpu_vector(target, source):
+        def copy_g3f(target, source):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.to_gpu_vector(source))
+                target[i] = vec.g3f_to_c3f(vec.g3f(*source))
 
         cpu_array = ntu.cpu_target()
 
-        copy_gpu_from_cpu_vector[1, 1](cpu_array, vec.cpu_vector(1, 2, 3)) # type: ignore
+        copy_g3f[1, 1](cpu_array, vec.c3f(1, 2, 3)) # type: ignore
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(1, 2, 3))
+        self.arrays_close(cpu_array[0], vec.c3f(1, 2, 3))
 
-    def test_gpu_add(self):
-        """Tests that gpu_add properly adds two GPU vectors."""
+    def test_c3f_to_g3f(self):
+        """Tests that c3f_to_g3f makes a GPU vector with elements from the CPU vector."""
         @cuda.jit()
-        def add_2_gpu_vectors(target, a, b):
+        def copy_g3f_from_c3f(target, source):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_add(vec.gpu_vector(*a), vec.gpu_vector(*b)))
+                target[i] = vec.g3f_to_c3f(vec.c3f_to_g3f(source))
 
         cpu_array = ntu.cpu_target()
 
-        add_2_gpu_vectors[1, 1]( # type: ignore
+        copy_g3f_from_c3f[1, 1](cpu_array, vec.c3f(1, 2, 3)) # type: ignore
+
+        self.arrays_close(cpu_array[0], vec.c3f(1, 2, 3))
+
+    def test_add_g3f(self):
+        """Tests that add_g3f properly adds two GPU vectors."""
+        @cuda.jit()
+        def add_2_g3f(target, a, b):
+            i = cuda.grid(1) # type: ignore
+            if i < target.size:
+                target[i] = vec.g3f_to_c3f(vec.add_g3f(vec.g3f(*a), vec.g3f(*b)))
+
+        cpu_array = ntu.cpu_target()
+
+        add_2_g3f[1, 1]( # type: ignore
             cpu_array,
-            vec.cpu_vector(1, 2, 3),
-            vec.cpu_vector(4, 5, 6))
+            vec.c3f(1, 2, 3),
+            vec.c3f(4, 5, 6))
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(5, 7, 9))
+        self.arrays_close(cpu_array[0], vec.c3f(5, 7, 9))
 
-    def test_gpu_add3(self):
-        """Tests that gpu_add3 properly adds three GPU vectors."""
+    def test_add3_g3f(self):
+        """Tests that add3_g3f properly adds three GPU vectors."""
         @cuda.jit()
-        def add_3_gpu_vectors(target, a, b, c):
+        def add_3_g3f(target, a, b, c):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(
-                    vec.gpu_add3(vec.gpu_vector(*a), vec.gpu_vector(*b), vec.gpu_vector(*c)))
+                target[i] = vec.g3f_to_c3f(
+                    vec.add3_g3f(vec.g3f(*a), vec.g3f(*b), vec.g3f(*c)))
 
         cpu_array = ntu.cpu_target()
 
-        add_3_gpu_vectors[1, 1]( # type: ignore
+        add_3_g3f[1, 1]( # type: ignore
             cpu_array,
-            vec.cpu_vector(1, 2, 3),
-            vec.cpu_vector(4, 5, 6),
-            vec.cpu_vector(7, 8, 9))
+            vec.c3f(1, 2, 3),
+            vec.c3f(4, 5, 6),
+            vec.c3f(7, 8, 9))
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(12, 15, 18))
+        self.arrays_close(cpu_array[0], vec.c3f(12, 15, 18))
 
-    def test_gpu_neg(self):
-        """Tests that gpu_neg properly negates a GPU vector."""
+    def test_neg_g3f(self):
+        """Tests that neg_g3f properly negates a GPU vector."""
         @cuda.jit()
-        def negate_gpu_vector(target, a):
+        def negate_g3f(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_neg(vec.gpu_vector(*a)))
+                target[i] = vec.g3f_to_c3f(vec.neg_g3f(vec.g3f(*a)))
 
         cpu_array = ntu.cpu_target()
 
-        negate_gpu_vector[1, 1](cpu_array, vec.cpu_vector(1, -2, 3)) # type: ignore
+        negate_g3f[1, 1](cpu_array, vec.c3f(1, -2, 3)) # type: ignore
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(-1, 2, -3))
+        self.arrays_close(cpu_array[0], vec.c3f(-1, 2, -3))
 
-    def test_gpu_sub(self):
-        """Tests that gpu_sub properly subtracts one GPU vector from another."""
+    def test_sub_g3f(self):
+        """Tests that sub_g3f properly subtracts one GPU vector from another."""
         @cuda.jit()
-        def subtract_gpu_vectors(target, a, b):
+        def subtract_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_sub(vec.gpu_vector(*a), vec.gpu_vector(*b)))
+                target[i] = vec.g3f_to_c3f(vec.sub_g3f(vec.g3f(*a), vec.g3f(*b)))
 
         cpu_array = ntu.cpu_target()
 
-        subtract_gpu_vectors[1, 1]( # type: ignore
+        subtract_g3f[1, 1]( # type: ignore
             cpu_array,
-            vec.cpu_vector(4, 5, 6),
-            vec.cpu_vector(3, 2, 1))
+            vec.c3f(4, 5, 6),
+            vec.c3f(3, 2, 1))
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(1, 3, 5))
+        self.arrays_close(cpu_array[0], vec.c3f(1, 3, 5))
 
-    def test_gpu_smul(self):
-        """Tests that gpu_smul properly multiplies a GPU vector by a scalar."""
+    def test_smul_g3f(self):
+        """Tests that smul_g3f properly multiplies a GPU vector by a scalar."""
         @cuda.jit()
-        def scale_gpu_vector(target, a, b):
+        def scale_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_smul(vec.gpu_vector(*a), b))
+                target[i] = vec.g3f_to_c3f(vec.smul_g3f(vec.g3f(*a), b))
 
         cpu_array = ntu.cpu_target()
 
-        scale_gpu_vector[1, 1](cpu_array, vec.cpu_vector(1, 2, 3), 3) # type: ignore
+        scale_g3f[1, 1](cpu_array, vec.c3f(1, 2, 3), 3) # type: ignore
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(3, 6, 9))
+        self.arrays_close(cpu_array[0], vec.c3f(3, 6, 9))
 
-    def test_gpu_vmul(self):
-        """Tests that gpu_vmul properly produces the Hadamard product of two GPU vectors."""
+    def test_vmul_g3f(self):
+        """Tests that vmul_g3f properly produces the Hadamard product of two GPU vectors."""
         @cuda.jit()
-        def multiply_vectors_elementwise(target, a, b):
+        def elementwise_multiply_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_vmul(vec.gpu_vector(*a), vec.gpu_vector(*b)))
+                target[i] = vec.g3f_to_c3f(vec.vmul_g3f(vec.g3f(*a), vec.g3f(*b)))
 
         cpu_array = ntu.cpu_target()
 
-        multiply_vectors_elementwise[1, 1]( # type: ignore
+        elementwise_multiply_g3f[1, 1]( # type: ignore
             cpu_array,
-            vec.cpu_vector(1, 2, 3),
-            vec.cpu_vector(1, 2, 3))
+            vec.c3f(1, 2, 3),
+            vec.c3f(1, 2, 3))
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(1, 4, 9))
+        self.arrays_close(cpu_array[0], vec.c3f(1, 4, 9))
 
-    def test_gpu_div(self):
-        """Tests that gpu_div properly divides a GPU vector by a scalar."""
+    def test_div_g3f(self):
+        """Tests that div_g3f properly divides a GPU vector by a scalar."""
         @cuda.jit()
-        def divide_gpu_vector(target, a, b):
+        def divide_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_div(vec.gpu_vector(*a), b))
+                target[i] = vec.g3f_to_c3f(vec.div_g3f(vec.g3f(*a), b))
 
         cpu_array = ntu.cpu_target()
 
-        divide_gpu_vector[1, 1](cpu_array, vec.cpu_vector(3, 6, 9), 3) # type: ignore
+        divide_g3f[1, 1](cpu_array, vec.c3f(3, 6, 9), 3) # type: ignore
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(1, 2, 3))
+        self.arrays_close(cpu_array[0], vec.c3f(1, 2, 3))
 
-    def test_gpu_dot(self):
-        """Tests that gpu_dot properly produces the dot product of two GPU vectors."""
+    def test_dot_g3f(self):
+        """Tests that dot_g3f properly produces the dot product of two GPU vectors."""
         @cuda.jit()
-        def dot_multiply_gpu_vectors(target, a, b):
+        def dot_multiply_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_dot(vec.gpu_vector(*a), vec.gpu_vector(*b))
+                target[i] = vec.dot_g3f(vec.g3f(*a), vec.g3f(*b))
 
         cpu_array = ntu.cpu_target(ndim=1)
 
-        dot_multiply_gpu_vectors[1, 1]( # type: ignore
+        dot_multiply_g3f[1, 1]( # type: ignore
             cpu_array,
-            vec.cpu_vector(1, 2, 3),
-            vec.cpu_vector(4, 5, 6))
+            vec.c3f(1, 2, 3),
+            vec.c3f(4, 5, 6))
 
         self.assertAlmostEqual(cpu_array[0][0], 32)
 
-    def test_gpu_cross(self):
-        """Tests that gpu_cross properly produces the cross product of two GPU vectors."""
+    def test_cross_g3f(self):
+        """Tests that cross_g3f properly produces the cross product of two GPU vectors."""
         @cuda.jit()
-        def cross_multiply_gpu_vectors(target, a, b):
+        def cross_multiply_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_cross(vec.gpu_vector(*a), vec.gpu_vector(*b)))
+                target[i] = vec.g3f_to_c3f(vec.cross_g3f(vec.g3f(*a), vec.g3f(*b)))
 
         cpu_array = ntu.cpu_target()
 
-        cross_multiply_gpu_vectors[1, 1]( # type: ignore
+        cross_multiply_g3f[1, 1]( # type: ignore
             cpu_array,
-            vec.cpu_vector(1, 2, 3),
-            vec.cpu_vector(4, 5, 6))
+            vec.c3f(1, 2, 3),
+            vec.c3f(4, 5, 6))
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(-3, 6, -3))
+        self.arrays_close(cpu_array[0], vec.c3f(-3, 6, -3))
 
-    def test_gpu_squared_length(self):
-        """Tests that gpu_squared_length properly produces the squared length of a GPU vector."""
+    def test_squared_length_g3f(self):
+        """Tests that squared_length_g3f properly produces the squared length of a GPU vector."""
         @cuda.jit()
-        def find_gpu_vector_squared_length(target, a):
+        def find_g3f_vector_squared_length(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_squared_length(vec.gpu_vector(*a))
+                target[i] = vec.squared_length_g3f(vec.g3f(*a))
 
         cpu_array = ntu.cpu_target(ndim=1)
 
-        find_gpu_vector_squared_length[1, 1](cpu_array, vec.cpu_vector(1, 2, 3)) # type: ignore
+        find_g3f_vector_squared_length[1, 1](cpu_array, vec.c3f(1, 2, 3)) # type: ignore
 
         self.assertAlmostEqual(cpu_array[0][0], 14)
 
-    def test_gpu_length(self):
-        """Tests that gpu_length properly produces the length of a GPU vector."""
+    def test_length_g3f(self):
+        """Tests that length_g3f properly produces the length of a GPU vector."""
         @cuda.jit()
-        def find_gpu_vector_length(target, a):
+        def find_g3f_vector_length(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.gpu_length(vec.gpu_vector(*a))
+                target[i] = vec.length_g3f(vec.g3f(*a))
 
         cpu_array = ntu.cpu_target(ndim=1)
 
-        find_gpu_vector_length[1, 1](cpu_array, vec.cpu_vector(2, 3, 6)) # type: ignore
+        find_g3f_vector_length[1, 1](cpu_array, vec.c3f(2, 3, 6)) # type: ignore
 
         self.assertAlmostEqual(cpu_array[0][0], 7)
 
-    def test_gpu_norm_vector(self):
-        """Tests that gpu_norm_vector properly normalizes a GPU vector."""
+    def test_norm_g3f(self):
+        """Tests that norm_g3f properly normalizes a GPU vector."""
         @cuda.jit()
-        def normalize_gpu_vector(target, a):
+        def normalize_g3f(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = vec.to_cpu_vector(vec.gpu_norm_vector(vec.gpu_vector(*a)))
+                target[i] = vec.g3f_to_c3f(vec.norm_g3f(vec.g3f(*a)))
 
         cpu_array = ntu.cpu_target()
 
-        normalize_gpu_vector[1, 1](cpu_array, vec.cpu_vector(1, -1, 2)) # type: ignore
+        normalize_g3f[1, 1](cpu_array, vec.c3f(1, -1, 2)) # type: ignore
 
-        self.arrays_close(cpu_array[0], vec.cpu_vector(1 / sqrt(6), -1 / sqrt(6), sqrt(2 / 3)))
+        self.arrays_close(cpu_array[0], vec.c3f(1 / sqrt(6), -1 / sqrt(6), sqrt(2 / 3)))
 
 if __name__ == '__main__':
     unittest.main()
