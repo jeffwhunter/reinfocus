@@ -48,8 +48,7 @@ def gpu_hit_sphere(
     Returns:
         A GpuHitResult where the first element is True if a hit happened, while the
             second element is a GpuHitRecord with the details of the hit, which
-            is empty if there was no hit.
-    """
+            is empty if there was no hit."""
     sphere_centre = vec.g3f(sphere_parameters[0], sphere_parameters[1], sphere_parameters[2])
     sphere_radius = sphere_parameters[3]
 

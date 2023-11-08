@@ -18,8 +18,7 @@ class RayTest(ntc.NumbaTestCase):
         def copy_gpu_ray(target, origin, direction):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
-                target[i] = ntu.flatten_ray(
-                    ray.gpu_ray(vec.c3f_to_g3f(origin), vec.c3f_to_g3f(direction)))
+                target[i] = ntu.flatten_ray(ray.cpu_to_gpu_ray(origin, direction))
 
         cpu_array = ntu.cpu_target(ndim=6)
 
@@ -37,9 +36,7 @@ class RayTest(ntc.NumbaTestCase):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
                 target[i] =  vec.g3f_to_c3f(
-                    ray.gpu_point_at_parameter(
-                        ray.gpu_ray(vec.c3f_to_g3f(origin), vec.c3f_to_g3f(direction)),
-                        t))
+                    ray.gpu_point_at_parameter(ray.cpu_to_gpu_ray(origin, direction), t))
 
         cpu_array = ntu.cpu_target()
 

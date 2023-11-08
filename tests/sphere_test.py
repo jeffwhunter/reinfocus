@@ -1,6 +1,5 @@
 """Contains tests for reinfocus.sphere."""
 
-import numba as nb
 from numba import cuda
 from numba.cuda.testing import unittest
 from reinfocus import ray
@@ -27,7 +26,7 @@ class SphereTest(ntc.NumbaTestCase):
                 target[i] = ntu.flatten_hit_result(
                     sph.gpu_hit_sphere(
                         sphere_parameters,
-                        ray.gpu_ray(vec.c3f_to_g3f(origin), vec.c3f_to_g3f(direction)),
+                        ray.cpu_to_gpu_ray(origin, direction),
                         0,
                         100))
 

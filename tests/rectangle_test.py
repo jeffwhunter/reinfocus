@@ -26,7 +26,7 @@ class RectangleTest(ntc.NumbaTestCase):
                 target[i] = ntu.flatten_hit_result(
                     rec.gpu_hit_rectangle(
                         rectangle_parameters,
-                        ray.gpu_ray(vec.c3f_to_g3f(origin), vec.c3f_to_g3f(direction)),
+                        ray.cpu_to_gpu_ray(origin, direction),
                         0,
                         100))
 
