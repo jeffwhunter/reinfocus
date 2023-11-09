@@ -5,7 +5,6 @@ from numba import cuda
 from reinfocus import hit_record as hit
 from reinfocus import ray
 from reinfocus import shape as sha
-from reinfocus import types as typ
 from reinfocus import vector as vec
 
 X_MIN = 0
@@ -38,11 +37,11 @@ def cpu_rectangle(
 
 @cuda.jit
 def gpu_hit_rectangle(
-    rectangle_parameters: typ.GpuShapeParameters,
-    r: typ.GpuRay,
+    rectangle_parameters: sha.GpuShapeParameters,
+    r: ray.GpuRay,
     t_min: float,
     t_max: float
-) -> typ.GpuHitResult:
+) -> sha.GpuHitResult:
     """Determines if the ray r hits the z-aligned rectangle defined byrectangle_parameters
         between t_min and t_max, returning a hit_record contraining the details if it does.
 

@@ -1,8 +1,12 @@
 """Hit records hold information about rays hitting objects."""
 
+from typing import Tuple
+
 import numba as nb
 from numba import cuda
-from reinfocus import types as typ, vector as vec
+from reinfocus import vector as vec
+
+GpuHitRecord = Tuple[vec.G3F, vec.G3F, nb.float32, vec.G2F, nb.float32] # type: ignore
 
 P = 0
 N = 1
@@ -11,7 +15,7 @@ UV = 3
 M = 4
 
 @cuda.jit
-def gpu_empty_hit_record() -> typ.GpuHitRecord:
+def gpu_empty_hit_record() -> GpuHitRecord:
     """Makes an empty hit record on the GPU.
 
     Returns:
@@ -25,12 +29,12 @@ def gpu_empty_hit_record() -> typ.GpuHitRecord:
 
 @cuda.jit
 def gpu_hit_record(
-    p: typ.G3F,
-    n: typ.G3F,
+    p: vec.G3F,
+    n: vec.G3F,
     t: float,
-    uv: typ.G2F,
+    uv: vec.G2F,
     m: float
-) -> typ.GpuHitRecord:
+) -> GpuHitRecord:
     """Makes a hit record on the GPU.
 
     Args:

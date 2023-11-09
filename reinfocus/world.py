@@ -6,10 +6,10 @@ import numpy as np
 from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
 from reinfocus import hit_record as hit
+from reinfocus import ray
 from reinfocus import rectangle as rec
 from reinfocus import shape as sha
 from reinfocus import sphere as sph
-from reinfocus import types as typ
 from reinfocus import vector as vec
 
 class World:
@@ -58,10 +58,10 @@ class World:
 def gpu_hit_world(
     shapes_parameters: cda.DeviceNDArray,
     shapes_types: cda.DeviceNDArray,
-    ray: typ.GpuRay,
+    r: ray.GpuRay,
     t_min: float,
     t_max: float
-) -> typ.GpuHitResult:
+) -> sha.GpuHitResult:
     """Determines if the ray r hits any of the shapes defined by shape_parameters between
         t_min and t_max, according to their types in shapes_types, returning a hit_record
         containing the details if it does.
@@ -69,7 +69,7 @@ def gpu_hit_world(
     Args:
         shapes_parameters: The parameters of each shape in this world.
         shapes_types: The type of each shape in this world.
-        ray: The ray potentially hitting the defined world.
+        r: The ray potentially hitting the defined world.
         t_min: The minimum of the interval on r in which we look for hits with the world.
         t_max: The maximum of the interval on r in which we look for hits with the world.
 
@@ -87,13 +87,13 @@ def gpu_hit_world(
         if shape_type == sha.SPHERE:
             h, temp_record = sph.gpu_hit_sphere(
                 shape_parameters,
-                ray,
+                r,
                 t_min,
                 closest_so_far)
         else:
             h, temp_record = rec.gpu_hit_rectangle(
                 shape_parameters,
-                ray,
+                r,
                 t_min,
                 closest_so_far)
 

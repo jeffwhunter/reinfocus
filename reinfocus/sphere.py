@@ -7,13 +7,12 @@ from numba import cuda
 from reinfocus import hit_record as hit
 from reinfocus import ray
 from reinfocus import shape as sha
-from reinfocus import types as typ
 from reinfocus import vector as vec
 
 CENTRE = 0
 RADIUS = 1
 
-def cpu_sphere(centre: typ.C3F, radius: float) -> sha.CpuShape:
+def cpu_sphere(centre: vec.C3F, radius: float) -> sha.CpuShape:
     """Makes a representation of a sphere suitable for transfer to the GPU.
 
     Args:
@@ -28,11 +27,11 @@ def cpu_sphere(centre: typ.C3F, radius: float) -> sha.CpuShape:
 
 @cuda.jit
 def gpu_hit_sphere(
-    sphere_parameters: typ.GpuShapeParameters,
-    r: typ.GpuRay,
+    sphere_parameters: sha.GpuShapeParameters,
+    r: ray.GpuRay,
     t_min: float,
     t_max: float
-) -> typ.GpuHitResult:
+) -> sha.GpuHitResult:
     """Determines if the ray r hits the sphere defined by sphere_parameters between
         t_min and t_max, returning a hit_record containing the details if it does.
 

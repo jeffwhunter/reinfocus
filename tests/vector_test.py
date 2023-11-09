@@ -11,7 +11,7 @@ from tests import numba_test_utils as ntu
 
 class VectorTest(ntc.NumbaTestCase):
     """TestCases for reinfocus.vector."""
-    # pylint: disable=no-value-for-parameter
+    # pylint: disable=no-value-for-parameter,too-many-public-methods
 
     def test_c3f(self):
         """Tests that c3f makes a CPU vector with the expected elements."""

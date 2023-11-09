@@ -6,8 +6,9 @@ import numba as nb
 import numpy as np
 from numba import cuda
 from reinfocus import hit_record as hit
+from reinfocus import physics as phy
 from reinfocus import ray
-from reinfocus import types as typ
+from reinfocus import shape as sha
 
 F = float
 FlattenedRay = Tuple[F, F, F, F, F, F]
@@ -20,19 +21,19 @@ def cpu_target(ndim=3, nrow=1):
     return np.array([(0.0,) * ndim] * nrow)
 
 @cuda.jit()
-def flatten_ray(r: typ.GpuRay) -> FlattenedRay:
+def flatten_ray(r: ray.GpuRay) -> FlattenedRay:
     """Flattens a ray into a tuple for easy testing."""
     origin = r[ray.ORIGIN]
     direction = r[ray.DIRECTION]
     return (origin.x, origin.y, origin.z, direction.x, direction.y, direction.z)
 
 @cuda.jit()
-def flatten_coloured_ray(r: typ.GpuColouredRay) -> FlattenedColouredRay:
+def flatten_coloured_ray(r: phy.GpuColouredRay) -> FlattenedColouredRay:
     """Flattens a coloured ray into a tuple for easy testing"""
     return flatten_ray(r[0]) + (r[1].x, r[1].y, r[1].z)
 
 @cuda.jit()
-def flatten_hit_record(hit_record: typ.GpuHitRecord) -> FlattenedHitRecord:
+def flatten_hit_record(hit_record: hit.GpuHitRecord) -> FlattenedHitRecord:
     """Flattens a hit_record into a tuple."""
     p = hit_record[hit.P]
     n = hit_record[hit.N]
@@ -50,7 +51,7 @@ def flatten_hit_record(hit_record: typ.GpuHitRecord) -> FlattenedHitRecord:
         nb.float32(hit_record[hit.M])) # type: ignore
 
 @cuda.jit()
-def flatten_hit_result(hit_result: typ.GpuHitResult) -> FlattenedHitResult:
+def flatten_hit_result(hit_result: sha.GpuHitResult) -> FlattenedHitResult:
     """Flattens a hit_result into a tuple."""
     return (
         (nb.float32(1. if hit_result[0] else 0.),) +

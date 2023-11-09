@@ -1,6 +1,7 @@
 """Methods that relate to the physics of light in a ray tracer."""
 
 import math
+from typing import Tuple
 
 from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
@@ -8,15 +9,16 @@ from numba.cuda.random import xoroshiro128p_uniform_float32
 from reinfocus import hit_record as hit
 from reinfocus import ray
 from reinfocus import shape as sha
-from reinfocus import types as typ
 from reinfocus import vector as vec
 from reinfocus import world as wor
+
+GpuColouredRay = Tuple[ray.GpuRay, vec.G3F]
 
 @cuda.jit
 def random_in_unit_sphere(
     random_states: cda.DeviceNDArray,
     pixel_index: int
-) -> typ.G3F:
+) -> vec.G3F:
     """Returns a 3D GPU vector somewhere in the unit sphere.
 
     Args:
@@ -39,10 +41,10 @@ def random_in_unit_sphere(
 
 @cuda.jit
 def rect_scatter(
-    record: typ.GpuHitRecord,
+    record: hit.GpuHitRecord,
     random_states: cda.DeviceNDArray,
     pixel_index: int
-) -> typ.GpuColouredRay:
+) -> GpuColouredRay:
     """Returns a new ray and colour pair that results from the rectangle hit described
         by record.
 
@@ -68,10 +70,10 @@ def rect_scatter(
 
 @cuda.jit
 def sphere_scatter(
-    record: typ.GpuHitRecord,
+    record: hit.GpuHitRecord,
     random_states: cda.DeviceNDArray,
     pixel_index: int
-) -> typ.GpuColouredRay:
+) -> GpuColouredRay:
     """Returns a new ray and colour pair that results from the sphere hit described
         by record.
 
@@ -97,10 +99,10 @@ def sphere_scatter(
 
 @cuda.jit
 def scatter(
-    record: typ.GpuHitRecord,
+    record: hit.GpuHitRecord,
     random_states: cda.DeviceNDArray,
     pixel_index: int
-) -> typ.GpuColouredRay:
+) -> GpuColouredRay:
     """Returns a new ray and colour pair that results from the hit described by record.
 
     Args:
@@ -118,12 +120,12 @@ def scatter(
 
 @cuda.jit
 def find_colour(
-    shapes_parameters: cda.DeviceNDArray,
-    shapes_types: cda.DeviceNDArray,
-    r: typ.GpuRay,
+    shapes_parameters: sha.GpuShapeParameters,
+    shapes_types: sha.GpuShapeTypes,
+    r: ray.GpuRay,
     random_states: cda.DeviceNDArray,
     pixel_index: int
-) -> typ.G3F:
+) -> vec.G3F:
     """Returns the colour picked up by r as it bounces around the world defined by
         shapes_parameters and shapes_types.
 

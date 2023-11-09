@@ -2,13 +2,33 @@
 
 import math
 from dataclasses import dataclass
+from typing import Tuple
 
 from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 from reinfocus import ray
-from reinfocus import types as typ
 from reinfocus import vector as vec
+
+CpuCamera = Tuple[
+    vec.C3F,
+    vec.C3F,
+    vec.C3F,
+    vec.C3F,
+    vec.C3F,
+    vec.C3F,
+    vec.C3F,
+    float]
+
+GpuCamera = Tuple[
+    vec.G3F,
+    vec.G3F,
+    vec.G3F,
+    vec.G3F,
+    vec.G3F,
+    vec.G3F,
+    vec.G3F,
+    float]
 
 LOWER_LEFT = 0
 HORIZONTAL = 1
@@ -27,9 +47,9 @@ class CameraOrientation:
         look_at: The position the camera is looking at.
         look_from: The position of the camera.
         up: Which direction is up for the camera."""
-    look_at: typ.C3F
-    look_from: typ.C3F
-    up: typ.C3F
+    look_at: vec.C3F
+    look_from: vec.C3F
+    up: vec.C3F
 
 @dataclass
 class CameraView:
@@ -52,7 +72,7 @@ class CameraLens:
     focus_dist: float
 
 @cuda.jit()
-def to_gpu_camera(camera: typ.CpuCamera) -> typ.GpuCamera:
+def to_gpu_camera(camera: CpuCamera) -> GpuCamera:
     """Moves a camera from the GPU to the CPU.
     
     Args:
@@ -74,7 +94,7 @@ def cpu_camera(
     orientation: CameraOrientation,
     view: CameraView,
     lens: CameraLens
-) -> typ.CpuCamera:
+) -> CpuCamera:
     """Makes a representation of a camera suitable for transfer to the GPU.
 
     Args:
@@ -109,7 +129,7 @@ def cpu_camera(
 def random_in_unit_disc(
     random_states: cda.DeviceNDArray,
     pixel_index: int
-) -> typ.G2F:
+) -> vec.G2F:
     """Returns a 2D GPU vector somewhere in the unit disc.
 
     Args:
@@ -132,12 +152,12 @@ def random_in_unit_disc(
 
 @cuda.jit
 def get_ray(
-    camera: typ.GpuCamera,
+    camera: GpuCamera,
     s: float,
     t: float,
     random_states: cda.DeviceNDArray,
     pixel_index: int
-) -> typ.GpuRay:
+) -> ray.GpuRay:
     """Returns a defocussed ray passing through camera pixel (s, t).
 
     Args:
