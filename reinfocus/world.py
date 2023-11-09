@@ -7,14 +7,14 @@ from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
 from reinfocus import hit_record as hit
 from reinfocus import rectangle as rec
-from reinfocus import shape as shp
+from reinfocus import shape as sha
 from reinfocus import sphere as sph
 from reinfocus import types as typ
 from reinfocus import vector as vec
 
 class World:
     """Represents the world of a ray tracer in a way easy to transfer to the GPU."""
-    def __init__(self, *shapes: shp.CpuShape):
+    def __init__(self, *shapes: sha.CpuShape):
         self.shapes = shapes
 
     def device_shape_parameters(self) -> cda.DeviceNDArray:
@@ -68,7 +68,7 @@ def gpu_hit_world(
         h = False
         temp_record = hit.gpu_empty_hit_record()
 
-        if shape_type == shp.SPHERE:
+        if shape_type == sha.SPHERE:
             h, temp_record = sph.gpu_hit_sphere(
                 shape_parameters,
                 ray,

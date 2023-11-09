@@ -3,7 +3,7 @@
 from numba import cuda
 from numba.cuda.testing import unittest
 from reinfocus import ray
-from reinfocus import shape as shp
+from reinfocus import shape as sha
 from reinfocus import sphere as sph
 from reinfocus import vector as vec
 from tests import numba_test_case as ntc
@@ -38,7 +38,7 @@ class SphereTest(ntc.NumbaTestCase):
             vec.c3f(10, 0, 0),
             vec.c3f(-1, 0, 0))
 
-        self.arrays_close(cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, .5, .5, shp.SPHERE))
+        self.arrays_close(cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, .5, .5, sha.SPHERE))
 
     def test_gpu_sphere_uv(self):
         """Tests if gpu_sphere_uv returns an appropriate texture coordinate for a point

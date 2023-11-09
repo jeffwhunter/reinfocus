@@ -4,7 +4,7 @@ import numpy as np
 from numba import cuda
 from reinfocus import hit_record as hit
 from reinfocus import ray
-from reinfocus import shape as shp
+from reinfocus import shape as sha
 from reinfocus import types as typ
 from reinfocus import vector as vec
 
@@ -20,7 +20,7 @@ def cpu_rectangle(
     y_min: float,
     y_max: float,
     z_pos: float
-) -> shp.CpuShape:
+) -> sha.CpuShape:
     """Makes a representation of a z-aligned rectangle suitable for transfer to the GPU.
 
     Args:
@@ -32,9 +32,9 @@ def cpu_rectangle(
 
     Returns:
         A z-aligned rectangle that's easy to transfer to a GPU."""
-    return shp.CpuShape(
+    return sha.CpuShape(
         np.array([x_min, x_max, y_min, y_max, z_pos], dtype=np.float32),
-        shp.RECTANGLE)
+        sha.RECTANGLE)
 
 @cuda.jit
 def gpu_hit_rectangle(
@@ -83,4 +83,4 @@ def gpu_hit_rectangle(
             vec.g3f(0, 0, 1),
             t,
             vec.g2f((x - x_min) / (x_max - x_min), (y - y_min) / (y_max - y_min)),
-            shp.RECTANGLE))
+            sha.RECTANGLE))

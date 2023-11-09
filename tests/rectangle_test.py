@@ -3,7 +3,7 @@
 from numba import cuda
 from numba.cuda.testing import unittest
 from reinfocus import ray
-from reinfocus import shape as shp
+from reinfocus import shape as sha
 from reinfocus import rectangle as rec
 from reinfocus import vector as vec
 from tests import numba_test_case as ntc
@@ -38,7 +38,7 @@ class RectangleTest(ntc.NumbaTestCase):
             vec.c3f(0, 0, 0),
             vec.c3f(0, 0, 1))
 
-        self.arrays_close(cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, .5, .5, shp.RECTANGLE))
+        self.arrays_close(cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, .5, .5, sha.RECTANGLE))
 
 if __name__ == '__main__':
     unittest.main()

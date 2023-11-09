@@ -6,14 +6,14 @@ import numpy as np
 from numba import cuda
 from reinfocus import hit_record as hit
 from reinfocus import ray
-from reinfocus import shape as shp
+from reinfocus import shape as sha
 from reinfocus import types as typ
 from reinfocus import vector as vec
 
 CENTRE = 0
 RADIUS = 1
 
-def cpu_sphere(centre: typ.C3F, radius: float) -> shp.CpuShape:
+def cpu_sphere(centre: typ.C3F, radius: float) -> sha.CpuShape:
     """Makes a representation of a sphere suitable for transfer to the GPU.
 
     Args:
@@ -22,9 +22,9 @@ def cpu_sphere(centre: typ.C3F, radius: float) -> shp.CpuShape:
 
     Returns:
         A sphere that's easy to transfer to a GPU."""
-    return shp.CpuShape(
+    return sha.CpuShape(
         np.array([*centre, radius], dtype=np.float32),
-        shp.SPHERE)
+        sha.SPHERE)
 
 @cuda.jit
 def gpu_hit_sphere(
@@ -72,7 +72,7 @@ def gpu_hit_sphere(
 
     p = ray.gpu_point_at_parameter(r, root)
     n = vec.div_g3f(vec.sub_g3f(p, sphere_centre), sphere_radius)
-    return (True, hit.gpu_hit_record(p, n, root, gpu_sphere_uv(n), shp.SPHERE))
+    return (True, hit.gpu_hit_record(p, n, root, gpu_sphere_uv(n), sha.SPHERE))
 
 @cuda.jit
 def gpu_sphere_uv(point):
