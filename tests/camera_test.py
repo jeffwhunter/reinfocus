@@ -61,7 +61,8 @@ class CameraTest(ntc.NumbaTestCase):
             cpu_array,
             create_xoroshiro128p_states(tests, seed=0))
 
-        self.arrays_close(np.sum(np.abs(cpu_array) ** 2, axis=-1) ** (1./2) < 1.0, np.ones(tests))
+        self.arrays_close(
+            np.sum(np.abs(cpu_array) ** 2, axis=-1) ** .5 < 1.0, np.ones(tests))
 
     def test_get_ray(self):
         """Tests that get_ray returns a GPU ray through the expected pixel."""

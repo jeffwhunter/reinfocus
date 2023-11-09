@@ -19,6 +19,8 @@ GpuHitResult = Tuple[bool, GpuHitRecord]
 
 GpuRay = Tuple[G3F, G3F]
 
+GpuColouredRay = Tuple[GpuRay, G3F]
+
 CpuCamera = Tuple[
     C3F,
     C3F,
