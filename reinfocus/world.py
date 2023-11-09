@@ -16,9 +16,11 @@ class World:
     """Represents the world of a ray tracer in a way easy to transfer to the GPU."""
     def __init__(self, *shapes: sha.CpuShape):
         self.shapes = shapes
+        self.__device_shape_parameters = self.__make_device_shape_parameters()
+        self.__device_shape_types = self.__make_device_shape_types()
 
-    def device_shape_parameters(self) -> cda.DeviceNDArray:
-        """Returns a device array containing the parameters of each shape in this world.
+    def __make_device_shape_parameters(self) -> cda.DeviceNDArray:
+        """Makes a device array containing the parameters of each shape in this world.
 
         Returns:
             A device array containing the parameters of each shape in this world."""
@@ -31,12 +33,26 @@ class World:
 
         return cuda.to_device(parameters)
 
+    def device_shape_parameters(self) -> cda.DeviceNDArray:
+        """Returns a device array containing the parameters of each shape in this world.
+
+        Returns:
+            A device array containing the parameters of each shape in this world."""
+        return self.__device_shape_parameters
+
+    def __make_device_shape_types(self) -> cda.DeviceNDArray:
+        """Makes a device array containing the type of each shape in this world.
+
+        Returns:
+            A device array containing the type of each shape in this world."""
+        return cuda.to_device(np.array([shape.type for shape in self.shapes]))
+
     def device_shape_types(self) -> cda.DeviceNDArray:
         """Returns a device array containing the type of each shape in this world.
 
         Returns:
             A device array containing the type of each shape in this world."""
-        return cuda.to_device(np.array([shape.type for shape in self.shapes]))
+        return self.__device_shape_types
 
 @cuda.jit
 def gpu_hit_world(
