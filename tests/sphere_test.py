@@ -19,7 +19,7 @@ class SphereTest(ntc.NumbaTestCase):
 
     def test_gpu_hit_sphere(self):
         """Tests if gpu_hit_sphere returns an appropriate hit_record for a ray hit."""
-        @cuda.jit()
+        @cuda.jit
         def hit_sphere(target, sphere_parameters, origin, direction):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -43,7 +43,7 @@ class SphereTest(ntc.NumbaTestCase):
     def test_gpu_sphere_uv(self):
         """Tests if gpu_sphere_uv returns an appropriate texture coordinate for a point
             on the unit sphere."""
-        @cuda.jit()
+        @cuda.jit
         def get_texture_coord(target, point):
             i = cuda.grid(1) # type: ignore
             if i < target.size:

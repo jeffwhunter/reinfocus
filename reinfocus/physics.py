@@ -40,6 +40,21 @@ def random_in_unit_sphere(
             return p
 
 @cuda.jit
+def colour_checkerboard(f: vec.G2F, uv: vec.G2F) -> vec.G3F:
+    """Returns the frequency f checkerboard colour of uv.
+
+    Args:
+        f: The frequency of the checkerboard pattern.
+        uv: The texture coordinate to colour.
+
+    Returns:
+        The frequency f checkerboard colour of uv."""
+    return (
+        vec.g3f(1, 0, 0)
+        if math.sin(f.x * math.pi * uv.x) * math.sin(f.y * math.pi * uv.y) > 0 else
+        vec.g3f(0, 1, 0))
+
+@cuda.jit
 def rect_scatter(
     record: hit.GpuHitRecord,
     random_states: cda.DeviceNDArray,
@@ -56,17 +71,11 @@ def rect_scatter(
     Returns:
         The ray scattered by, along with the colour it picked up from, the rectangle hit
         described by record."""
-    n = 8.0
-    uv = record[hit.UV]
-
     return (
         ray.gpu_ray(
             record[hit.P],
             vec.add_g3f(record[hit.N], random_in_unit_sphere(random_states, pixel_index))),
-        (
-            vec.g3f(1, 0, 0)
-            if math.sin(n * math.pi * uv.x) * math.sin(n * math.pi * uv.y) else
-            vec.g3f(0, 1, 0)))
+        colour_checkerboard(vec.g2f(8, 8), record[hit.UV]))
 
 @cuda.jit
 def sphere_scatter(
@@ -85,17 +94,11 @@ def sphere_scatter(
     Returns:
         The ray scattered by, along with the colour it picked up from, the sphere hit
         described by record."""
-    n = 32.0
-    uv = record[hit.UV]
-
     return (
         ray.gpu_ray(
             record[hit.P],
             vec.add_g3f(record[hit.N], random_in_unit_sphere(random_states, pixel_index))),
-        (
-            vec.g3f(1, 0, 0)
-            if math.sin(2 * n * math.pi * uv.x) * math.sin(n * math.pi * uv.y) > 0 else
-            vec.g3f(0, 1, 0)))
+        colour_checkerboard(vec.g2f(64, 32), record[hit.UV]))
 
 @cuda.jit
 def scatter(

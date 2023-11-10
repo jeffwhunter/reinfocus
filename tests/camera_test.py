@@ -47,7 +47,7 @@ class CameraTest(ntc.NumbaTestCase):
 
     def test_random_in_unit_disc(self):
         """Tests that random_in_unit_disc makes 2D GPU vectors in the unit disc."""
-        @cuda.jit()
+        @cuda.jit
         def sample_from_disc(target, random_states):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -66,7 +66,7 @@ class CameraTest(ntc.NumbaTestCase):
 
     def test_get_ray(self):
         """Tests that get_ray returns a GPU ray through the expected pixel."""
-        @cuda.jit()
+        @cuda.jit
         def get_test_ray(target, camera, random_states):
             i = cuda.grid(1) # type: ignore
             if i < target.size:

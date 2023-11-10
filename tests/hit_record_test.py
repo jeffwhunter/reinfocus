@@ -18,7 +18,7 @@ class HitRecordTest(ntc.NumbaTestCase):
 
     def test_empty_record(self):
         """Tests that empty_record makes an empty hit record on the GPU."""
-        @cuda.jit()
+        @cuda.jit
         def make_empty_record(target):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -34,7 +34,7 @@ class HitRecordTest(ntc.NumbaTestCase):
 
     def test_hit_record(self):
         """Tests that hit_record makes an appropriate hit record on the GPU."""
-        @cuda.jit()
+        @cuda.jit
         def make_hit_record(target, args):
             i = cuda.grid(1) # type: ignore
             if i < target.size:

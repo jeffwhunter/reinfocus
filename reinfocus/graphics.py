@@ -64,7 +64,7 @@ def device_render(
 def render(
     frame_shape=(300, 600),
     block_shape=(16, 16),
-    world=wor.one_sphere_world(),
+    world=wor.mixed_world(),
     samples_per_pixel=100,
     focus_distance=10.0
 ):

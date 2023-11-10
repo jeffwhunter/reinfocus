@@ -71,7 +71,7 @@ class CameraLens:
     aperture: float
     focus_dist: float
 
-@cuda.jit()
+@cuda.jit
 def to_gpu_camera(camera: CpuCamera) -> GpuCamera:
     """Moves a camera from the GPU to the CPU.
     

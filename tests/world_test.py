@@ -39,7 +39,7 @@ class WorldTest(ntc.NumbaTestCase):
 
     def test_gpu_hit_sphere_world(self):
         """Tests if gpu_hit_world returns an appropriate hit_record for spheres."""
-        @cuda.jit()
+        @cuda.jit
         def hit_sphere_world(target, shapes_parameters, shapes_types, origin, direction):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -66,7 +66,7 @@ class WorldTest(ntc.NumbaTestCase):
 
     def test_gpu_hit_rectangle_world(self):
         """Tests if gpu_hit_world returns an appropriate hit_record for rectangles."""
-        @cuda.jit()
+        @cuda.jit
         def hit_rectangle_world(target, shapes_parameters, shapes_types, origin, direction):
             i = cuda.grid(1) # type: ignore
             if i < target.size:

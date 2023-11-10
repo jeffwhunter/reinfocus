@@ -20,19 +20,19 @@ def cpu_target(ndim=3, nrow=1):
     """Makes a single vector target array for GPU test output."""
     return np.array([(0.0,) * ndim] * nrow)
 
-@cuda.jit()
+@cuda.jit
 def flatten_ray(r: ray.GpuRay) -> FlattenedRay:
     """Flattens a ray into a tuple for easy testing."""
     origin = r[ray.ORIGIN]
     direction = r[ray.DIRECTION]
     return (origin.x, origin.y, origin.z, direction.x, direction.y, direction.z)
 
-@cuda.jit()
+@cuda.jit
 def flatten_coloured_ray(r: phy.GpuColouredRay) -> FlattenedColouredRay:
     """Flattens a coloured ray into a tuple for easy testing"""
     return flatten_ray(r[0]) + (r[1].x, r[1].y, r[1].z)
 
-@cuda.jit()
+@cuda.jit
 def flatten_hit_record(hit_record: hit.GpuHitRecord) -> FlattenedHitRecord:
     """Flattens a hit_record into a tuple."""
     p = hit_record[hit.P]
@@ -50,7 +50,7 @@ def flatten_hit_record(hit_record: hit.GpuHitRecord) -> FlattenedHitRecord:
         uv.y,
         nb.float32(hit_record[hit.M])) # type: ignore
 
-@cuda.jit()
+@cuda.jit
 def flatten_hit_result(hit_result: sha.GpuHitResult) -> FlattenedHitResult:
     """Flattens a hit_result into a tuple."""
     return (

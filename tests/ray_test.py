@@ -14,7 +14,7 @@ class RayTest(ntc.NumbaTestCase):
 
     def test_gpu_ray(self):
         """Tests that gpu_ray constructs a GPU ray with the expected origin and direction."""
-        @cuda.jit()
+        @cuda.jit
         def copy_gpu_ray(target, origin, direction):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -31,7 +31,7 @@ class RayTest(ntc.NumbaTestCase):
 
     def test_gpu_point_at_parameter(self):
         """Tests that gpu_point_at_parameter correctly finds the point t distance along ray."""
-        @cuda.jit()
+        @cuda.jit
         def find_gpu_point_at_parameter(target, origin, direction, t):
             i = cuda.grid(1) # type: ignore
             if i < target.size:

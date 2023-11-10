@@ -21,7 +21,7 @@ class PhysicsTest(ntc.NumbaTestCase):
 
     def test_random_in_unit_sphere(self):
         """Tests that random_in_unit_sphere makes 3D GPU vectors in the unit sphere."""
-        @cuda.jit()
+        @cuda.jit
         def sample_from_sphere(target, random_states):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -40,7 +40,7 @@ class PhysicsTest(ntc.NumbaTestCase):
 
     def test_rect_scatter(self):
         """Tests that rect_scatter scatters a ray hit in the expected way."""
-        @cuda.jit()
+        @cuda.jit
         def scatter_from_rectangle(target, random_states):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -68,7 +68,7 @@ class PhysicsTest(ntc.NumbaTestCase):
 
     def test_sphere_scatter(self):
         """Tests that sphere_scatter scatters a sphere hit in the expected way."""
-        @cuda.jit()
+        @cuda.jit
         def scatter_from_sphere(target, random_states):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -96,7 +96,7 @@ class PhysicsTest(ntc.NumbaTestCase):
 
     def test_scatter_with_rectangles(self):
         """Tests that scatter scatters a rectangle hit in the expected way."""
-        @cuda.jit()
+        @cuda.jit
         def scatter_with_rectangle(target, random_states):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -124,7 +124,7 @@ class PhysicsTest(ntc.NumbaTestCase):
 
     def test_scatter_with_spheres(self):
         """Tests that scatter scatters a sphere hit in the expected way."""
-        @cuda.jit()
+        @cuda.jit
         def scatter_with_sphere(target, random_states):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -152,7 +152,7 @@ class PhysicsTest(ntc.NumbaTestCase):
 
     def test_find_colour_with_rectangles(self):
         """Tests that find_colour finds the expected colour when we fire a ray at a rectangle."""
-        @cuda.jit()
+        @cuda.jit
         def find_rectangle_colour(target, random_states, shapes_parameters, shapes_types):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -181,7 +181,7 @@ class PhysicsTest(ntc.NumbaTestCase):
 
     def test_find_colour_with_spheres(self):
         """Tests that find_colour finds the expected colour when we fire a ray at a sphere."""
-        @cuda.jit()
+        @cuda.jit
         def find_sphere_colour(target, random_states, shapes_parameters, shapes_types):
             i = cuda.grid(1) # type: ignore
             if i < target.size:

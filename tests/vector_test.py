@@ -56,7 +56,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_empty_g2f(self):
         """Tests that g2f makes a 2D GPU vector with the expected elements."""
-        @cuda.jit()
+        @cuda.jit
         def copy_empty_g2f(target):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -70,7 +70,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_g2f(self):
         """Tests that g2f makes a 2D GPU vector with the expected elements."""
-        @cuda.jit()
+        @cuda.jit
         def copy_g2f(target, source):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -84,7 +84,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_empty_g3f(self):
         """Tests that g3f makes an empty 3D GPU vector."""
-        @cuda.jit()
+        @cuda.jit
         def copy_empty_g3f(target):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -98,7 +98,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_g3f(self):
         """Tests that g3f makes a GPU vector with the expected elements."""
-        @cuda.jit()
+        @cuda.jit
         def copy_g3f(target, source):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -112,7 +112,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_c3f_to_g3f(self):
         """Tests that c3f_to_g3f makes a GPU vector with elements from the CPU vector."""
-        @cuda.jit()
+        @cuda.jit
         def copy_g3f_from_c3f(target, source):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -126,7 +126,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_add_g3f(self):
         """Tests that add_g3f properly adds two GPU vectors."""
-        @cuda.jit()
+        @cuda.jit
         def add_2_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -143,7 +143,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_add3_g3f(self):
         """Tests that add3_g3f properly adds three GPU vectors."""
-        @cuda.jit()
+        @cuda.jit
         def add_3_g3f(target, a, b, c):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -162,7 +162,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_neg_g3f(self):
         """Tests that neg_g3f properly negates a GPU vector."""
-        @cuda.jit()
+        @cuda.jit
         def negate_g3f(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -176,7 +176,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_sub_g3f(self):
         """Tests that sub_g3f properly subtracts one GPU vector from another."""
-        @cuda.jit()
+        @cuda.jit
         def subtract_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -193,7 +193,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_smul_g3f(self):
         """Tests that smul_g3f properly multiplies a GPU vector by a scalar."""
-        @cuda.jit()
+        @cuda.jit
         def scale_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -207,7 +207,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_vmul_g3f(self):
         """Tests that vmul_g3f properly produces the Hadamard product of two GPU vectors."""
-        @cuda.jit()
+        @cuda.jit
         def elementwise_multiply_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -224,7 +224,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_div_g3f(self):
         """Tests that div_g3f properly divides a GPU vector by a scalar."""
-        @cuda.jit()
+        @cuda.jit
         def divide_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -238,7 +238,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_dot_g3f(self):
         """Tests that dot_g3f properly produces the dot product of two GPU vectors."""
-        @cuda.jit()
+        @cuda.jit
         def dot_multiply_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -255,7 +255,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_cross_g3f(self):
         """Tests that cross_g3f properly produces the cross product of two GPU vectors."""
-        @cuda.jit()
+        @cuda.jit
         def cross_multiply_g3f(target, a, b):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -272,7 +272,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_squared_length_g3f(self):
         """Tests that squared_length_g3f properly produces the squared length of a GPU vector."""
-        @cuda.jit()
+        @cuda.jit
         def find_g3f_vector_squared_length(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -286,7 +286,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_length_g3f(self):
         """Tests that length_g3f properly produces the length of a GPU vector."""
-        @cuda.jit()
+        @cuda.jit
         def find_g3f_vector_length(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
@@ -300,7 +300,7 @@ class VectorTest(ntc.NumbaTestCase):
 
     def test_norm_g3f(self):
         """Tests that norm_g3f properly normalizes a GPU vector."""
-        @cuda.jit()
+        @cuda.jit
         def normalize_g3f(target, a):
             i = cuda.grid(1) # type: ignore
             if i < target.size:
