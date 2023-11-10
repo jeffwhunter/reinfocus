@@ -4,16 +4,16 @@ import numpy as np
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 from numba.cuda.testing import unittest
-from reinfocus import hit_record as hit
-from reinfocus import physics as phy
-from reinfocus import ray
-from reinfocus import rectangle as rec
-from reinfocus import shape as sha
-from reinfocus import sphere as sph
-from reinfocus import vector as vec
-from reinfocus import world as wor
-from tests import numba_test_case as ntc
-from tests import numba_test_utils as ntu
+from reinfocus.graphics import hit_record as hit
+from reinfocus.graphics import physics as phy
+from reinfocus.graphics import ray
+from reinfocus.graphics import rectangle as rec
+from reinfocus.graphics import shape as sha
+from reinfocus.graphics import sphere as sph
+from reinfocus.graphics import vector as vec
+from reinfocus.graphics import world as wor
+from tests.graphics import numba_test_case as ntc
+from tests.graphics import numba_test_utils as ntu
 
 class PhysicsTest(ntc.NumbaTestCase):
     """TestCases for reinfocus.physics."""

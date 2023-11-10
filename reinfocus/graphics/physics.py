@@ -6,11 +6,11 @@ from typing import Tuple
 from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
 from numba.cuda.random import xoroshiro128p_uniform_float32
-from reinfocus import hit_record as hit
-from reinfocus import ray
-from reinfocus import shape as sha
-from reinfocus import vector as vec
-from reinfocus import world as wor
+from reinfocus.graphics import hit_record as hit
+from reinfocus.graphics import ray
+from reinfocus.graphics import shape as sha
+from reinfocus.graphics import vector as vec
+from reinfocus.graphics import world as wor
 
 GpuColouredRay = Tuple[ray.GpuRay, vec.G3F]
 

@@ -4,7 +4,7 @@ from typing import Tuple
 
 import numba as nb
 from numba import cuda
-from reinfocus import vector as vec
+from reinfocus.graphics import vector as vec
 
 GpuHitRecord = Tuple[vec.G3F, vec.G3F, nb.float32, vec.G2F, nb.float32] # type: ignore
 

@@ -4,10 +4,10 @@ import math
 
 import numpy as np
 from numba import cuda
-from reinfocus import hit_record as hit
-from reinfocus import ray
-from reinfocus import shape as sha
-from reinfocus import vector as vec
+from reinfocus.graphics import hit_record as hit
+from reinfocus.graphics import ray
+from reinfocus.graphics import shape as sha
+from reinfocus.graphics import vector as vec
 
 CENTRE = 0
 RADIUS = 1

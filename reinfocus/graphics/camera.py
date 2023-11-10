@@ -7,8 +7,8 @@ from typing import Tuple
 from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
 from numba.cuda.random import xoroshiro128p_uniform_float32
-from reinfocus import ray
-from reinfocus import vector as vec
+from reinfocus.graphics import ray
+from reinfocus.graphics import vector as vec
 
 CpuCamera = Tuple[
     vec.C3F,

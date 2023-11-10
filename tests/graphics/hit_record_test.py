@@ -7,10 +7,10 @@ import numpy as np
 from numba import cuda
 from numba.cuda.testing import unittest
 
-from reinfocus import hit_record as hit
-from reinfocus import vector as vec
-from tests import numba_test_case as ntc
-from tests import numba_test_utils as ntu
+from reinfocus.graphics import hit_record as hit
+from reinfocus.graphics import vector as vec
+from tests.graphics import numba_test_case as ntc
+from tests.graphics import numba_test_utils as ntu
 
 class HitRecordTest(ntc.NumbaTestCase):
     """TestCases for reinfocus.hit_record."""

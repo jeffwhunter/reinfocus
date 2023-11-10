@@ -5,10 +5,10 @@ from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 from numba.cuda.testing import unittest
 
-from reinfocus import camera as cam
-from reinfocus import vector as vec
-from tests import numba_test_case as ntc
-from tests import numba_test_utils as ntu
+from reinfocus.graphics import camera as cam
+from reinfocus.graphics import vector as vec
+from tests.graphics import numba_test_case as ntc
+from tests.graphics import numba_test_utils as ntu
 
 class CameraTest(ntc.NumbaTestCase):
     """TestCases for reinfocus.camera."""

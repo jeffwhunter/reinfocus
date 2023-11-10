@@ -6,11 +6,11 @@ import numpy as np
 from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
 from numba.cuda.random import create_xoroshiro128p_states, xoroshiro128p_uniform_float32
-from reinfocus import camera as cam
-from reinfocus import physics as phy
-from reinfocus import shape as sha
-from reinfocus import vector as vec
-from reinfocus import world as wor
+from reinfocus.graphics import camera as cam
+from reinfocus.graphics import physics as phy
+from reinfocus.graphics import shape as sha
+from reinfocus.graphics import vector as vec
+from reinfocus.graphics import world as wor
 
 GpuFrame = cda.DeviceNDArray
 

@@ -3,7 +3,7 @@
 from typing import Tuple
 
 from numba import cuda
-from reinfocus import vector as vec
+from reinfocus.graphics import vector as vec
 
 GpuRay = Tuple[vec.G3F, vec.G3F]
 

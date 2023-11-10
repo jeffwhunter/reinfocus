@@ -2,12 +2,12 @@
 
 from numba import cuda
 from numba.cuda.testing import unittest
-from reinfocus import ray
-from reinfocus import shape as sha
-from reinfocus import sphere as sph
-from reinfocus import vector as vec
-from tests import numba_test_case as ntc
-from tests import numba_test_utils as ntu
+from reinfocus.graphics import ray
+from reinfocus.graphics import shape as sha
+from reinfocus.graphics import sphere as sph
+from reinfocus.graphics import vector as vec
+from tests.graphics import numba_test_case as ntc
+from tests.graphics import numba_test_utils as ntu
 
 class SphereTest(ntc.NumbaTestCase):
     """TestCases for reinfocus.sphere."""

@@ -5,10 +5,10 @@ from typing import Tuple
 import numba as nb
 import numpy as np
 from numba import cuda
-from reinfocus import hit_record as hit
-from reinfocus import physics as phy
-from reinfocus import ray
-from reinfocus import shape as sha
+from reinfocus.graphics import hit_record as hit
+from reinfocus.graphics import physics as phy
+from reinfocus.graphics import ray
+from reinfocus.graphics import shape as sha
 
 F = float
 FlattenedRay = Tuple[F, F, F, F, F, F]

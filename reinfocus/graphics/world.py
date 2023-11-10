@@ -5,12 +5,12 @@ import math
 import numpy as np
 from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
-from reinfocus import hit_record as hit
-from reinfocus import ray
-from reinfocus import rectangle as rec
-from reinfocus import shape as sha
-from reinfocus import sphere as sph
-from reinfocus import vector as vec
+from reinfocus.graphics import hit_record as hit
+from reinfocus.graphics import ray
+from reinfocus.graphics import rectangle as rec
+from reinfocus.graphics import shape as sha
+from reinfocus.graphics import sphere as sph
+from reinfocus.graphics import vector as vec
 
 class World:
     """Represents the world of a ray tracer in a way easy to transfer to the GPU."""
@@ -170,19 +170,19 @@ def two_rect_world(left_distance: float=20.0, right_distance: float=5.0):
 
     return World(
         rec.cpu_rectangle(
-            -left_offset - left_radius / 2,
-            -left_offset + left_radius / 2,
-            -left_radius / 2,
-            left_radius / 2,
+            -left_offset - left_radius,
+            -left_offset + left_radius,
+            -left_radius,
+            left_radius,
             -left_distance),
         rec.cpu_rectangle(
-            right_offset - right_radius / 2,
-            right_offset + right_radius / 2,
-            -right_radius / 2,
-            right_radius / 2,
+            right_offset - right_radius,
+            right_offset + right_radius,
+            -right_radius,
+            right_radius,
             -right_distance))
 
-def mixed_world(left_distance: float=20.0, right_distance: float=5.0):
+def mixed_world(left_distance: float=5.0, right_distance: float=10.0):
     """Makes a world with shapes at different distances on the left and right.
 
     Args:
@@ -202,8 +202,8 @@ def mixed_world(left_distance: float=20.0, right_distance: float=5.0):
             (-left_distance * distance_to_offset, 0, -left_distance),
             left_distance * distance_to_radius),
         rec.cpu_rectangle(
-            right_offset - right_radius / 2,
-            right_offset + right_radius / 2,
-            -right_radius / 2,
-            right_radius / 2,
+            right_offset - right_radius,
+            right_offset + right_radius,
+            -right_radius,
+            right_radius,
             -right_distance))

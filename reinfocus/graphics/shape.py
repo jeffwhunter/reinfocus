@@ -6,7 +6,7 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 from numba.cuda.cudadrv import devicearray as cda
-from reinfocus import hit_record as hit
+from reinfocus.graphics import hit_record as hit
 
 GpuHitResult = Tuple[bool, hit.GpuHitRecord]
 

@@ -1,16 +1,16 @@
-"""Contains tests for reinfocus.graphics."""
+"""Contains tests for reinfocus.render."""
 
 import numpy as np
 from numba.cuda.random import create_xoroshiro128p_states
 from numba.cuda.testing import unittest
-from reinfocus import camera as cam
-from reinfocus import graphics as gra
-from reinfocus import vector as vec
-from reinfocus import world as wor
-from tests import numba_test_case as ntc
+from reinfocus.graphics import camera as cam
+from reinfocus.graphics import render as ren
+from reinfocus.graphics import vector as vec
+from reinfocus.graphics import world as wor
+from tests.graphics import numba_test_case as ntc
 
-class GraphicsTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.graphics."""
+class RenderTest(ntc.NumbaTestCase):
+    """TestCases for reinfocus.render."""
     # pylint: disable=no-value-for-parameter
 
     def test_device_render(self):
@@ -18,11 +18,11 @@ class GraphicsTest(ntc.NumbaTestCase):
 
         frame_shape = (300, 300)
 
-        device_frame = gra.make_device_frame(*frame_shape)
+        device_frame = ren.make_device_frame(*frame_shape)
 
         world = wor.one_rect_world(r_size=30)
 
-        gra.device_render[(19, 19), (16, 16)]( # type: ignore
+        ren.device_render[(19, 19), (16, 16)]( # type: ignore
             device_frame,
             cam.cpu_camera(
                 cam.CameraOrientation(
@@ -44,7 +44,7 @@ class GraphicsTest(ntc.NumbaTestCase):
         """Tests that render produces a known image for a known set of parameters."""
 
         average_colour = np.average(
-            gra.render(frame_shape=(300, 300), world=wor.one_sphere_world(r_size=30)),
+            ren.render(frame_shape=(300, 300), world=wor.one_sphere_world(r_size=30)),
             axis=(0, 1))
 
         self.assertTrue(np.all(average_colour >= [.4, .4, .1]))
