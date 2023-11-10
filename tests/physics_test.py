@@ -38,6 +38,46 @@ class PhysicsTest(ntc.NumbaTestCase):
         self.arrays_close(
             np.sum(np.abs(cpu_array) ** 2, axis=-1) ** .5 < 1.0, np.ones(tests))
 
+    def test_colour_checkerboard(self):
+        """Tests that colour_checkerboard produces the expected colours for different
+            frequencies and positions."""
+        @cuda.jit
+        def checkerboard_colour_points(target, f, p):
+            i = cuda.grid(1) # type: ignore
+            if i < target.size:
+                target[i] = vec.g3f_to_c3f(
+                    phy.colour_checkerboard(vec.c2f_to_g2f(f[i]), vec.c2f_to_g2f(p[i])))
+
+        tests = cuda.to_device(
+            np.array([
+                [vec.c2f(1, 1), vec.c2f(.25, .25)],
+                [vec.c2f(1, 1), vec.c2f(.25, .75)],
+                [vec.c2f(1, 1), vec.c2f(.75, .25)],
+                [vec.c2f(1, 1), vec.c2f(.75, .75)],
+                [vec.c2f(2, 2), vec.c2f(.25, .25)],
+                [vec.c2f(2, 2), vec.c2f(.25, .75)],
+                [vec.c2f(2, 2), vec.c2f(.75, .25)],
+                [vec.c2f(2, 2), vec.c2f(.75, .75)]]))
+
+        cpu_array = ntu.cpu_target(nrow=len(tests))
+
+        checkerboard_colour_points[len(tests), 1]( # type: ignore
+            cpu_array,
+            tests[:, 0],
+            tests[:, 1])
+
+        self.arrays_close(
+            cpu_array,
+            [
+                [1, 0, 0],
+                [1, 0, 0],
+                [1, 0, 0],
+                [1, 0, 0],
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 1, 0],
+                [1, 0, 0]])
+
     def test_rect_scatter(self):
         """Tests that rect_scatter scatters a ray hit in the expected way."""
         @cuda.jit
@@ -168,7 +208,7 @@ class PhysicsTest(ntc.NumbaTestCase):
 
         cpu_array = ntu.cpu_target()
 
-        world = wor.World(rec.cpu_rectangle(-1, 0, -1, 1, 1))
+        world = wor.World(rec.cpu_rectangle(-1, 1, -1, 1, 1))
 
         find_rectangle_colour[1, 1]( # type: ignore
             cpu_array,
