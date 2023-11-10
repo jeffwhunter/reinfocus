@@ -17,7 +17,7 @@ GpuFrame = cda.DeviceNDArray
 @cuda.jit
 def device_render(
     frame: GpuFrame,
-    camera: cam.GpuCamera,
+    camera: cam.CpuCamera,
     samples_per_pixel: int,
     random_states: cda.DeviceNDArray,
     shapes: sha.GpuShapes
@@ -48,7 +48,7 @@ def device_render(
         u = (x + xoroshiro128p_uniform_float32(random_states, pixel_index)) / width
         v = (y + xoroshiro128p_uniform_float32(random_states, pixel_index)) / height
 
-        r = cam.get_ray(camera, u, v, random_states, pixel_index)
+        r = cam.get_ray(cam.to_gpu_camera(camera), u, v, random_states, pixel_index)
 
         colour = vec.add_g3f(
             colour,
@@ -59,12 +59,12 @@ def device_render(
                 random_states,
                 pixel_index))
 
-    frame[y, x] = vec.div_g3f(colour, samples_per_pixel)
+    frame[y, x] = vec.g3f_to_c3f(vec.div_g3f(colour, samples_per_pixel))
 
 def render(
     frame_shape=(300, 600),
     block_shape=(16, 16),
-    world=wor.one_rect_world(),
+    world=wor.one_sphere_world(),
     samples_per_pixel=100,
     focus_distance=10.0
 ):
@@ -97,7 +97,6 @@ def render(
             cam.CameraLens(0.1, focus_distance)),
         samples_per_pixel,
         create_xoroshiro128p_states(frame_shape[0] * frame_shape[1], seed=0),
-        world.device_shape_parameters(),
-        world.device_shape_types())
+        (world.device_shape_parameters(), world.device_shape_types()))
 
     return d_frame.copy_to_host()

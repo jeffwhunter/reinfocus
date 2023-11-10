@@ -64,22 +64,44 @@ def gpu_hit_rectangle(
     if t < t_min or t > t_max:
         return (False, hit.gpu_empty_hit_record())
 
-    x = r[ray.ORIGIN].x + t * r[ray.DIRECTION].x
-    y = r[ray.ORIGIN].y + t * r[ray.DIRECTION].y
+    p = ray.gpu_point_at_parameter(r, t)
 
     x_min = rectangle_parameters[X_MIN]
     x_max = rectangle_parameters[X_MAX]
     y_min = rectangle_parameters[Y_MIN]
     y_max = rectangle_parameters[Y_MAX]
 
-    if x < x_min or x > x_max or y < y_min or y > y_max:
+    if p.x < x_min or p.x > x_max or p.y < y_min or p.y > y_max:
         return (False, hit.gpu_empty_hit_record())
 
     return (
         True,
         hit.gpu_hit_record(
-            ray.gpu_point_at_parameter(r, t),
+            p,
             vec.g3f(0, 0, 1),
             t,
-            vec.g2f((x - x_min) / (x_max - x_min), (y - y_min) / (y_max - y_min)),
+            gpu_rectangle_uv(vec.g2f(p.x, p.y), x_min, x_max, y_min, y_max),
             sha.RECTANGLE))
+
+@cuda.jit
+def gpu_rectangle_uv(
+    point: vec.G2F,
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float
+) -> vec.G2F:
+    """Returns the texture coordinate of point in the rectangle [x|y]_[max|min].
+    
+    Args:
+        point: A G2F on the [x|y]_[min|max] rectangle.
+        x_min: The lower extent of the rectangle in the x direction.
+        x_max: The upper extent of the rectangle in the x direction.
+        y_min: The lower extent of the rectangle in the y direction.
+        y_max: The upper extent of the rectangle in the y direction.
+
+    Returns:
+        A G2F with the texture coordinates of that point."""
+    return vec.g2f(
+        (point.x - x_min) / (x_max - x_min),
+        (point.y - y_min) / (y_max - y_min))

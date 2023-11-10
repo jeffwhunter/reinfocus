@@ -47,6 +47,11 @@ def g2f_to_c2f(vector: G2F) -> C2F:
     return (vector.x, vector.y)
 
 @cuda.jit
+def c2f_to_g2f(vector: C2F) -> G2F:
+    """Converts a 2D vector from CPU to GPU."""
+    return cuda.float32x2(vector[0], vector[1]) # type: ignore
+
+@cuda.jit
 def g3f_to_c3f(vector: G3F) -> C3F:
     """Converts a 3D vector from GPU to CPU."""
     return (vector.x, vector.y, vector.z)

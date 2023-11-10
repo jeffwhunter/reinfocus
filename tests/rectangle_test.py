@@ -1,5 +1,6 @@
 """Contains tests for reinfocus.rectangle."""
 
+import numpy as np
 from numba import cuda
 from numba.cuda.testing import unittest
 from reinfocus import ray
@@ -39,6 +40,27 @@ class RectangleTest(ntc.NumbaTestCase):
             vec.c3f(0, 0, 1))
 
         self.arrays_close(cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, .5, .5, sha.RECTANGLE))
+
+    def test_gpu_rectangle_uv(self):
+        """Tests if gpu_rectangle_uv returns an appropriate texture coordinate for a point
+            on some (the unit?) rectangle."""
+        @cuda.jit()
+        def get_texture_coord(target, points):
+            i = cuda.grid(1) # type: ignore
+            if i < target.size:
+                target[i] = vec.g2f_to_c2f(
+                    rec.gpu_rectangle_uv(vec.c2f_to_g2f(points[i]), -1, 1, -1, 1))
+
+        tests = np.array(
+            [vec.c2f(-1, -1), vec.c2f(-1, 1), vec.c2f(1, -1), vec.c2f(1, 1), vec.c2f(0, 0)])
+
+        cpu_array = ntu.cpu_target(ndim=2, nrow=len(tests))
+
+        get_texture_coord[len(tests), 1]( # type: ignore
+            cpu_array,
+            tests)
+
+        self.arrays_close(cpu_array, [[0, 0], [0, 1], [1, 0], [1, 1], [.5, .5]])
 
 if __name__ == '__main__':
     unittest.main()
