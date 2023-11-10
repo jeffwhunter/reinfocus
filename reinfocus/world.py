@@ -104,18 +104,19 @@ def gpu_hit_world(
 
     return hit_anything, record
 
-def one_sphere_world(distance: float=10.0):
+def one_sphere_world(distance: float=10.0, r_size=20.0):
     """Makes a world with one sphere at (0, 0, -distance).
 
     Args:
         distance: How far away from the origin the sphere should be.
+        r_size: How large should the sphere be in degrees of fov.
 
     Returns:
         A world with one sphere at (0, 0, -distance)."""
     return World(
         sph.cpu_sphere(
             vec.c3f(0, 0, -distance),
-            distance * math.tan(math.radians(10))))
+            distance * math.tan(math.radians(r_size / 2))))
 
 def two_sphere_world(left_distance: float=20.0, right_distance: float=5.0):
     """Makes a world with spheres at different distances on the left and right.
@@ -137,15 +138,16 @@ def two_sphere_world(left_distance: float=20.0, right_distance: float=5.0):
             (right_distance * distance_to_offset, 0, -right_distance),
             right_distance * distance_to_radius))
 
-def one_rect_world(distance: float=10.0):
+def one_rect_world(distance: float=10.0, r_size=20.0):
     """Makes a world with one rectangle at (0, 0, -distance).
 
     Args:
         distance: How far away from the origin the rectangle should be.
+        r_size: How large should the rectangle be in degrees of fov.
 
     Returns:
         A world with one rectangle at (0, 0, -distance)."""
-    radius = distance * math.tan(math.radians(10))
+    radius = distance * math.tan(math.radians(r_size / 2))
     return World(rec.cpu_rectangle(-radius, radius, -radius, radius, -distance))
 
 def two_rect_world(left_distance: float=20.0, right_distance: float=5.0):

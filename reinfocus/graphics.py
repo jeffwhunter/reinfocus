@@ -61,6 +61,17 @@ def device_render(
 
     frame[y, x] = vec.g3f_to_c3f(vec.div_g3f(colour, samples_per_pixel))
 
+def make_device_frame(x: int, y: int) -> cda.DeviceNDArray:
+    """Returns an empty image of shape frame_shape in GPU memory.
+
+    Args:
+        x: The width of the image in pixels.
+        y: The height of the image in pixels.
+
+    Returns:
+        An empty image of shape frame_shape in GPU memory."""
+    return cuda.to_device([[(np.float32(0), ) * 3] * y] * x)
+
 def render(
     frame_shape=(300, 600),
     block_shape=(16, 16),
@@ -80,8 +91,7 @@ def render(
 
     Returns:
         A ray traced image, focused on a plane at focus_distance, of world."""
-    d_frame = cuda.to_device(
-        [[(np.float32(0), np.float32(0), np.float32(0))] * frame_shape[1]] * frame_shape[0])
+    d_frame = make_device_frame(*frame_shape)
 
     device_render[ # type: ignore
         tuple(math.ceil(f / b) for f, b in zip(frame_shape, block_shape)),
