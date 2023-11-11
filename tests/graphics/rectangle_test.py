@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.rectangle."""
+"""Contains tests for reinfocus.graphics.rectangle."""
 
 import numpy as np
 from numba import cuda
@@ -11,7 +11,7 @@ from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
 class RectangleTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.rectangle."""
+    """TestCases for reinfocus.graphics.rectangle."""
     # pylint: disable=no-value-for-parameter
 
     def test_cpu_rectangle(self):

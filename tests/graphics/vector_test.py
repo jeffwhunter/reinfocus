@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.vector."""
+"""Contains tests for reinfocus.graphics.vector."""
 
 from math import sqrt
 
@@ -10,7 +10,7 @@ from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
 class VectorTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.vector."""
+    """TestCases for reinfocus.graphics.vector."""
     # pylint: disable=no-value-for-parameter,too-many-public-methods
 
     def test_c3f(self):

@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.camera."""
+"""Contains tests for reinfocus.graphics.camera."""
 
 import numpy as np
 from numba import cuda
@@ -11,7 +11,7 @@ from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
 class CameraTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.camera."""
+    """TestCases for reinfocus.graphics.camera."""
     # pylint: disable=no-value-for-parameter
 
     def test_cpu_camera(self):

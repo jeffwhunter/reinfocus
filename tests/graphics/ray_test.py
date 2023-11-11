@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.ray."""
+"""Contains tests for reinfocus.graphics.ray."""
 
 from numba import cuda
 from numba.cuda.testing import unittest
@@ -9,7 +9,7 @@ from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
 class RayTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.ray."""
+    """TestCases for reinfocus.graphics.ray."""
     # pylint: disable=no-value-for-parameter
 
     def test_gpu_ray(self):

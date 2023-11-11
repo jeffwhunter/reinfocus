@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.render."""
+"""Contains tests for reinfocus.graphics.render."""
 
 import numpy as np
 from numba.cuda.random import create_xoroshiro128p_states
@@ -10,7 +10,7 @@ from reinfocus.graphics import world as wor
 from tests.graphics import numba_test_case as ntc
 
 class RenderTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.render."""
+    """TestCases for reinfocus.graphics.render."""
     # pylint: disable=no-value-for-parameter
 
     def test_device_render(self):

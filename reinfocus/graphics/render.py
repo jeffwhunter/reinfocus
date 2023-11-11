@@ -3,6 +3,7 @@
 import math
 
 import numpy as np
+import numpy.typing as npt
 from numba import cuda
 from numba.cuda.cudadrv import devicearray as cda
 from numba.cuda.random import create_xoroshiro128p_states, xoroshiro128p_uniform_float32
@@ -78,7 +79,7 @@ def render(
     world=wor.mixed_world(),
     samples_per_pixel=100,
     focus_distance=10.0
-):
+) -> npt.NDArray:
     """Returns a ray traced image, focused on a plane at focus_distance, of world, made
         on the GPU, to the CPU.
 

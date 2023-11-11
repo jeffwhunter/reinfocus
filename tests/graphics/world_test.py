@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.world."""
+"""Contains tests for reinfocus.graphics.world."""
 
 import numpy as np
 from numba import cuda
@@ -13,7 +13,7 @@ from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
 class WorldTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.world."""
+    """TestCases for reinfocus.graphics.world."""
     # pylint: disable=no-value-for-parameter
 
     def test_different_world_parameters(self):

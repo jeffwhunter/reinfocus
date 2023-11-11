@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.physics."""
+"""Contains tests for reinfocus.graphics.physics."""
 
 import numpy as np
 from numba import cuda
@@ -16,7 +16,7 @@ from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
 class PhysicsTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.physics."""
+    """TestCases for reinfocus.graphics.physics."""
     # pylint: disable=no-value-for-parameter
 
     def test_random_in_unit_sphere(self):

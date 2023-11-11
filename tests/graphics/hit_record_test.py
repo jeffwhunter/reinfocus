@@ -1,6 +1,6 @@
 # pylint: disable=no-member
 
-"""Contains tests for reinfocus.hit_record."""
+"""Contains tests for reinfocus.graphics.hit_record."""
 
 import numpy as np
 
@@ -13,7 +13,7 @@ from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
 class HitRecordTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.hit_record."""
+    """TestCases for reinfocus.graphics.hit_record."""
     # pylint: disable=no-value-for-parameter
 
     def test_empty_record(self):

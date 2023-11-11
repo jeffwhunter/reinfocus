@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.sphere."""
+"""Contains tests for reinfocus.graphics.sphere."""
 
 from numba import cuda
 from numba.cuda.testing import unittest
@@ -10,7 +10,7 @@ from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
 class SphereTest(ntc.NumbaTestCase):
-    """TestCases for reinfocus.sphere."""
+    """TestCases for reinfocus.graphics.sphere."""
     # pylint: disable=no-value-for-parameter
 
     def test_cpu_sphere(self):
