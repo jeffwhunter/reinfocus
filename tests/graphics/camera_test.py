@@ -3,14 +3,14 @@
 import numpy as np
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
-from numba.cuda.testing import unittest
+from numba.cuda.testing import CUDATestCase, unittest
 
+import tests.test_utils as tu
 from reinfocus.graphics import camera as cam
 from reinfocus.graphics import vector as vec
-from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
-class CameraTest(ntc.NumbaTestCase):
+class CameraTest(CUDATestCase):
     """TestCases for reinfocus.graphics.camera."""
     # pylint: disable=no-value-for-parameter
 
@@ -23,7 +23,8 @@ class CameraTest(ntc.NumbaTestCase):
         def flatten_camera(camera):
             return flatten(camera[0:7]) + (camera[7],)
 
-        self.arrays_close(
+        tu.arrays_close(
+            self,
             flatten_camera(
                 cam.cpu_camera(
                     cam.CameraOrientation(
@@ -61,8 +62,10 @@ class CameraTest(ntc.NumbaTestCase):
             cpu_array,
             create_xoroshiro128p_states(tests, seed=0))
 
-        self.arrays_close(
-            np.sum(np.abs(cpu_array) ** 2, axis=-1) ** .5 < 1.0, np.ones(tests))
+        tu.arrays_close(
+            self,
+            np.sum(np.abs(cpu_array) ** 2, axis=-1) ** .5 < 1.0,
+            np.ones(tests))
 
     def test_get_ray(self):
         """Tests that get_ray returns a GPU ray through the expected pixel."""
@@ -86,7 +89,7 @@ class CameraTest(ntc.NumbaTestCase):
                 cam.CameraLens(0.2, 10.0)),
             create_xoroshiro128p_states(1, seed=0))
 
-        self.arrays_close(np.abs(cpu_array[0, 0:5]) < .1, np.ones(5))
+        tu.arrays_close(self, np.abs(cpu_array[0, 0:5]) < .1, np.ones(5))
         self.assertAlmostEqual(cpu_array[0, 5], -10)
 
 if __name__ == '__main__':

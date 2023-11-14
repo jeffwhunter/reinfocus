@@ -1,14 +1,14 @@
 """Contains tests for reinfocus.graphics.ray."""
 
 from numba import cuda
-from numba.cuda.testing import unittest
+from numba.cuda.testing import CUDATestCase, unittest
 
+import tests.test_utils as tu
 from reinfocus.graphics import ray
 from reinfocus.graphics import vector as vec
-from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
-class RayTest(ntc.NumbaTestCase):
+class RayTest(CUDATestCase):
     """TestCases for reinfocus.graphics.ray."""
     # pylint: disable=no-value-for-parameter
 
@@ -27,7 +27,7 @@ class RayTest(ntc.NumbaTestCase):
             vec.c3f(1, 2, 3),
             vec.c3f(4, 5, 6))
 
-        self.arrays_close(cpu_array[0], vec.c3f(1, 2, 3) + vec.c3f(4, 5, 6))
+        tu.arrays_close(self, cpu_array[0], vec.c3f(1, 2, 3) + vec.c3f(4, 5, 6))
 
     def test_gpu_point_at_parameter(self):
         """Tests that gpu_point_at_parameter correctly finds the point t distance along ray."""
@@ -46,7 +46,7 @@ class RayTest(ntc.NumbaTestCase):
             vec.c3f(4, 5 ,6),
             2)
 
-        self.arrays_close(cpu_array[0], vec.c3f(9, 12, 15))
+        tu.arrays_close(self, cpu_array[0], vec.c3f(9, 12, 15))
 
 if __name__ == '__main__':
     unittest.main()

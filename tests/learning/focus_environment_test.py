@@ -2,7 +2,10 @@
 
 import unittest
 
+import numpy as np
+
 import reinfocus.learning.focus_environment as env
+import tests.test_utils as tu
 
 class FocusEnvironmentTest(unittest.TestCase):
     """TestCases for reinfocus.learning.focus_environment."""
@@ -13,6 +16,10 @@ class FocusEnvironmentTest(unittest.TestCase):
         self.assertEqual(normer(0), -1)
         self.assertEqual(normer(5), 0)
         self.assertEqual(normer(10), 1)
+        array_normer = env.make_observation_normer(np.array([1]), np.array([2]))
+        tu.arrays_close(self, array_normer(np.array([0])), np.array([-.5]))
+        tu.arrays_close(self, array_normer(np.array([1])), np.array([0]))
+        tu.arrays_close(self, array_normer(np.array([2])), np.array([.5]))
 
 if __name__ == '__main__':
     unittest.main()

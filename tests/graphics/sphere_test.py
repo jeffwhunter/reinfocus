@@ -1,21 +1,25 @@
 """Contains tests for reinfocus.graphics.sphere."""
 
 from numba import cuda
-from numba.cuda.testing import unittest
+from numba.cuda.testing import CUDATestCase, unittest
+
+import tests.test_utils as tu
 from reinfocus.graphics import ray
 from reinfocus.graphics import shape as sha
 from reinfocus.graphics import sphere as sph
 from reinfocus.graphics import vector as vec
-from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
-class SphereTest(ntc.NumbaTestCase):
+class SphereTest(CUDATestCase):
     """TestCases for reinfocus.graphics.sphere."""
     # pylint: disable=no-value-for-parameter
 
     def test_cpu_sphere(self):
         """Tests that cpu_sphere makes a CPU sphere with the expected elements."""
-        self.arrays_close(sph.cpu_sphere(vec.c3f(1, 2, 3), 4).parameters, [1, 2, 3, 4])
+        tu.arrays_close(
+            self,
+            sph.cpu_sphere(vec.c3f(1, 2, 3), 4).parameters,
+            [1, 2, 3, 4])
 
     def test_gpu_hit_sphere(self):
         """Tests if gpu_hit_sphere returns an appropriate hit_record for a ray hit."""
@@ -38,7 +42,7 @@ class SphereTest(ntc.NumbaTestCase):
             vec.c3f(10, 0, 0),
             vec.c3f(-1, 0, 0))
 
-        self.arrays_close(cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, .5, .5, sha.SPHERE))
+        tu.arrays_close(self, cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, .5, .5, sha.SPHERE))
 
     def test_gpu_sphere_uv(self):
         """Tests if gpu_sphere_uv returns an appropriate texture coordinate for a point
@@ -55,7 +59,7 @@ class SphereTest(ntc.NumbaTestCase):
             cpu_array,
             vec.c3f(-1, 0, 0))
 
-        self.arrays_close(cpu_array[0], (0., .5))
+        tu.arrays_close(self, cpu_array[0], (0., .5))
 
 if __name__ == '__main__':
     unittest.main()

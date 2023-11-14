@@ -5,14 +5,14 @@
 import numpy as np
 
 from numba import cuda
-from numba.cuda.testing import unittest
+from numba.cuda.testing import CUDATestCase, unittest
 
+import tests.test_utils as tu
 from reinfocus.graphics import hit_record as hit
 from reinfocus.graphics import vector as vec
-from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
-class HitRecordTest(ntc.NumbaTestCase):
+class HitRecordTest(CUDATestCase):
     """TestCases for reinfocus.graphics.hit_record."""
     # pylint: disable=no-value-for-parameter
 
@@ -30,7 +30,7 @@ class HitRecordTest(ntc.NumbaTestCase):
         make_empty_record[1, 1]( # type: ignore
             cpu_array)
 
-        self.arrays_close(cpu_array[0], (0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+        tu.arrays_close(self, cpu_array[0], (0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 
     def test_hit_record(self):
         """Tests that hit_record makes an appropriate hit record on the GPU."""
@@ -52,7 +52,7 @@ class HitRecordTest(ntc.NumbaTestCase):
             cpu_array,
             (np.array([0, 1, 2]), np.array([3, 4, 5]), 6, np.array([7, 8]), 9))
 
-        self.arrays_close(cpu_array[0], (0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+        tu.arrays_close(self, cpu_array[0], (0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
 if __name__ == '__main__':
     unittest.main()

@@ -2,14 +2,14 @@
 
 import numpy as np
 from numba.cuda.random import create_xoroshiro128p_states
-from numba.cuda.testing import unittest
+from numba.cuda.testing import CUDATestCase, unittest
+
 from reinfocus.graphics import camera as cam
 from reinfocus.graphics import render as ren
 from reinfocus.graphics import vector as vec
 from reinfocus.graphics import world as wor
-from tests.graphics import numba_test_case as ntc
 
-class RenderTest(ntc.NumbaTestCase):
+class RenderTest(CUDATestCase):
     """TestCases for reinfocus.graphics.render."""
     # pylint: disable=no-value-for-parameter
 

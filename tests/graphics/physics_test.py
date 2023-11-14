@@ -3,7 +3,9 @@
 import numpy as np
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
-from numba.cuda.testing import unittest
+from numba.cuda.testing import CUDATestCase, unittest
+
+import tests.test_utils as tu
 from reinfocus.graphics import hit_record as hit
 from reinfocus.graphics import physics as phy
 from reinfocus.graphics import ray
@@ -12,10 +14,9 @@ from reinfocus.graphics import shape as sha
 from reinfocus.graphics import sphere as sph
 from reinfocus.graphics import vector as vec
 from reinfocus.graphics import world as wor
-from tests.graphics import numba_test_case as ntc
 from tests.graphics import numba_test_utils as ntu
 
-class PhysicsTest(ntc.NumbaTestCase):
+class PhysicsTest(CUDATestCase):
     """TestCases for reinfocus.graphics.physics."""
     # pylint: disable=no-value-for-parameter
 
@@ -35,8 +36,10 @@ class PhysicsTest(ntc.NumbaTestCase):
             cpu_array,
             create_xoroshiro128p_states(tests, seed=0))
 
-        self.arrays_close(
-            np.sum(np.abs(cpu_array) ** 2, axis=-1) ** .5 < 1.0, np.ones(tests))
+        tu.arrays_close(
+            self,
+            np.sum(np.abs(cpu_array) ** 2, axis=-1) ** .5 < 1.0,
+            np.ones(tests))
 
     def test_colour_checkerboard(self):
         """Tests that colour_checkerboard produces the expected colours for different
@@ -66,7 +69,8 @@ class PhysicsTest(ntc.NumbaTestCase):
             tests[:, 0],
             tests[:, 1])
 
-        self.arrays_close(
+        tu.arrays_close(
+            self,
             cpu_array,
             [
                 [1, 0, 0],
@@ -101,10 +105,10 @@ class PhysicsTest(ntc.NumbaTestCase):
             cpu_array,
             create_xoroshiro128p_states(1, seed=0))
 
-        self.arrays_close(cpu_array[0, 0 : 3], [0, 0, 0])
+        tu.arrays_close(self, cpu_array[0, 0 : 3], [0, 0, 0])
         self.assertTrue(
             np.sum(np.abs(cpu_array[0, 3 : 6] - np.array([0, 0, 1])) ** 2) ** .5 < 1.)
-        self.arrays_close(cpu_array[0, 6 : 9], [1, 0, 0])
+        tu.arrays_close(self, cpu_array[0, 6 : 9], [1, 0, 0])
 
     def test_sphere_scatter(self):
         """Tests that sphere_scatter scatters a sphere hit in the expected way."""
@@ -129,10 +133,10 @@ class PhysicsTest(ntc.NumbaTestCase):
             cpu_array,
             create_xoroshiro128p_states(1, seed=0))
 
-        self.arrays_close(cpu_array[0, 0 : 3], [0, 0, 1])
+        tu.arrays_close(self, cpu_array[0, 0 : 3], [0, 0, 1])
         self.assertTrue(
             np.sum(np.abs(cpu_array[0, 3 : 6] - np.array([0, 0, 1])) ** 2) ** .5 < 1.)
-        self.arrays_close(cpu_array[0, 6 : 9], [1, 0, 0])
+        tu.arrays_close(self, cpu_array[0, 6 : 9], [1, 0, 0])
 
     def test_scatter_with_rectangles(self):
         """Tests that scatter scatters a rectangle hit in the expected way."""
@@ -157,10 +161,10 @@ class PhysicsTest(ntc.NumbaTestCase):
             cpu_array,
             create_xoroshiro128p_states(1, seed=0))
 
-        self.arrays_close(cpu_array[0, 0 : 3], [0, 0, 0])
+        tu.arrays_close(self, cpu_array[0, 0 : 3], [0, 0, 0])
         self.assertTrue(
             np.sum(np.abs(cpu_array[0, 3 : 6] - np.array([0, 0, 1])) ** 2) ** .5 < 1.)
-        self.arrays_close(cpu_array[0, 6 : 9], [1, 0, 0])
+        tu.arrays_close(self, cpu_array[0, 6 : 9], [1, 0, 0])
 
     def test_scatter_with_spheres(self):
         """Tests that scatter scatters a sphere hit in the expected way."""
@@ -185,10 +189,10 @@ class PhysicsTest(ntc.NumbaTestCase):
             cpu_array,
             create_xoroshiro128p_states(1, seed=0))
 
-        self.arrays_close(cpu_array[0, 0 : 3], [0, 0, 1])
+        tu.arrays_close(self, cpu_array[0, 0 : 3], [0, 0, 1])
         self.assertTrue(
             np.sum(np.abs(cpu_array[0, 3 : 6] - np.array([0, 0, 1])) ** 2) ** .5 < 1.)
-        self.arrays_close(cpu_array[0, 6 : 9], [1, 0, 0])
+        tu.arrays_close(self, cpu_array[0, 6 : 9], [1, 0, 0])
 
     def test_find_colour_with_rectangles(self):
         """Tests that find_colour finds the expected colour when we fire a ray at a rectangle."""
@@ -217,7 +221,7 @@ class PhysicsTest(ntc.NumbaTestCase):
             world.device_shape_types())
 
         self.assertTrue(0 < cpu_array[0, 0] <= 1.)
-        self.arrays_close(cpu_array[0, 1 : 3], [0, 0])
+        tu.arrays_close(self, cpu_array[0, 1 : 3], [0, 0])
 
     def test_find_colour_with_spheres(self):
         """Tests that find_colour finds the expected colour when we fire a ray at a sphere."""
@@ -246,7 +250,7 @@ class PhysicsTest(ntc.NumbaTestCase):
             world.device_shape_types())
 
         self.assertTrue(0 < cpu_array[0, 0] <= 1.)
-        self.arrays_close(cpu_array[0, 1 : 3], [0, 0])
+        tu.arrays_close(self, cpu_array[0, 1 : 3], [0, 0])
 
 if __name__ == '__main__':
     unittest.main()
