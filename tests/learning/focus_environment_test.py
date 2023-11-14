@@ -59,7 +59,7 @@ class FocusEnvironmentTest(unittest.TestCase):
             env.render_and_measure(world, 10),
             env.render_and_measure(world, 5))
 
-    def test_pretty_render_defocusses(self):
+    def test_pretty_render(self):
         """Tests that pretty_render produces images that focus as the lens moves towards
             the target."""
         world = wor.one_rect_world()
@@ -67,6 +67,63 @@ class FocusEnvironmentTest(unittest.TestCase):
         self.assertGreaterEqual(
             vis.focus_value(env.pretty_render(world, 10)),
             vis.focus_value(env.pretty_render(world, 5)))
+
+    def test_find_focus_value_limits_returns_min_lower_than_max(self):
+        """Tests that find_focus_value_limits produces a min lower than it's max."""
+        limits = env.find_focus_value_limits()
+
+        self.assertGreaterEqual(limits[1], limits[0])
+
+    def test_environment_produces_observation_inside_observation_space(self):
+        """Tests that FocusEnvironment.reset() produces an observation inside
+            FocusEnvironment.observation_space."""
+        environment = env.FocusEnvironment()
+
+        self.assertTrue(environment.observation_space.contains(environment.reset()[0]))
+
+    def test_environment_step_towards_target_increases_focus_value(self):
+        """Tests that FocusEnvironment.step() with an action that moves the lens towards
+            the target will return an observation with a focus_value higher than the
+            prior one."""
+        environment = env.FocusEnvironment()
+
+        observation = environment.reset()[0]
+
+        action = (observation[env.TARGET] - observation[env.LENS]) / 4.
+
+        self.assertGreaterEqual(
+            environment.step(action)[env.FOCUS],
+            observation[env.FOCUS])
+
+    def test_no_render(self):
+        """Tests that FocusEnvironment.render returns None when render_mode is None."""
+        environment = env.FocusEnvironment()
+
+        environment.reset()
+
+        self.assertIsNone(environment.render())
+
+    def test_environment_render(self):
+        """Tests that FocusEnvironment.render produces images that focus as the lens
+            approaches the target."""
+        environment = env.FocusEnvironment(render_mode="rgb_array")
+
+        observation = environment.reset()[0]
+
+        old_image = environment.render()
+
+        environment.step((observation[env.TARGET] - observation[env.LENS]) / 4.)
+
+        new_image = environment.render()
+
+        assert old_image is not None
+        assert new_image is not None
+
+        self.assertGreaterEqual(vis.focus_value(new_image), vis.focus_value(old_image))
+
+    def test_close_does_nothing(self):
+        """Test that close does nothing! Wheeee!!!"""
+        self.assertIsNone(env.FocusEnvironment().close())
 
 if __name__ == '__main__':
     unittest.main()

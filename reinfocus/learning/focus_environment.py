@@ -95,7 +95,7 @@ def pretty_render(world: wor.World, focus_distance: float) -> npt.NDArray:
         An image of world when focused on a plane focus_distance units away."""
     return ren.render(frame_shape=(600, 600), world=world, focus_distance=focus_distance)
 
-def find_focus_value_min_and_max(
+def find_focus_value_limits(
     min_pos: float = 1.0,
     max_pos: float = 10.0,
     measurement_steps: int = 91
@@ -157,13 +157,13 @@ class FocusEnvironment(gym.Env):
             reward_type: Which type of reward this environment should emit."""
         self._limits = limits
 
-        min_focus_value, max_focus_value = find_focus_value_min_and_max(
+        min_focus_value, max_focus_value = find_focus_value_limits(
             self._limits[0],
             self._limits[1],
             91)
 
-        low = np.array([limits[0], limits[0], min_focus_value])
-        high = np.array([limits[1], limits[1], max_focus_value])
+        low = np.array([limits[0], limits[0], min_focus_value], dtype=np.float32)
+        high = np.array([limits[1], limits[1], max_focus_value], dtype=np.float32)
 
         if reward_type == RewardType.PENALTY:
             rewarder = make_lens_distance_penalty(2.)
@@ -176,8 +176,8 @@ class FocusEnvironment(gym.Env):
             make_observation_normer((low + high) / 2, (high - low) / 2),
             rewarder)
 
-        self.action_space = spaces.Box(-1., 1., (1,))
-        self.observation_space = spaces.Box(-1., 1., (3,))
+        self.action_space = spaces.Box(-1., 1., (1,), dtype=np.float32)
+        self.observation_space = spaces.Box(-1., 1., (3,), dtype=np.float32)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -226,8 +226,11 @@ class FocusEnvironment(gym.Env):
             done: (Deprecated) Has the episode ended."""
         assert self._state is not None
 
-        self._state[1] += action * (self._limits[1] - self._limits[0])
-        self._state[1] = np.clip(self._state[1], self._limits[0], self._limits[1])
+        self._state[1] = np.clip(
+            self._state[1] + action * (self._limits[1] - self._limits[0]),
+            self._limits[0],
+            self._limits[1],
+            dtype=np.float32)
 
         observation = self._get_obs()
 
@@ -265,18 +268,12 @@ class FocusEnvironment(gym.Env):
 
         return np.clip(
             self._helpers.normer(
-                np.array([
-                    self._state[0],
-                    self._state[1],
-                    render_and_measure(self._world, self._state[1])])),
-            -1 * np.ones(3),
-            np.ones(3))
-
-    def __str__(self) -> str:
-        """Returns a string representation of this environment.
-
-        Returns:
-            A string representation of this environment."""
-        result = 'FocusEnvironment() '
-        result += f'{self.observation_space}'
-        return result
+                np.array(
+                    [
+                        self._state[0],
+                        self._state[1],
+                        render_and_measure(self._world, self._state[1])],
+                    np.float32)),
+            -1 * np.ones(3, dtype=np.float32),
+            np.ones(3, dtype=np.float32),
+            dtype=np.float32)
