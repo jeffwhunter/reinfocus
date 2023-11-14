@@ -4,7 +4,9 @@ import unittest
 
 import numpy as np
 
+import reinfocus.graphics.world as wor
 import reinfocus.learning.focus_environment as env
+import reinfocus.vision as vis
 import tests.test_utils as tu
 
 class FocusEnvironmentTest(unittest.TestCase):
@@ -47,6 +49,24 @@ class FocusEnvironmentTest(unittest.TestCase):
         self.assertEqual(reward([4, 5, 6]), 6)
         self.assertEqual(reward([3, 2, 1]), 1)
         self.assertEqual(reward([6, 5, 4]), 4)
+
+    def test_render_and_measure(self):
+        """Tests that render and measure produces measured focus_values that increase as
+            the lens moves towards the target."""
+        world = wor.one_rect_world()
+
+        self.assertGreaterEqual(
+            env.render_and_measure(world, 10),
+            env.render_and_measure(world, 5))
+
+    def test_pretty_render_defocusses(self):
+        """Tests that pretty_render produces images that focus as the lens moves towards
+            the target."""
+        world = wor.one_rect_world()
+
+        self.assertGreaterEqual(
+            vis.focus_value(env.pretty_render(world, 10)),
+            vis.focus_value(env.pretty_render(world, 5)))
 
 if __name__ == '__main__':
     unittest.main()
