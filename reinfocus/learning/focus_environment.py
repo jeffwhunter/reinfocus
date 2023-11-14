@@ -37,7 +37,7 @@ def make_observation_normer(
         A function that scales inputs to [-1., 1.]."""
     return lambda x: (x - mid) / scale
 
-def make_lens_distance_penalty_rewarder(span: float) -> Rewarder:
+def make_lens_distance_penalty(span: float) -> Rewarder:
     """Makes a function that returns a penalty that increases the further the lens gets
         from the target. The penalty is 0 when the lens is on target, and 1 when the lens
          is as far as possible from the target.
@@ -49,7 +49,7 @@ def make_lens_distance_penalty_rewarder(span: float) -> Rewarder:
         A function that returns a penalty when the lens is off target."""
     return lambda o: -abs(o[TARGET] - o[LENS]) / span
 
-def make_lens_on_target_distance_rewarder(radius: float) -> Rewarder:
+def make_lens_on_target_reward(radius: float) -> Rewarder:
     """Makes a function that returns a reward when the lens is within some distance of
         the target. The reward is 1 when the lens is within that distance, and 0
         otherwise.
@@ -62,7 +62,7 @@ def make_lens_on_target_distance_rewarder(radius: float) -> Rewarder:
         target."""
     return lambda o: 1 if abs(o[TARGET] - o[LENS]) < radius else 0
 
-def make_focus_rewarder() -> Rewarder:
+def make_focus_reward() -> Rewarder:
     """Makes a function that returns a reward equal to the focus value.
 
     Returns:
@@ -166,11 +166,11 @@ class FocusEnvironment(gym.Env):
         high = np.array([limits[1], limits[1], max_focus_value])
 
         if reward_type == RewardType.PENALTY:
-            rewarder = make_lens_distance_penalty_rewarder(2.)
+            rewarder = make_lens_distance_penalty(2.)
         elif reward_type == RewardType.TARGET:
-            rewarder = make_lens_on_target_distance_rewarder(.1)
+            rewarder = make_lens_on_target_reward(.1)
         else:
-            rewarder = make_focus_rewarder()
+            rewarder = make_focus_reward()
 
         self._helpers = FocusEnvironment.HelperFunctions(
             make_observation_normer((low + high) / 2, (high - low) / 2),
