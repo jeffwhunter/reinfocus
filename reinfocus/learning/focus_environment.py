@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, SupportsFloat, Tuple, TypeVar, Union
+from typing import Any, Callable, SupportsFloat, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -21,6 +21,7 @@ FOCUS = 2
 
 Observation = TypeVar("Observation")
 ObservationNormer = Callable[[Observation], Observation]
+ObservationFilter = Callable[[Observation], npt.NDArray]
 Rewarder = Callable[[Observation], float]
 
 def make_observation_normer(
@@ -36,6 +37,23 @@ def make_observation_normer(
     Returns:
         A function that scales inputs to [-1., 1.]."""
     return lambda x: (x - mid) / scale
+
+def make_observation_filter(mask: list[int] | None = None) -> ObservationFilter:
+    """Makes an observation filter that returns observation elements with the indices
+        listed in mask.
+
+    Args:
+        mask: The indices of the elements of the original observation that will be
+            included in the returned observation. Can also be None to return the original
+            observation.
+
+    Returns:
+        A function that filters observations to only include the elements with indices
+        listed in mask."""
+    if mask is None:
+        return lambda obs: obs
+
+    return lambda obs: np.take(obs, mask)
 
 def make_lens_distance_penalty(span: float) -> Rewarder:
     """Makes a function that returns a penalty that increases the further the lens gets
@@ -99,7 +117,7 @@ def find_focus_value_limits(
     min_pos: float = 1.0,
     max_pos: float = 10.0,
     measurement_steps: int = 91
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Finds the minimum and maximum possible focus values by scanning through a number
         of scenes, calculating their focus values, and returning their min and max.
 
@@ -122,6 +140,12 @@ def find_focus_value_limits(
 
     return min(focus_values), max(focus_values)
 
+class ObservableType(Enum):
+    """An enum that represents the ways this environment can mask it's observations."""
+    FULL = 1
+    NO_TARGET = 2
+    ONLY_FOCUS = 3
+
 class RewardType(Enum):
     """An enum that represents the various reward types."""
     PENALTY = 1
@@ -139,15 +163,18 @@ class FocusEnvironment(gym.Env):
 
         Args:
             normer: A function that normalizes observations.
+            filter: A function that filters out unobservable observations.
             rewarder: A function that returns rewards."""
         normer: ObservationNormer
+        filter: ObservationFilter
         rewarder: Rewarder
 
     def __init__(
         self,
-        render_mode: Union[str, None]=None,
-        limits: Tuple[float, float]=(1.0, 10.0),
-        reward_type: RewardType=RewardType.PENALTY
+        render_mode: str | None = None,
+        limits: tuple[float, float] = (1.0, 10.0),
+        observable_type: ObservableType = ObservableType.FULL,
+        reward_type: RewardType = RewardType.PENALTY
     ):
         """Constructor for the focus environment.
 
@@ -172,12 +199,22 @@ class FocusEnvironment(gym.Env):
         else:
             rewarder = make_focus_reward()
 
+        self.action_space = spaces.Box(-1., 1., (1,), dtype=np.float32)
+
+        if observable_type == ObservableType.ONLY_FOCUS:
+            self.observation_space = spaces.Box(-1., 1., (1,), dtype=np.float32)
+            obs_filter = make_observation_filter([2])
+        elif observable_type == ObservableType.NO_TARGET:
+            self.observation_space = spaces.Box(-1., 1., (2,), dtype=np.float32)
+            obs_filter = make_observation_filter([1, 2])
+        else:
+            self.observation_space = spaces.Box(-1., 1., (3,), dtype=np.float32)
+            obs_filter = make_observation_filter()
+
         self._helpers = FocusEnvironment.HelperFunctions(
             make_observation_normer((low + high) / 2, (high - low) / 2),
+            obs_filter,
             rewarder)
-
-        self.action_space = spaces.Box(-1., 1., (1,), dtype=np.float32)
-        self.observation_space = spaces.Box(-1., 1., (3,), dtype=np.float32)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -188,9 +225,9 @@ class FocusEnvironment(gym.Env):
     def reset(
         self,
         *,
-        seed: Union[int, None]=None,
-        options: Union[Dict[str, Any], None]=None
-    ) -> Tuple[npt.NDArray, Dict[str, Any]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None
+    ) -> tuple[npt.NDArray, dict[str, Any]]:
         """Resets the environment to an initial internal state, returning an initial observation.
 
         Args:
@@ -206,12 +243,12 @@ class FocusEnvironment(gym.Env):
 
         self._world = wor.one_rect_world(self._state[0])
 
-        return self._get_obs(), {}
+        return self._helpers.filter(self._get_obs()), {}
 
     def step(
         self,
         action: float
-    ) -> Tuple[npt.NDArray, SupportsFloat, bool, bool, Dict[str, Any]]:
+    ) -> tuple[npt.NDArray, SupportsFloat, bool, bool, dict[str, Any]]:
         """Run one timestep of the environment's dynamics using action.
 
         Args:
@@ -235,13 +272,13 @@ class FocusEnvironment(gym.Env):
         observation = self._get_obs()
 
         return (
-            observation,
+            self._helpers.filter(observation),
             self._helpers.rewarder(observation),
             False,
             False,
             {})
 
-    def render(self) -> Union[None, npt.NDArray]:
+    def render(self) -> None | npt.NDArray:
         """Returns a suitable rendering of the environment given the rendering mode.
 
         Returns:

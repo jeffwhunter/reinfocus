@@ -23,6 +23,17 @@ class FocusEnvironmentTest(unittest.TestCase):
         tu.arrays_close(self, array_normer(np.array([1])), np.array([0]))
         tu.arrays_close(self, array_normer(np.array([2])), np.array([.5]))
 
+    def test_make_observation_filter(self):
+        """Tests that make_observation_filter creates a filter that filters as expected."""
+        original = env.make_observation_filter()
+        no_target = env.make_observation_filter([1, 2])
+        only_focus = env.make_observation_filter([2])
+
+        tu.arrays_close(self, original([1, 2, 3]), [1, 2, 3])
+        tu.arrays_close(self, no_target([1, 2, 3]), [2, 3])
+        tu.arrays_close(self, only_focus([1, 2, 3]), [3])
+
+
     def test_make_lens_distance_penalty(self):
         """Tests that make_lens_distance_penalty creates a rewarder that gives
             the proper penalties."""
@@ -74,6 +85,25 @@ class FocusEnvironmentTest(unittest.TestCase):
 
         self.assertGreaterEqual(limits[1], limits[0])
 
+    def test_environment_observability(self):
+        """Tests that FocusEnvironment.observation_space is the right shape under
+            different observability modes."""
+        self.assertEqual(
+            env.FocusEnvironment(observable_type=env.ObservableType.FULL)
+                .observation_space
+                .shape,
+            (3,))
+        self.assertEqual(
+            env.FocusEnvironment(observable_type=env.ObservableType.NO_TARGET)
+                .observation_space
+                .shape,
+            (2,))
+        self.assertEqual(
+            env.FocusEnvironment(observable_type=env.ObservableType.ONLY_FOCUS)
+                .observation_space
+                .shape,
+            (1,))
+
     def test_environment_produces_observation_inside_observation_space(self):
         """Tests that FocusEnvironment.reset() produces an observation inside
             FocusEnvironment.observation_space."""
@@ -92,7 +122,7 @@ class FocusEnvironmentTest(unittest.TestCase):
         action = (observation[env.TARGET] - observation[env.LENS]) / 4.
 
         self.assertGreaterEqual(
-            environment.step(action)[env.FOCUS],
+            environment.step(action)[0][env.FOCUS],
             observation[env.FOCUS])
 
     def test_no_render(self):
