@@ -12,6 +12,36 @@ import tests.test_utils as tu
 class FocusEnvironmentTest(unittest.TestCase):
     """TestCases for reinfocus.learning.focus_environment."""
 
+    def test_make_uniform_initializer(self):
+        """Tests that make_uniform_initializer creates a state initializer that samples
+            initial states from between given limits."""
+        n_tests = 100
+
+        initial_state = env.make_uniform_initializer(-1., 1., n_tests)()
+
+        tu.arrays_close(
+            self,
+            (-1. <= initial_state) & (initial_state <= 1.),
+            np.full(n_tests, True))
+
+    def test_make_ranged_initializer(self):
+        """Tests that make_ranged_initializer creates a state initializer that samples
+            initial states from between the listed ranges."""
+        initial_states = env.make_ranged_initializer([
+            [(0., .2), (.8, 1.)],
+            [(.2, .4), (.6, .8)],
+            [(.4, .6)]])()
+
+        self.assertTrue(
+            (0. <= initial_states[0] and initial_states[0] <= .2) or
+            (.8 <= initial_states[0] and initial_states[0] <= 1.))
+
+        self.assertTrue(
+            (.2 <= initial_states[1] and initial_states[1] <= .4) or
+            (.6 <= initial_states[1] and initial_states[1] <= .8))
+
+        self.assertTrue(.4 <= initial_states[2] and initial_states[2] <= .6)
+
     def test_make_observation_normer(self):
         """Tests that make_observation_normer creates a normer that norms as expected."""
         normer = env.make_observation_normer(5, 5)

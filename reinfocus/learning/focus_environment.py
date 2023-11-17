@@ -19,10 +19,43 @@ TARGET = 0
 LENS = 1
 FOCUS = 2
 
+StateInitializer = Callable[[], npt.NDArray]
 Observation = TypeVar("Observation")
 ObservationNormer = Callable[[Observation], Observation]
 ObservationFilter = Callable[[Observation], npt.NDArray]
 Rewarder = Callable[[Observation], float]
+
+def make_uniform_initializer(low: float, high: float, size: int) -> StateInitializer:
+    """Makes a function that samples the initial state from a uniform distribution
+        between low and high.
+
+    Args:
+        low: The lower bound of the initial state.
+        high: The upper bound of the initial state.
+        size: The size of the new state vector.
+
+    Returns:
+        A function that randomly initializes states of size size between low and high."""
+    return lambda: np.random.uniform(low, high, size)
+
+def make_ranged_initializer(
+    ranges: list[list[tuple[float, float]]]
+) -> StateInitializer:
+    """Makes a function that samples the initial state from a number of uniform
+        distributions listed in ranges.
+
+    Args:
+        ranges: A list of lists of ranges from which the state should be initialized. The
+            n-th list is the series of ranges for the n-th state element. A state element
+            with more than one range will choose between them uniformly. It will then
+            draw the state element from a uniform distribution on the selected range.
+
+    Returns:
+        A function that randomly initializes states to be uniformly within the listed
+        ranges."""
+
+    return lambda: np.array(
+        [np.random.uniform(*r[np.random.choice(len(r))]) for r in ranges])
 
 def make_observation_normer(
     mid: Observation,
@@ -162,9 +195,11 @@ class FocusEnvironment(gym.Env):
         """A simple helper to reduce the amount of instance attributes of FocusEnvironment.
 
         Args:
+            initializer: A function that initializes the state on reset.
             normer: A function that normalizes observations.
             filter: A function that filters out unobservable observations.
             rewarder: A function that returns rewards."""
+        initializer: StateInitializer
         normer: ObservationNormer
         filter: ObservationFilter
         rewarder: Rewarder
@@ -212,6 +247,7 @@ class FocusEnvironment(gym.Env):
             obs_filter = make_observation_filter()
 
         self._helpers = FocusEnvironment.HelperFunctions(
+            make_uniform_initializer(self._limits[0], self._limits[1], 2),
             make_observation_normer((low + high) / 2, (high - low) / 2),
             obs_filter,
             rewarder)
@@ -219,7 +255,7 @@ class FocusEnvironment(gym.Env):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self._state = None
+        self._state = np.zeros(2)
         self._world = None
 
     def reset(
@@ -239,7 +275,7 @@ class FocusEnvironment(gym.Env):
             info: An unused information dictionary."""
         super().reset(seed=seed)
 
-        self._state = np.random.uniform(self._limits[0], self._limits[1], 2)
+        self._state = self._helpers.initializer()
 
         self._world = wor.one_rect_world(self._state[0])
 
@@ -261,7 +297,6 @@ class FocusEnvironment(gym.Env):
             truncated: Whether the episode was ended early, as in a time limit.
             info: An unused information dictionary.
             done: (Deprecated) Has the episode ended."""
-        assert self._state is not None
 
         self._state[1] = np.clip(
             self._state[1] + action * (self._limits[1] - self._limits[0]),
@@ -284,7 +319,6 @@ class FocusEnvironment(gym.Env):
         Returns:
             An image of the environment if the rendering mode is "rgb_array", otherwise
             None."""
-        assert self._state is not None
         assert self._world is not None
 
         if self.render_mode == "rgb_array":
@@ -300,7 +334,6 @@ class FocusEnvironment(gym.Env):
 
         Returns:
             The current observation of the environment."""
-        assert self._state is not None
         assert self._world is not None
 
         return np.clip(
