@@ -12,6 +12,36 @@ import tests.test_utils as tu
 class FocusEnvironmentTest(unittest.TestCase):
     """TestCases for reinfocus.learning.focus_environment."""
 
+    def test_make_relative_dynamics(self):
+        """Tests that make_relative_dynamics creates a function that moves the second
+            element of the state between the limits, according to the action."""
+        dynamics = env.make_relative_dynamics(0, 1)
+
+        state = np.array([1, .5])
+        tu.arrays_close(self, dynamics(state, 1.), [1, 1])
+        tu.arrays_close(self, dynamics(state, .75), [1, 1])
+        tu.arrays_close(self, dynamics(state, .5), [1, 1])
+        tu.arrays_close(self, dynamics(state, .25), [1, .75])
+        tu.arrays_close(self, dynamics(state, .1), [1, .6])
+        tu.arrays_close(self, dynamics(state, 0), [1, .5])
+        tu.arrays_close(self, dynamics(state, -.1), [1, .4])
+        tu.arrays_close(self, dynamics(state, -.25), [1, .25])
+        tu.arrays_close(self, dynamics(state, -.5), [1, 0])
+        tu.arrays_close(self, dynamics(state, -.75), [1, 0])
+        tu.arrays_close(self, dynamics(state, -1), [1, 0])
+
+        state = np.array([1, 1])
+        tu.arrays_close(self, dynamics(state, 1), [1, 1])
+        tu.arrays_close(self, dynamics(state, 0), [1, 1])
+        tu.arrays_close(self, dynamics(state, -.5), [1, .5])
+        tu.arrays_close(self, dynamics(state, -1), [1, 0])
+
+        state = np.array([1, 0])
+        tu.arrays_close(self, dynamics(state, 1), [1, 1])
+        tu.arrays_close(self, dynamics(state, .5), [1, .5])
+        tu.arrays_close(self, dynamics(state, 0), [1, 0])
+        tu.arrays_close(self, dynamics(state, -1), [1, 0])
+
     def test_make_uniform_initializer(self):
         """Tests that make_uniform_initializer creates a state initializer that samples
             initial states from between given limits."""
@@ -115,21 +145,43 @@ class FocusEnvironmentTest(unittest.TestCase):
 
         self.assertGreaterEqual(limits[1], limits[0])
 
+    def test_envionment_initialization(self):
+        """Tests that FocusEnvironment.reset initializes the state with the given limits
+            for different initialization modes."""
+        u_env = env.FocusEnvironment()
+        d_env = env.FocusEnvironment(
+            modes=env.FocusEnvironment.Modes(initializer_type=env.InitializerType.DEVIATED))
+
+        u_obs = u_env.reset()[0]
+        d_obs = d_env.reset()[0]
+
+        self.assertTrue(-1 <= u_obs[env.TARGET] and u_obs[env.TARGET] <= 1)
+
+        self.assertTrue(
+            (-.8 <= d_obs[env.TARGET] and d_obs[env.TARGET] <= -.5) or
+            (.5 <= d_obs[env.TARGET] and d_obs[env.TARGET] <= .8))
+
     def test_environment_observability(self):
         """Tests that FocusEnvironment.observation_space is the right shape under
             different observability modes."""
         self.assertEqual(
-            env.FocusEnvironment(observable_type=env.ObservableType.FULL)
+            env.FocusEnvironment(
+                modes=env.FocusEnvironment.Modes(observable_type=env.ObservableType.FULL)
+            )
                 .observation_space
                 .shape,
             (3,))
         self.assertEqual(
-            env.FocusEnvironment(observable_type=env.ObservableType.NO_TARGET)
+            env.FocusEnvironment(
+                modes=env.FocusEnvironment.Modes(observable_type=env.ObservableType.NO_TARGET)
+            )
                 .observation_space
                 .shape,
             (2,))
         self.assertEqual(
-            env.FocusEnvironment(observable_type=env.ObservableType.ONLY_FOCUS)
+            env.FocusEnvironment(
+                modes=env.FocusEnvironment.Modes(observable_type=env.ObservableType.ONLY_FOCUS)
+            )
                 .observation_space
                 .shape,
             (1,))

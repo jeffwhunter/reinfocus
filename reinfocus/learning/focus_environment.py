@@ -19,11 +19,31 @@ TARGET = 0
 LENS = 1
 FOCUS = 2
 
+StateDynamics = Callable[[npt.NDArray, float], npt.NDArray]
 StateInitializer = Callable[[], npt.NDArray]
 Observation = TypeVar("Observation")
 ObservationNormer = Callable[[Observation], Observation]
 ObservationFilter = Callable[[Observation], npt.NDArray]
 Rewarder = Callable[[Observation], float]
+
+def make_relative_dynamics(low: float, high: float) -> StateDynamics:
+    """Makes a function that moves the focus plane between low and high. Actions of -1
+        send the focus plane to low, actions of 1 send it to high, while 0 keeps it in
+        the same place.
+
+    Args:
+        low: The lower bound of the focus plane's range of movement.
+        high: The upper bound of the focus plane's range of movement.
+
+    Returns:
+        A function that returns the new state that results after performing the given
+            action."""
+    r = high - low
+    return lambda state, action: np.clip(
+        state + action * r * np.array([0, 1]),
+        low,
+        high,
+        dtype=np.float32)
 
 def make_uniform_initializer(low: float, high: float, size: int) -> StateInitializer:
     """Makes a function that samples the initial state from a uniform distribution
@@ -173,6 +193,11 @@ def find_focus_value_limits(
 
     return min(focus_values), max(focus_values)
 
+class InitializerType(Enum):
+    """An enum that represents the ways the target's position can be initialized."""
+    UNIFORM = 1
+    DEVIATED = 2
+
 class ObservableType(Enum):
     """An enum that represents the ways this environment can mask it's observations."""
     FULL = 1
@@ -195,21 +220,44 @@ class FocusEnvironment(gym.Env):
         """A simple helper to reduce the amount of instance attributes of FocusEnvironment.
 
         Args:
+            dynamics: A function that calculates the next state from the current state
+                and action.
             initializer: A function that initializes the state on reset.
             normer: A function that normalizes observations.
             filter: A function that filters out unobservable observations.
             rewarder: A function that returns rewards."""
+        dynamics: StateDynamics
         initializer: StateInitializer
-        normer: ObservationNormer
         filter: ObservationFilter
+        normer: ObservationNormer
         rewarder: Rewarder
+
+    @dataclass
+    class Modes:
+        """The various modes the FocusEnvironment can function in.
+
+        Args:
+            initializer_type: Controls state initialization on reset. UNIFORM initializes
+                the target anywhere in it's range, while DEVIATED initializes the target
+                uniformly in ranges that avoid the middle and ends of the target's range.
+            observable_type: Controls which features are observable. FULL shows all
+                features, NO_TARGET hides the target, and ONLY_FOCUS hides the target and
+                lens positions.
+            reward_type: Controls how the reward is calculated. PENALTY returns a
+                negative penalty that scales from 0 to -1 depending on how far the focus
+                plane is from the target. TARGET returns a 0 unless the focus plane is
+                no futher from the target than 5% of the target's range. FOCUS returns
+                the focus value from the scene as the reward."""
+        initializer_type: InitializerType = InitializerType.UNIFORM
+        observable_type: ObservableType = ObservableType.FULL
+        reward_type: RewardType = RewardType.PENALTY
+
 
     def __init__(
         self,
         render_mode: str | None = None,
         limits: tuple[float, float] = (1.0, 10.0),
-        observable_type: ObservableType = ObservableType.FULL,
-        reward_type: RewardType = RewardType.PENALTY
+        modes: Modes = Modes()
     ):
         """Constructor for the focus environment.
 
@@ -217,39 +265,49 @@ class FocusEnvironment(gym.Env):
             render_mode: The render mode for the environment, either "rgb_array" or None.
             limits: The low and high limits of the lens and target positions.
             reward_type: Which type of reward this environment should emit."""
-        self._limits = limits
 
         min_focus_value, max_focus_value = find_focus_value_limits(
-            self._limits[0],
-            self._limits[1],
+            limits[0],
+            limits[1],
             91)
 
         low = np.array([limits[0], limits[0], min_focus_value], dtype=np.float32)
         high = np.array([limits[1], limits[1], max_focus_value], dtype=np.float32)
 
-        if reward_type == RewardType.PENALTY:
+        if modes.reward_type == RewardType.PENALTY:
             rewarder = make_lens_distance_penalty(2.)
-        elif reward_type == RewardType.TARGET:
+        elif modes.reward_type == RewardType.TARGET:
             rewarder = make_lens_on_target_reward(.1)
         else:
             rewarder = make_focus_reward()
 
         self.action_space = spaces.Box(-1., 1., (1,), dtype=np.float32)
 
-        if observable_type == ObservableType.ONLY_FOCUS:
+        if modes.observable_type == ObservableType.ONLY_FOCUS:
             self.observation_space = spaces.Box(-1., 1., (1,), dtype=np.float32)
             obs_filter = make_observation_filter([2])
-        elif observable_type == ObservableType.NO_TARGET:
+        elif modes.observable_type == ObservableType.NO_TARGET:
             self.observation_space = spaces.Box(-1., 1., (2,), dtype=np.float32)
             obs_filter = make_observation_filter([1, 2])
         else:
             self.observation_space = spaces.Box(-1., 1., (3,), dtype=np.float32)
             obs_filter = make_observation_filter()
 
+        if modes.initializer_type == InitializerType.UNIFORM:
+            initializer = make_uniform_initializer(limits[0], limits[1], 2)
+        else:
+            r = limits[1] - limits[0]
+            initializer = make_ranged_initializer([
+                [
+                    (limits[0] + .1 * r, limits[0] + .25 * r),
+                    (limits[0] + .75 * r, limits[0] + .9 * r)],
+                [limits]])
+
         self._helpers = FocusEnvironment.HelperFunctions(
-            make_uniform_initializer(self._limits[0], self._limits[1], 2),
-            make_observation_normer((low + high) / 2, (high - low) / 2),
+            make_relative_dynamics(*limits),
+            initializer,
             obs_filter,
+            make_observation_normer((low + high) / 2, (high - low) / 2),
             rewarder)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -298,11 +356,7 @@ class FocusEnvironment(gym.Env):
             info: An unused information dictionary.
             done: (Deprecated) Has the episode ended."""
 
-        self._state[1] = np.clip(
-            self._state[1] + action * (self._limits[1] - self._limits[0]),
-            self._limits[0],
-            self._limits[1],
-            dtype=np.float32)
+        self._state = self._helpers.dynamics(self._state, action)
 
         observation = self._get_obs()
 
