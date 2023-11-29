@@ -12,35 +12,78 @@ import tests.test_utils as tu
 class FocusEnvironmentTest(unittest.TestCase):
     """TestCases for reinfocus.learning.focus_environment."""
 
-    def test_make_relative_dynamics(self):
-        """Tests that make_relative_dynamics creates a function that moves the second
-            element of the state between the limits, according to the action."""
-        dynamics = env.make_relative_dynamics(0, 1)
+    def test_make_continuous_dynamics(self):
+        """Tests that make_continuous_dynamics creates a function that moves the
+            second element of the state between the limits, according to the action."""
+        fast_dynamics = env.make_continuous_dynamics(0, 1)
 
         state = np.array([1, .5])
-        tu.arrays_close(self, dynamics(state, 1.), [1, 1])
-        tu.arrays_close(self, dynamics(state, .75), [1, 1])
-        tu.arrays_close(self, dynamics(state, .5), [1, 1])
-        tu.arrays_close(self, dynamics(state, .25), [1, .75])
-        tu.arrays_close(self, dynamics(state, .1), [1, .6])
-        tu.arrays_close(self, dynamics(state, 0), [1, .5])
-        tu.arrays_close(self, dynamics(state, -.1), [1, .4])
-        tu.arrays_close(self, dynamics(state, -.25), [1, .25])
-        tu.arrays_close(self, dynamics(state, -.5), [1, 0])
-        tu.arrays_close(self, dynamics(state, -.75), [1, 0])
-        tu.arrays_close(self, dynamics(state, -1), [1, 0])
+        tu.arrays_close(self, fast_dynamics(state, 1.), [1, 1])
+        tu.arrays_close(self, fast_dynamics(state, .75), [1, 1])
+        tu.arrays_close(self, fast_dynamics(state, .5), [1, 1])
+        tu.arrays_close(self, fast_dynamics(state, .25), [1, .75])
+        tu.arrays_close(self, fast_dynamics(state, .1), [1, .6])
+        tu.arrays_close(self, fast_dynamics(state, 0), [1, .5])
+        tu.arrays_close(self, fast_dynamics(state, -.1), [1, .4])
+        tu.arrays_close(self, fast_dynamics(state, -.25), [1, .25])
+        tu.arrays_close(self, fast_dynamics(state, -.5), [1, 0])
+        tu.arrays_close(self, fast_dynamics(state, -.75), [1, 0])
+        tu.arrays_close(self, fast_dynamics(state, -1), [1, 0])
 
         state = np.array([1, 1])
-        tu.arrays_close(self, dynamics(state, 1), [1, 1])
-        tu.arrays_close(self, dynamics(state, 0), [1, 1])
-        tu.arrays_close(self, dynamics(state, -.5), [1, .5])
-        tu.arrays_close(self, dynamics(state, -1), [1, 0])
+        tu.arrays_close(self, fast_dynamics(state, 1), [1, 1])
+        tu.arrays_close(self, fast_dynamics(state, 0), [1, 1])
+        tu.arrays_close(self, fast_dynamics(state, -.5), [1, .5])
+        tu.arrays_close(self, fast_dynamics(state, -1), [1, 0])
 
         state = np.array([1, 0])
-        tu.arrays_close(self, dynamics(state, 1), [1, 1])
-        tu.arrays_close(self, dynamics(state, .5), [1, .5])
-        tu.arrays_close(self, dynamics(state, 0), [1, 0])
-        tu.arrays_close(self, dynamics(state, -1), [1, 0])
+        tu.arrays_close(self, fast_dynamics(state, 1), [1, 1])
+        tu.arrays_close(self, fast_dynamics(state, .5), [1, .5])
+        tu.arrays_close(self, fast_dynamics(state, 0), [1, 0])
+        tu.arrays_close(self, fast_dynamics(state, -1), [1, 0])
+
+        slow_dynamics = env.make_continuous_dynamics(0, 1, .1)
+
+        state = np.array([1, .5])
+        tu.arrays_close(self, slow_dynamics(state, 2), [1, .6])
+        tu.arrays_close(self, slow_dynamics(state, 1), [1, .6])
+        tu.arrays_close(self, slow_dynamics(state, .1), [1, .51])
+        tu.arrays_close(self, slow_dynamics(state, 0), [1, .5])
+        tu.arrays_close(self, slow_dynamics(state, -.1), [1, .49])
+        tu.arrays_close(self, slow_dynamics(state, -1), [1, .4])
+        tu.arrays_close(self, slow_dynamics(state, -2), [1, .4])
+
+    def test_make_discrete_dynamics(self):
+        """Tests that make_discrete_dynamics creates a function that moves the
+            second element of the state between the limits, according to the action."""
+        dynamics = env.make_discrete_dynamics(0, 1, [-1., -.5, -.1, 0, .1, .5, 1])
+
+        state = np.array([1, .5])
+        tu.arrays_close(self, dynamics(state, 0), [1, 0.])
+        tu.arrays_close(self, dynamics(state, 1), [1, 0.])
+        tu.arrays_close(self, dynamics(state, 2), [1, .4])
+        tu.arrays_close(self, dynamics(state, 3), [1, .5])
+        tu.arrays_close(self, dynamics(state, 4), [1, .6])
+        tu.arrays_close(self, dynamics(state, 5), [1, 1.])
+        tu.arrays_close(self, dynamics(state, 6), [1, 1.])
+
+        state = np.array([1, .0])
+        tu.arrays_close(self, dynamics(state, 0), [1, 0.])
+        tu.arrays_close(self, dynamics(state, 1), [1, 0.])
+        tu.arrays_close(self, dynamics(state, 2), [1, 0.])
+        tu.arrays_close(self, dynamics(state, 3), [1, 0.])
+        tu.arrays_close(self, dynamics(state, 4), [1, .1])
+        tu.arrays_close(self, dynamics(state, 5), [1, .5])
+        tu.arrays_close(self, dynamics(state, 6), [1, 1.])
+
+        state = np.array([1, 1.])
+        tu.arrays_close(self, dynamics(state, 0), [1, 0.])
+        tu.arrays_close(self, dynamics(state, 1), [1, .5])
+        tu.arrays_close(self, dynamics(state, 2), [1, .9])
+        tu.arrays_close(self, dynamics(state, 3), [1, 1.])
+        tu.arrays_close(self, dynamics(state, 4), [1, 1.])
+        tu.arrays_close(self, dynamics(state, 5), [1, 1.])
+        tu.arrays_close(self, dynamics(state, 6), [1, 1.])
 
     def test_make_uniform_initializer(self):
         """Tests that make_uniform_initializer creates a state initializer that samples
@@ -221,6 +264,8 @@ class FocusEnvironmentTest(unittest.TestCase):
         environment = env.FocusEnvironment(render_mode="rgb_array")
 
         observation = environment.reset()[0]
+        while not (.5 <= observation[0] <= .9) or not (-.9 <= observation[1] <= -.5):
+            observation = environment.reset()[0]
 
         old_image = environment.render()
 

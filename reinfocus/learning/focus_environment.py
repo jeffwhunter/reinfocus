@@ -1,46 +1,68 @@
 """Reinforcement learning environments that simulate focusing a camera."""
 
-from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Callable, SupportsFloat, TypeVar
+import dataclasses
+import enum
+import typing
 
 import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 
-from gymnasium import spaces
-
 import reinfocus.graphics.render as ren
 import reinfocus.graphics.world as wor
-
-from reinfocus import vision as vis
+import reinfocus.vision as vis
 
 TARGET = 0
 LENS = 1
 FOCUS = 2
 
-StateDynamics = Callable[[npt.NDArray, float], npt.NDArray]
-StateInitializer = Callable[[], npt.NDArray]
-Observation = TypeVar("Observation")
-ObservationNormer = Callable[[Observation], Observation]
-ObservationFilter = Callable[[Observation], npt.NDArray]
-Rewarder = Callable[[Observation], float]
+State = typing.TypeVar('State')
+Action = typing.TypeVar('Action')
+UnfilteredObservation = typing.TypeVar('UnfilteredObservation')
+Observation = typing.TypeVar('Observation')
 
-def make_relative_dynamics(low: float, high: float) -> StateDynamics:
-    """Makes a function that moves the focus plane between low and high. Actions of -1
-        send the focus plane to low, actions of 1 send it to high, while 0 keeps it in
-        the same place.
+StateDynamics = typing.Callable[[State, Action], State]
+StateInitializer = typing.Callable[[], State]
+ObservationNormer = typing.Callable[[UnfilteredObservation], UnfilteredObservation]
+ObservationFilter = typing.Callable[[UnfilteredObservation], Observation]
+Rewarder = typing.Callable[[UnfilteredObservation], float]
+
+def make_continuous_dynamics(low: float, high: float, speed: float = 1.0) -> StateDynamics:
+    """Makes a function that moves the focus plane between low and high. Actions of 1 and
+        -1 will send the plane speed * (high - low) towards the right or left. Actions of
+        0 will keep the plane in the same place. Actions in between will blend between
+        these three.
 
     Args:
-        low: The lower bound of the focus plane's range of movement.
-        high: The upper bound of the focus plane's range of movement.
+        low: The lower bound of the focus plane's range of motion.
+        high: The upper bound of the focus plane's range of motion.
+        speed: The maximum proportion of the distance high - low one move may make.
 
     Returns:
         A function that returns the new state that results after performing the given
             action."""
     r = high - low
     return lambda state, action: np.clip(
-        state + action * r * np.array([0, 1]),
+        state + np.clip(action, -1, 1) * r * speed * np.array([0, 1]),
+        low,
+        high,
+        dtype=np.float32)
+
+def make_discrete_dynamics(low: float, high: float, actions: list[float]) -> StateDynamics:
+    """Makes a function that moves the focus plane between low and high. Actions must be
+        valid indices of actions, if they are, the indexed move will be taken, within the
+        limits of low and high.
+
+    Args:
+        low: The lower bound of the focus plane's range of motion.
+        high: The upper bound of the focus plane's range of motion.
+        actions: The various movements the focus plane can take.
+
+    Returns:
+        A function that returns the new state that results after performing the given
+        action."""
+    return lambda state, action: np.clip(
+        state + actions[action] * np.array([0, 1]),
         low,
         high,
         dtype=np.float32)
@@ -78,8 +100,8 @@ def make_ranged_initializer(
         [np.random.uniform(*r[np.random.choice(len(r))]) for r in ranges])
 
 def make_observation_normer(
-    mid: Observation,
-    scale: Observation
+    mid: UnfilteredObservation,
+    scale: UnfilteredObservation
 ) -> ObservationNormer:
     """Makes a function that scales inputs to [-1., 1.].
 
@@ -193,29 +215,32 @@ def find_focus_value_limits(
 
     return min(focus_values), max(focus_values)
 
-class InitializerType(Enum):
+class InitializerType(enum.Enum):
     """An enum that represents the ways the target's position can be initialized."""
     UNIFORM = 1
     DEVIATED = 2
 
-class ObservableType(Enum):
+class ObservableType(enum.Enum):
     """An enum that represents the ways this environment can mask it's observations."""
     FULL = 1
     NO_TARGET = 2
     ONLY_FOCUS = 3
 
-class RewardType(Enum):
+class RewardType(enum.Enum):
     """An enum that represents the various reward types."""
     PENALTY = 1
     TARGET = 2
     FOCUS = 3
 
-class FocusEnvironment(gym.Env):
+class FocusEnvironment(
+    gym.Env,
+    typing.Generic[Observation, UnfilteredObservation, Action]
+):
     """A reinforcement learning environment that simulates focusing a camera by rendering
         simple scenes in a ray tracer."""
     metadata = {"render_modes": ["rgb_array"]}
 
-    @dataclass
+    @dataclasses.dataclass
     class HelperFunctions:
         """A simple helper to reduce the amount of instance attributes of FocusEnvironment.
 
@@ -232,7 +257,7 @@ class FocusEnvironment(gym.Env):
         normer: ObservationNormer
         rewarder: Rewarder
 
-    @dataclass
+    @dataclasses.dataclass
     class Modes:
         """The various modes the FocusEnvironment can function in.
 
@@ -281,16 +306,16 @@ class FocusEnvironment(gym.Env):
         else:
             rewarder = make_focus_reward()
 
-        self.action_space = spaces.Box(-1., 1., (1,), dtype=np.float32)
+        self.action_space = gym.spaces.Box(-1., 1., (1,), dtype=np.float32)
 
         if modes.observable_type == ObservableType.ONLY_FOCUS:
-            self.observation_space = spaces.Box(-1., 1., (1,), dtype=np.float32)
+            self.observation_space = gym.spaces.Box(-1., 1., (1,), dtype=np.float32)
             obs_filter = make_observation_filter([2])
         elif modes.observable_type == ObservableType.NO_TARGET:
-            self.observation_space = spaces.Box(-1., 1., (2,), dtype=np.float32)
+            self.observation_space = gym.spaces.Box(-1., 1., (2,), dtype=np.float32)
             obs_filter = make_observation_filter([1, 2])
         else:
-            self.observation_space = spaces.Box(-1., 1., (3,), dtype=np.float32)
+            self.observation_space = gym.spaces.Box(-1., 1., (3,), dtype=np.float32)
             obs_filter = make_observation_filter()
 
         if modes.initializer_type == InitializerType.UNIFORM:
@@ -304,7 +329,7 @@ class FocusEnvironment(gym.Env):
                 [limits]])
 
         self._helpers = FocusEnvironment.HelperFunctions(
-            make_relative_dynamics(*limits),
+            make_continuous_dynamics(*limits),
             initializer,
             obs_filter,
             make_observation_normer((low + high) / 2, (high - low) / 2),
@@ -320,8 +345,8 @@ class FocusEnvironment(gym.Env):
         self,
         *,
         seed: int | None = None,
-        options: dict[str, Any] | None = None
-    ) -> tuple[npt.NDArray, dict[str, Any]]:
+        options: dict[str, typing.Any] | None = None
+    ) -> tuple[Observation, dict[str, typing.Any]]:
         """Resets the environment to an initial internal state, returning an initial observation.
 
         Args:
@@ -342,7 +367,7 @@ class FocusEnvironment(gym.Env):
     def step(
         self,
         action: float
-    ) -> tuple[npt.NDArray, SupportsFloat, bool, bool, dict[str, Any]]:
+    ) -> tuple[Observation, typing.SupportsFloat, bool, bool, dict[str, typing.Any]]:
         """Run one timestep of the environment's dynamics using action.
 
         Args:
@@ -383,7 +408,7 @@ class FocusEnvironment(gym.Env):
     def close(self):
         """Called after the environment has been finished to clean up any resources."""
 
-    def _get_obs(self) -> npt.NDArray:
+    def _get_obs(self) -> UnfilteredObservation:
         """Gets the current observation of the environment.
 
         Returns:
