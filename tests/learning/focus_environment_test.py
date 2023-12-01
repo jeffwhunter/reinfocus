@@ -117,52 +117,37 @@ class FocusEnvironmentTest(unittest.TestCase):
 
     def test_make_observation_normer(self):
         """Tests that make_observation_normer creates a normer that norms as expected."""
-        normer = env.make_observation_normer(5, 5)
-        self.assertEqual(normer(0), -1)
-        self.assertEqual(normer(5), 0)
-        self.assertEqual(normer(10), 1)
-        array_normer = env.make_observation_normer(np.array([1]), np.array([2]))
-        tu.arrays_close(self, array_normer(np.array([0])), np.array([-.5]))
-        tu.arrays_close(self, array_normer(np.array([1])), np.array([0]))
-        tu.arrays_close(self, array_normer(np.array([2])), np.array([.5]))
-
-    def test_make_observation_filter(self):
-        """Tests that make_observation_filter creates a filter that filters as expected."""
-        original = env.make_observation_filter()
-        no_target = env.make_observation_filter([1, 2])
-        only_focus = env.make_observation_filter([2])
-
-        tu.arrays_close(self, original([1, 2, 3]), [1, 2, 3])
-        tu.arrays_close(self, no_target([1, 2, 3]), [2, 3])
-        tu.arrays_close(self, only_focus([1, 2, 3]), [3])
-
+        normer = env.make_observation_normer(np.array([1]), np.array([2]))
+        tu.arrays_close(self, normer(np.array([0])), np.array([-.5]))
+        tu.arrays_close(self, normer(np.array([1])), np.array([0]))
+        tu.arrays_close(self, normer(np.array([2])), np.array([.5]))
 
     def test_make_lens_distance_penalty(self):
         """Tests that make_lens_distance_penalty creates a rewarder that gives
             the proper penalties."""
         penalty = env.make_lens_distance_penalty(1.)
-        self.assertEqual(penalty([0., 0.]), 0)
-        self.assertEqual(penalty([0., 1.]), -1)
-        self.assertEqual(penalty([1., 0.]), -1)
-        self.assertEqual(penalty([1., 1.]), 0)
+        self.assertEqual(penalty(np.array([0., 0.])), 0)
+        self.assertEqual(penalty(np.array([0., 1.])), -1)
+        self.assertEqual(penalty(np.array([1., 0.])), -1)
+        self.assertEqual(penalty(np.array([1., 1.])), 0)
 
     def test_make_lens_on_target_reward(self):
         """Tests that make_lens_on_target_reward creates a rewarder that gives a reward
             of one when the lens is within the given distance."""
         reward = env.make_lens_on_target_reward(.1)
-        self.assertEqual(reward([.5, .65]), 0)
-        self.assertEqual(reward([.5, .55]), 1)
-        self.assertEqual(reward([.5, .45]), 1)
-        self.assertEqual(reward([.5, .35]), 0)
+        self.assertEqual(reward(np.array([.5, .65])), 0)
+        self.assertEqual(reward(np.array([.5, .55])), 1)
+        self.assertEqual(reward(np.array([.5, .45])), 1)
+        self.assertEqual(reward(np.array([.5, .35])), 0)
 
     def test_make_focus_reward(self):
         """Tests that make_focus_reward creates a rewarder that gives a reward equal to
             the focus."""
         reward = env.make_focus_reward()
-        self.assertEqual(reward([1, 2, 3]), 3)
-        self.assertEqual(reward([4, 5, 6]), 6)
-        self.assertEqual(reward([3, 2, 1]), 1)
-        self.assertEqual(reward([6, 5, 4]), 4)
+        self.assertEqual(reward(np.array([1, 2, 3])), 3)
+        self.assertEqual(reward(np.array([4, 5, 6])), 6)
+        self.assertEqual(reward(np.array([3, 2, 1])), 1)
+        self.assertEqual(reward(np.array([6, 5, 4])), 4)
 
     def test_render_and_measure(self):
         """Tests that render and measure produces measured focus_values that increase as

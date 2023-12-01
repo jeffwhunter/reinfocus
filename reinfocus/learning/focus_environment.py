@@ -1,4 +1,4 @@
-"""Reinforcement learning environments that simulate focusing a camera."""
+"""Reinforcement learning environments that simulates focusing a camera."""
 
 import dataclasses
 import enum
@@ -10,22 +10,21 @@ import numpy.typing as npt
 
 import reinfocus.graphics.render as ren
 import reinfocus.graphics.world as wor
+import reinfocus.learning.observation_filter as fil
 import reinfocus.vision as vis
 
 TARGET = 0
 LENS = 1
 FOCUS = 2
 
-State = typing.TypeVar('State')
+State = npt.NDArray[np.float32]
 Action = typing.TypeVar('Action')
-UnfilteredObservation = typing.TypeVar('UnfilteredObservation')
-Observation = typing.TypeVar('Observation')
+Observation = npt.NDArray[np.float32]
 
 StateDynamics = typing.Callable[[State, Action], State]
 StateInitializer = typing.Callable[[], State]
-ObservationNormer = typing.Callable[[UnfilteredObservation], UnfilteredObservation]
-ObservationFilter = typing.Callable[[UnfilteredObservation], Observation]
-Rewarder = typing.Callable[[UnfilteredObservation], float]
+ObservationNormer = typing.Callable[[Observation], Observation]
+Rewarder = typing.Callable[[Observation], float]
 
 def make_continuous_dynamics(low: float, high: float, speed: float = 1.0) -> StateDynamics:
     """Makes a function that moves the focus plane between low and high. Actions of 1 and
@@ -78,7 +77,7 @@ def make_uniform_initializer(low: float, high: float, size: int) -> StateInitial
 
     Returns:
         A function that randomly initializes states of size size between low and high."""
-    return lambda: np.random.uniform(low, high, size)
+    return lambda: np.random.uniform(low, high, size).astype(np.float32)
 
 def make_ranged_initializer(
     ranges: list[list[tuple[float, float]]]
@@ -100,8 +99,8 @@ def make_ranged_initializer(
         [np.random.uniform(*r[np.random.choice(len(r))]) for r in ranges])
 
 def make_observation_normer(
-    mid: UnfilteredObservation,
-    scale: UnfilteredObservation
+    mid: Observation,
+    scale: Observation
 ) -> ObservationNormer:
     """Makes a function that scales inputs to [-1., 1.].
 
@@ -112,23 +111,6 @@ def make_observation_normer(
     Returns:
         A function that scales inputs to [-1., 1.]."""
     return lambda x: (x - mid) / scale
-
-def make_observation_filter(mask: list[int] | None = None) -> ObservationFilter:
-    """Makes an observation filter that returns observation elements with the indices
-        listed in mask.
-
-    Args:
-        mask: The indices of the elements of the original observation that will be
-            included in the returned observation. Can also be None to return the original
-            observation.
-
-    Returns:
-        A function that filters observations to only include the elements with indices
-        listed in mask."""
-    if mask is None:
-        return lambda obs: obs
-
-    return lambda obs: np.take(obs, mask)
 
 def make_lens_distance_penalty(span: float) -> Rewarder:
     """Makes a function that returns a penalty that increases the further the lens gets
@@ -232,10 +214,7 @@ class RewardType(enum.Enum):
     TARGET = 2
     FOCUS = 3
 
-class FocusEnvironment(
-    gym.Env,
-    typing.Generic[Observation, UnfilteredObservation, Action]
-):
+class FocusEnvironment(gym.Env, typing.Generic[Action]):
     """A reinforcement learning environment that simulates focusing a camera by rendering
         simple scenes in a ray tracer."""
     metadata = {"render_modes": ["rgb_array"]}
@@ -253,7 +232,7 @@ class FocusEnvironment(
             rewarder: A function that returns rewards."""
         dynamics: StateDynamics
         initializer: StateInitializer
-        filter: ObservationFilter
+        filter: fil.ObservationFilter
         normer: ObservationNormer
         rewarder: Rewarder
 
@@ -276,7 +255,6 @@ class FocusEnvironment(
         initializer_type: InitializerType = InitializerType.UNIFORM
         observable_type: ObservableType = ObservableType.FULL
         reward_type: RewardType = RewardType.PENALTY
-
 
     def __init__(
         self,
@@ -309,14 +287,11 @@ class FocusEnvironment(
         self.action_space = gym.spaces.Box(-1., 1., (1,), dtype=np.float32)
 
         if modes.observable_type == ObservableType.ONLY_FOCUS:
-            self.observation_space = gym.spaces.Box(-1., 1., (1,), dtype=np.float32)
-            obs_filter = make_observation_filter([2])
+            mask = {0, 1}
         elif modes.observable_type == ObservableType.NO_TARGET:
-            self.observation_space = gym.spaces.Box(-1., 1., (2,), dtype=np.float32)
-            obs_filter = make_observation_filter([1, 2])
+            mask = {0}
         else:
-            self.observation_space = gym.spaces.Box(-1., 1., (3,), dtype=np.float32)
-            obs_filter = make_observation_filter()
+            mask = set[int]()
 
         if modes.initializer_type == InitializerType.UNIFORM:
             initializer = make_uniform_initializer(limits[0], limits[1], 2)
@@ -331,14 +306,16 @@ class FocusEnvironment(
         self._helpers = FocusEnvironment.HelperFunctions(
             make_continuous_dynamics(*limits),
             initializer,
-            obs_filter,
+            fil.ObservationFilter(-1., 1., 3, mask),
             make_observation_normer((low + high) / 2, (high - low) / 2),
             rewarder)
+
+        self.observation_space = self._helpers.filter.observation_space()
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self._state = np.zeros(2)
+        self._state = np.zeros(2, dtype=np.float32)
         self._world = None
 
     def reset(
@@ -408,7 +385,7 @@ class FocusEnvironment(
     def close(self):
         """Called after the environment has been finished to clean up any resources."""
 
-    def _get_obs(self) -> UnfilteredObservation:
+    def _get_obs(self) -> Observation:
         """Gets the current observation of the environment.
 
         Returns:
