@@ -39,7 +39,8 @@ class ObservationFilter(typing.Generic[T]):
 
         if lm >= dim:
             raise IndexError(f'mask {mask} has sze > {dim - 1}.')
-        elif lm > 0:
+
+        if lm > 0:
             if max(mask) >= dim:
                 raise IndexError(f'mask {mask} has element > {dim - 1}.')
 
@@ -49,12 +50,12 @@ class ObservationFilter(typing.Generic[T]):
         self._takes = np.delete(np.arange(dim), list(mask))
         self._space = gym.spaces.Box(low, high, (len(self._takes),), dtype=np.float32)
 
+    def __call__(self, observation: Observation) -> Observation:
+        return np.take(observation, self._takes)
+
     def observation_space(self) -> gym.spaces.Box:
         '''Returns the newly filtered observation space.
 
         Returns:
             The newly filtered observation space.'''
         return self._space
-
-    def __call__(self, observation: Observation) -> Observation:
-        return np.take(observation, self._takes)
