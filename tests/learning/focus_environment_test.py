@@ -101,7 +101,7 @@ class FocusEnvironmentTest(unittest.TestCase):
         self.assertGreaterEqual(limits[1], limits[0])
 
     def test_environment_continuous_dynamics(self):
-        '''Tests that ContinuousDynamics responds to actions as expected.'''
+        '''Tests that continuous dynamics respond to actions as expected.'''
         environment = env.FocusEnvironment()
 
         first_observation = environment.reset()[0]
@@ -113,6 +113,23 @@ class FocusEnvironmentTest(unittest.TestCase):
         self.assertAlmostEqual(
             environment.step(action)[0][1],
             first_observation[1] + action * .2)
+
+    def test_environment_discrete_dynamics(self):
+        '''Tests that discrete dynamics respond to actions as expected.'''
+        environment = env.FocusEnvironment(
+            modes=env.FocusEnvironment.Modes(dynamics_type=env.DynamicsType.DISCRETE))
+
+        environment.reset()
+
+        environment.step(6)
+        environment.step(6)
+
+        lens_positions = [environment.step(i)[0][1] for i in range(7)]
+        lens_diffs = np.diff(lens_positions)
+
+        self.assertTrue(all(lens_positions[0] == lp for lp in lens_positions[::2]))
+        self.assertTrue(all(diff > 0 for diff in lens_diffs[::2]))
+        self.assertTrue(all(diff < 0 for diff in lens_diffs[1::2]))
 
     def test_environment_initialization(self):
         '''Tests that FocusEnvironment.reset initializes the state with the given limits

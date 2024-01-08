@@ -19,7 +19,7 @@ LENS = 1
 FOCUS = 2
 
 State = npt.NDArray[np.float32]
-Action = typing.TypeVar('Action')
+Action = typing.TypeVar('Action', bound=np.number)
 Observation = npt.NDArray[np.float32]
 
 StateInitializer = typing.Callable[[], State]
@@ -239,23 +239,21 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
             reward_type: Which type of reward this environment should emit.'''
 
         min_focus_value, max_focus_value = find_focus_value_limits(
-            limits[0],
-            limits[1],
+            *limits,
             91)
 
         low = np.array([limits[0], limits[0], min_focus_value], dtype=np.float32)
         high = np.array([limits[1], limits[1], max_focus_value], dtype=np.float32)
 
+        diff = limits[1] - limits[0]
+
         if modes.dynamics_type == DynamicsType.CONTINUOUS:
-            dynamics = dyn.ContinuousDynamics(
-                *limits,
-                (limits[1] - limits[0]) * .1,
-                np.array([0., 1.]))
+            dynamics = dyn.make_continuous_dynamics(limits, diff * .1)
         else:
-            dynamics = dyn.DiscreteDynamics(
-                *limits,
-                [],
-                np.array([0., 1.]))
+            step = diff * .01
+            dynamics = dyn.make_discrete_dynamics(
+                limits,
+                [0, step, -step, 5 * step, -5 * step, 10 * step, -10 * step])
 
         if modes.initializer_type == InitializerType.UNIFORM:
             initializer = make_uniform_initializer(limits[0], limits[1], 2)
@@ -322,7 +320,7 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
 
     def step(
         self,
-        action: float
+        action: Action
     ) -> tuple[Observation, typing.SupportsFloat, bool, bool, dict[str, typing.Any]]:
         '''Run one timestep of the environment's dynamics using action.
 
