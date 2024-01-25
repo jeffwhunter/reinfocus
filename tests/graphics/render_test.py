@@ -20,7 +20,7 @@ class RenderTest(CUDATestCase):
 
         device_frame = ren.make_device_frame(*frame_shape)
 
-        world = wor.one_rect_world(r_size=30)
+        world = wor.one_rect_world(wor.ShapeParameters(r_size=30))
 
         ren.device_render[(19, 19), (16, 16)]( # type: ignore
             device_frame,
@@ -44,7 +44,9 @@ class RenderTest(CUDATestCase):
         """Tests that render produces a known image for a known set of parameters."""
 
         average_colour = np.average(
-            ren.render(frame_shape=(300, 300), world=wor.one_sphere_world(r_size=30)),
+            ren.render(
+                frame_shape=(300, 300),
+                world=wor.one_sphere_world(wor.ShapeParameters(r_size=30))),
             axis=(0, 1))
 
         self.assertTrue(np.all(average_colour >= [.4, .4, .1]))

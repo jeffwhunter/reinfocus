@@ -1,24 +1,18 @@
 '''Objects that mask the output of environments and calculate the resulting spaces.'''
 
-import typing
+import numpy
 
-import gymnasium as gym
-import numpy as np
-import numpy.typing as npt
+from gymnasium import spaces
+from numpy.typing import NDArray
 
-GymVector = typing.SupportsFloat | npt.NDArray[typing.Any]
-
-T = typing.TypeVar('T', bound=np.generic)
-Observation = npt.NDArray[T]
-
-class ObservationFilter(typing.Generic[T]):
+class ObservationFilter:
     '''Filters observations from a gymnasium box space into a subspace according to a
         mask.'''
 
     def __init__(
         self,
-        low: GymVector,
-        high: GymVector,
+        low: float,
+        high: float,
         dim: int,
         mask: set[int] | None = None
     ):
@@ -47,15 +41,24 @@ class ObservationFilter(typing.Generic[T]):
             if min(mask) < 0:
                 raise IndexError(f'mask {mask} has element < 0.')
 
-        self._takes = np.delete(np.arange(dim), list(mask))
-        self._space = gym.spaces.Box(low, high, (len(self._takes),), dtype=np.float32)
+        self._takes = numpy.delete(numpy.arange(dim), list(mask))
+        self._space = spaces.Box(low, high, (len(self._takes),), dtype=numpy.float32)
 
-    def __call__(self, observation: Observation) -> Observation:
-        return np.take(observation, self._takes)
+    def __call__(self, observation: NDArray) -> NDArray:
+        '''Filters an observation down to the set subspace.
 
-    def observation_space(self) -> gym.spaces.Box:
+        Args:
+            observation: The observation to filter.
+
+        Returns:
+            The filtered observation.'''
+
+        return numpy.take(observation, self._takes)
+
+    def observation_space(self) -> spaces.Box:
         '''Returns the newly filtered observation space.
 
         Returns:
             The newly filtered observation space.'''
+
         return self._space

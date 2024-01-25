@@ -17,7 +17,10 @@ class RectangleTest(CUDATestCase):
 
     def test_cpu_rectangle(self):
         """Tests that cpu_rectangle makes a CPU rectangle with the expected elements."""
-        tu.arrays_close(self, rec.cpu_rectangle(0, 1, 2, 3, 4).parameters, [0, 1, 2, 3, 4])
+        tu.arrays_close(
+            self,
+            rec.cpu_rectangle(0, 1, 2, 3, 4, vec.c2f(5, 6)).parameters,
+            [0, 1, 2, 3, 4, 5, 6])
 
     def test_gpu_hit_rectangle(self):
         """Tests if gpu_hit_rectangle returns an appropriate hit_record for a ray hit."""
@@ -32,15 +35,15 @@ class RectangleTest(CUDATestCase):
                         0,
                         100))
 
-        cpu_array = ntu.cpu_target(ndim=11)
+        cpu_array = ntu.cpu_target(ndim=13)
 
         hit_rectangle[1, 1]( # type: ignore
             cpu_array,
-            rec.cpu_rectangle(-1, 1, -1, 1, 1).parameters,
+            rec.cpu_rectangle(-1, 1, -1, 1, 1, vec.c2f(4, 8)).parameters,
             vec.c3f(0, 0, 0),
             vec.c3f(0, 0, 1))
 
-        tu.arrays_close(self, cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, .5, .5, sha.RECTANGLE))
+        tu.arrays_close(self, cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, .5, .5, 4, 8, sha.RECTANGLE))
 
     def test_gpu_rectangle_uv(self):
         """Tests if gpu_rectangle_uv returns an appropriate texture coordinate for a point

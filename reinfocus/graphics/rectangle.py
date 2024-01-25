@@ -12,13 +12,16 @@ X_MAX = 1
 Y_MIN = 2
 Y_MAX = 3
 Z_POS = 4
+FX = 5
+FY = 6
 
 def cpu_rectangle(
     x_min: float,
     x_max: float,
     y_min: float,
     y_max: float,
-    z_pos: float
+    z_pos: float,
+    texture: vec.C2F = vec.c2f(16, 16)
 ) -> sha.CpuShape:
     """Makes a representation of a z-aligned rectangle suitable for transfer to the GPU.
 
@@ -28,11 +31,12 @@ def cpu_rectangle(
         y_min: The lower extent of the rectangle in the y direction.
         y_max: The upper extent of the rectangle in the y direction.
         z_pos: The position of the rectangle in the z direction.
+        texture: The frequency of this rectangle's checkerboard texture.
 
     Returns:
         A z-aligned rectangle that's easy to transfer to a GPU."""
     return sha.CpuShape(
-        np.array([x_min, x_max, y_min, y_max, z_pos], dtype=np.float32),
+        np.array([x_min, x_max, y_min, y_max, z_pos, *texture], dtype=np.float32),
         sha.RECTANGLE)
 
 @cuda.jit
@@ -46,8 +50,8 @@ def gpu_hit_rectangle(
         between t_min and t_max, returning a hit_record contraining the details if it does.
 
     Args:
-        rectangle_parameters: The z position appened to the x and y extents of the rectangle
-            being hit.
+        rectangle_parameters: The left, right, bottom, and top of the rectangle, then the
+            depth, then the frequency of it's checkerboard texture.
         r: The ray potentially hitting the defined z-aligned rectangle.
         t_min: The minimum of the interval on r in which we look for hits with the defined
             z-aligned rectangle.
@@ -81,6 +85,7 @@ def gpu_hit_rectangle(
             vec.g3f(0, 0, 1),
             t,
             gpu_rectangle_uv(vec.g2f(p.x, p.y), x_min, x_max, y_min, y_max),
+            vec.g2f(rectangle_parameters[FX], rectangle_parameters[FY]),
             sha.RECTANGLE))
 
 @cuda.jit

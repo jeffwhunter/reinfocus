@@ -13,8 +13,8 @@ from reinfocus.graphics import shape as sha
 F = float
 FlattenedRay = Tuple[F, F, F, F, F, F]
 FlattenedColouredRay = Tuple[F, F, F, F, F, F, F, F, F]
-FlattenedHitRecord = Tuple[F, F, F, F, F, F, F, F, F, F]
-FlattenedHitResult = Tuple[F, F, F, F, F, F, F, F, F, F, F]
+FlattenedHitRecord = Tuple[F, F, F, F, F, F, F, F, F, F, F, F]
+FlattenedHitResult = Tuple[F, F, F, F, F, F, F, F, F, F, F, F, F]
 
 def cpu_target(ndim=3, nrow=1):
     """Makes a single vector target array for GPU test output."""
@@ -38,6 +38,7 @@ def flatten_hit_record(hit_record: hit.GpuHitRecord) -> FlattenedHitRecord:
     p = hit_record[hit.P]
     n = hit_record[hit.N]
     uv = hit_record[hit.UV]
+    uf = hit_record[hit.UF]
     return (
         p.x,
         p.y,
@@ -48,6 +49,8 @@ def flatten_hit_record(hit_record: hit.GpuHitRecord) -> FlattenedHitRecord:
         nb.float32(hit_record[hit.T]),
         uv.x,
         uv.y,
+        uf.x,
+        uf.y,
         nb.float32(hit_record[hit.M])) # type: ignore
 
 @cuda.jit

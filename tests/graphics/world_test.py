@@ -20,30 +20,30 @@ class WorldTest(CUDATestCase):
     def test_different_world_parameters(self):
         """Tests that World.device_shape_parameters can handle spheres and rectangles."""
         w = wor.World(
-            sph.cpu_sphere(vec.c3f(1, 2, 3), 4),
-            rec.cpu_rectangle(-1, 1, -1, 1, 1))
+            sph.cpu_sphere(vec.c3f(1, 2, 3), 4, vec.c2f(5, 6)),
+            rec.cpu_rectangle(-1, 1, -1, 1, 1, vec.c2f(4, 8)))
 
         tu.arrays_close(
             self,
             w.device_shape_parameters(),
-            np.array([[1, 2, 3, 4, 0], [-1, 1, -1, 1, 1]]))
+            np.array([[1, 2, 3, 4, 5, 6, 0], [-1, 1, -1, 1, 1, 4, 8]]))
 
     def test_sphere_world_parameters(self):
         """Tests that World.device_shape_parameters can handle spheres."""
         w = wor.World(
-            sph.cpu_sphere(vec.c3f(1, 2, 3), 4),
-            sph.cpu_sphere(vec.c3f(5, 6, 7), 8))
+            sph.cpu_sphere(vec.c3f(1, 2, 3), 4, vec.c2f(5, 6)),
+            sph.cpu_sphere(vec.c3f(7, 8, 9), 10, vec.c2f(11, 12)))
 
         tu.arrays_close(
             self,
             w.device_shape_parameters(),
-            np.array([[1, 2, 3, 4], [5, 6, 7, 8]]))
+            np.array([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]))
 
     def test_world_shape_types(self):
         """Tests that World.device_shape_types can handle spheres and rectangles."""
         w = wor.World(
-            sph.cpu_sphere(vec.c3f(1, 2, 3), 4),
-            rec.cpu_rectangle(-1, 1, -1, 1, 1))
+            sph.cpu_sphere(vec.c3f(1, 2, 3), 4, vec.c2f(5, 6)),
+            rec.cpu_rectangle(-1, 1, -1, 1, 1, vec.c2f(4, 8)))
 
         tu.arrays_close(
             self,
@@ -64,9 +64,9 @@ class WorldTest(CUDATestCase):
                         0,
                         100))
 
-        cpu_array = ntu.cpu_target(ndim=11)
+        cpu_array = ntu.cpu_target(ndim=13)
 
-        world = wor.World(sph.cpu_sphere(vec.c3f(0, 0, 0), 1))
+        world = wor.World(sph.cpu_sphere(vec.c3f(0, 0, 0), 1, vec.c2f(4, 8)))
 
         hit_sphere_world[1, 1]( # type: ignore
             cpu_array,
@@ -75,7 +75,10 @@ class WorldTest(CUDATestCase):
             vec.c3f(10, 0, 0),
             vec.c3f(-1, 0, 0))
 
-        tu.arrays_close(self, cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, .5, .5, sha.SPHERE))
+        tu.arrays_close(
+            self,
+            cpu_array[0],
+            (1, 1, 0, 0, 1, 0, 0, 9, 1, .5, 4, 8, sha.SPHERE))
 
     def test_gpu_hit_rectangle_world(self):
         """Tests if gpu_hit_world returns an appropriate hit_record for rectangles."""
@@ -97,9 +100,9 @@ class WorldTest(CUDATestCase):
                         0,
                         100))
 
-        cpu_array = ntu.cpu_target(ndim=11)
+        cpu_array = ntu.cpu_target(ndim=13)
 
-        world = wor.World(rec.cpu_rectangle(-1, 1, -1, 1, 1))
+        world = wor.World(rec.cpu_rectangle(-1, 1, -1, 1, 1, vec.c2f(4, 8)))
 
         hit_rectangle_world[1, 1]( # type: ignore
             cpu_array,
@@ -111,7 +114,7 @@ class WorldTest(CUDATestCase):
         tu.arrays_close(
             self,
             cpu_array[0],
-            (1, 0, 0, 1, 0, 0, 1, 1, .5, .5, sha.RECTANGLE))
+            (1, 0, 0, 1, 0, 0, 1, 1, .5, .5, 4, 8, sha.RECTANGLE))
 
     def test_one_sphere_world(self):
         """Tests that one_sphere_world creates a world with one sphere."""

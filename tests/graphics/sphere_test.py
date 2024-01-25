@@ -18,8 +18,8 @@ class SphereTest(CUDATestCase):
         """Tests that cpu_sphere makes a CPU sphere with the expected elements."""
         tu.arrays_close(
             self,
-            sph.cpu_sphere(vec.c3f(1, 2, 3), 4).parameters,
-            [1, 2, 3, 4])
+            sph.cpu_sphere(vec.c3f(1, 2, 3), 4, vec.c2f(5, 6)).parameters,
+            [1, 2, 3, 4, 5, 6])
 
     def test_gpu_hit_sphere(self):
         """Tests if gpu_hit_sphere returns an appropriate hit_record for a ray hit."""
@@ -34,15 +34,18 @@ class SphereTest(CUDATestCase):
                         0,
                         100))
 
-        cpu_array = ntu.cpu_target(ndim=11)
+        cpu_array = ntu.cpu_target(ndim=13)
 
         hit_sphere[1, 1]( # type: ignore
             cpu_array,
-            sph.cpu_sphere(vec.c3f(0, 0, 0), 1).parameters,
+            sph.cpu_sphere(vec.c3f(0, 0, 0), 1, vec.c2f(4, 8)).parameters,
             vec.c3f(10, 0, 0),
             vec.c3f(-1, 0, 0))
 
-        tu.arrays_close(self, cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, .5, .5, sha.SPHERE))
+        tu.arrays_close(
+            self,
+            cpu_array[0],
+            (1, 1, 0, 0, 1, 0, 0, 9, 1, .5, 4, 8, sha.SPHERE))
 
     def test_gpu_sphere_uv(self):
         """Tests if gpu_sphere_uv returns an appropriate texture coordinate for a point

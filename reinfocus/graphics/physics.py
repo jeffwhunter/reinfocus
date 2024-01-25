@@ -40,65 +40,19 @@ def random_in_unit_sphere(
             return p
 
 @cuda.jit
-def colour_checkerboard(f: vec.G2F, uv: vec.G2F) -> vec.G3F:
+def colour_checkerboard(uf: vec.G2F, uv: vec.G2F) -> vec.G3F:
     """Returns the frequency f checkerboard colour of uv.
 
     Args:
-        f: The frequency of the checkerboard pattern.
+        uf: The frequency of the checkerboard pattern.
         uv: The texture coordinate to colour.
 
     Returns:
         The frequency f checkerboard colour of uv."""
     return (
         vec.g3f(1, 0, 0)
-        if math.sin(f.x * math.pi * uv.x) * math.sin(f.y * math.pi * uv.y) > 0 else
+        if math.sin(uf.x * math.pi * uv.x) * math.sin(uf.y * math.pi * uv.y) > 0 else
         vec.g3f(0, 1, 0))
-
-@cuda.jit
-def rect_scatter(
-    record: hit.GpuHitRecord,
-    random_states: cda.DeviceNDArray,
-    pixel_index: int
-) -> GpuColouredRay:
-    """Returns a new ray and colour pair that results from the rectangle hit described
-        by record.
-
-    Args:
-        record: A hit record describing the rectangle hit.
-        random_states: An array of RNG states.
-        pixel_index: Which RNG state to use.
-
-    Returns:
-        The ray scattered by, along with the colour it picked up from, the rectangle hit
-        described by record."""
-    return (
-        ray.gpu_ray(
-            record[hit.P],
-            vec.add_g3f(record[hit.N], random_in_unit_sphere(random_states, pixel_index))),
-        colour_checkerboard(vec.g2f(8, 8), record[hit.UV]))
-
-@cuda.jit
-def sphere_scatter(
-    record: hit.GpuHitRecord,
-    random_states: cda.DeviceNDArray,
-    pixel_index: int
-) -> GpuColouredRay:
-    """Returns a new ray and colour pair that results from the sphere hit described
-        by record.
-
-    Args:
-        record: A hit record describing the sphere hit.
-        random_states: An array of RNG states.
-        pixel_index: Which RNG state to use.
-
-    Returns:
-        The ray scattered by, along with the colour it picked up from, the sphere hit
-        described by record."""
-    return (
-        ray.gpu_ray(
-            record[hit.P],
-            vec.add_g3f(record[hit.N], random_in_unit_sphere(random_states, pixel_index))),
-        colour_checkerboard(vec.g2f(64, 32), record[hit.UV]))
 
 @cuda.jit
 def scatter(
@@ -116,10 +70,12 @@ def scatter(
     Returns:
         The ray scattered by, along with the colour it picked up from, the hit described
         by record."""
-    if record[hit.M] == sha.SPHERE:
-        return sphere_scatter(record, random_states, pixel_index)
 
-    return rect_scatter(record, random_states, pixel_index)
+    return (
+        ray.gpu_ray(
+            record[hit.P],
+            vec.add_g3f(record[hit.N], random_in_unit_sphere(random_states, pixel_index))),
+        colour_checkerboard(record[hit.UF], record[hit.UV]))
 
 @cuda.jit
 def find_colour(

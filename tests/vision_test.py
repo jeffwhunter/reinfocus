@@ -33,7 +33,7 @@ class VisionTest(unittest.TestCase):
     def test_focus_value_on_ray_traced_images(self):
         """Tests that in focus images have higher focus_values than out of focus
             images."""
-        world = wor.one_rect_world(distance=10)
+        world = wor.one_rect_world(wor.ShapeParameters(distance=10))
 
         distant_focus = vis.focus_value(ren.render(world=world, focus_distance=40))
         far_focus = vis.focus_value(ren.render(world=world, focus_distance=20))

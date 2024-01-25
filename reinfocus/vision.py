@@ -1,9 +1,11 @@
 """Methods related to measuring images."""
 
-import cv2 as cv
-import numpy.typing as npt
+import cv2
 
-def focus_value(image: npt.NDArray) -> float:
+from numpy.typing import NDArray
+
+def focus_value(image: NDArray) -> float:
+    # pylint: disable=c-extension-no-member
     """Returns a number that represents how 'in focus' image is, with larger numbers
         implying a better focus.
 
@@ -13,6 +15,6 @@ def focus_value(image: npt.NDArray) -> float:
     Returns:
         A number that represents how 'in focus' image is, with larger numbers implying
         a better focus."""
-    # pylint: disable=c-extension-no-member
-    return cv.Laplacian(
-        cv.medianBlur(cv.cvtColor(image, cv.COLOR_RGB2GRAY), 3), cv.CV_32F).var()
+
+    return cv2.Laplacian(
+        cv2.medianBlur(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), 3), cv2.CV_32F).var()

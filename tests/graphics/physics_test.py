@@ -82,62 +82,6 @@ class PhysicsTest(CUDATestCase):
                 [0, 1, 0],
                 [1, 0, 0]])
 
-    def test_rect_scatter(self):
-        """Tests that rect_scatter scatters a ray hit in the expected way."""
-        @cuda.jit
-        def scatter_from_rectangle(target, random_states):
-            i = cuda.grid(1) # type: ignore
-            if i < target.size:
-                target[i] = ntu.flatten_coloured_ray(
-                    phy.rect_scatter(
-                        hit.gpu_hit_record(
-                            vec.g3f(0, 0, 0),
-                            vec.g3f(0, 0, 1),
-                            1.,
-                            vec.g2f(2 ** -4, 2 ** -4),
-                            sha.RECTANGLE),
-                        random_states,
-                        i))
-
-        cpu_array = ntu.cpu_target(ndim=9)
-
-        scatter_from_rectangle[1, 1]( # type: ignore
-            cpu_array,
-            create_xoroshiro128p_states(1, seed=0))
-
-        tu.arrays_close(self, cpu_array[0, 0 : 3], [0, 0, 0])
-        self.assertTrue(
-            np.sum(np.abs(cpu_array[0, 3 : 6] - np.array([0, 0, 1])) ** 2) ** .5 < 1.)
-        tu.arrays_close(self, cpu_array[0, 6 : 9], [1, 0, 0])
-
-    def test_sphere_scatter(self):
-        """Tests that sphere_scatter scatters a sphere hit in the expected way."""
-        @cuda.jit
-        def scatter_from_sphere(target, random_states):
-            i = cuda.grid(1) # type: ignore
-            if i < target.size:
-                target[i] = ntu.flatten_coloured_ray(
-                    phy.sphere_scatter(
-                        hit.gpu_hit_record(
-                            vec.g3f(0, 0, 1),
-                            vec.g3f(0, 0, 1),
-                            1.,
-                            vec.g2f(2 ** -7, 2 ** -6),
-                            sha.SPHERE),
-                        random_states,
-                        i))
-
-        cpu_array = ntu.cpu_target(ndim=9)
-
-        scatter_from_sphere[1, 1]( # type: ignore
-            cpu_array,
-            create_xoroshiro128p_states(1, seed=0))
-
-        tu.arrays_close(self, cpu_array[0, 0 : 3], [0, 0, 1])
-        self.assertTrue(
-            np.sum(np.abs(cpu_array[0, 3 : 6] - np.array([0, 0, 1])) ** 2) ** .5 < 1.)
-        tu.arrays_close(self, cpu_array[0, 6 : 9], [1, 0, 0])
-
     def test_scatter_with_rectangles(self):
         """Tests that scatter scatters a rectangle hit in the expected way."""
         @cuda.jit
@@ -151,6 +95,7 @@ class PhysicsTest(CUDATestCase):
                             vec.g3f(0, 0, 1),
                             1.,
                             vec.g2f(2 ** -4, 2 ** -4),
+                            vec.g2f(1., 1.),
                             sha.RECTANGLE),
                         random_states,
                         i))
@@ -179,6 +124,7 @@ class PhysicsTest(CUDATestCase):
                             vec.g3f(0, 0, 1),
                             1.,
                             vec.g2f(2 ** -7, 2 ** -6),
+                            vec.g2f(1., 1.),
                             sha.SPHERE),
                         random_states,
                         i))
@@ -249,8 +195,8 @@ class PhysicsTest(CUDATestCase):
             world.device_shape_parameters(),
             world.device_shape_types())
 
-        self.assertTrue(0 < cpu_array[0, 0] <= 1.)
-        tu.arrays_close(self, cpu_array[0, 1 : 3], [0, 0])
+        self.assertTrue(0 < cpu_array[0, 1] <= 1.)
+        tu.arrays_close(self, cpu_array[0, ::2], [0, 0])
 
 if __name__ == '__main__':
     unittest.main()

@@ -25,12 +25,12 @@ class HitRecordTest(CUDATestCase):
                 rec = hit.gpu_empty_hit_record()
                 target[i] = ntu.flatten_hit_record(rec)
 
-        cpu_array = ntu.cpu_target(ndim=10)
+        cpu_array = ntu.cpu_target(ndim=12)
 
         make_empty_record[1, 1]( # type: ignore
             cpu_array)
 
-        tu.arrays_close(self, cpu_array[0], (0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+        tu.arrays_close(self, cpu_array[0], (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 
     def test_hit_record(self):
         """Tests that hit_record makes an appropriate hit record on the GPU."""
@@ -44,15 +44,23 @@ class HitRecordTest(CUDATestCase):
                         vec.g3f(args[hit.N][0], args[hit.N][1], args[hit.N][2]),
                         args[hit.T],
                         vec.g2f(args[hit.UV][0], args[hit.UV][1]),
+                        vec.g2f(args[hit.UF][0], args[hit.UF][1]),
                         args[hit.M]))
 
-        cpu_array = ntu.cpu_target(ndim=10)
+        cpu_array = ntu.cpu_target(ndim=12)
 
         make_hit_record[1, 1]( # type: ignore
             cpu_array,
-            (np.array([0, 1, 2]), np.array([3, 4, 5]), 6, np.array([7, 8]), 9))
+            (
+                np.array([0, 1, 2]),
+                np.array([3, 4, 5]),
+                6,
+                np.array([7, 8]),
+                np.array([9, 10]),
+                11
+            ))
 
-        tu.arrays_close(self, cpu_array[0], (0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+        tu.arrays_close(self, cpu_array[0], (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
 
 if __name__ == '__main__':
     unittest.main()

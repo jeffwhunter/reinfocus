@@ -2,29 +2,32 @@
 
 import dataclasses
 import enum
-import typing
 
-import gymnasium as gym
-import numpy as np
-import numpy.typing as npt
+from typing import Any, Callable, Generic, SupportsFloat, TypeVar
 
-import reinfocus.graphics.render as ren
-import reinfocus.graphics.world as wor
-import reinfocus.learning.dynamics as dyn
-import reinfocus.learning.observation_filter as fil
-import reinfocus.vision as vis
+import gymnasium
+import numpy
+
+from numpy import random
+from numpy.typing import NDArray
+
+from reinfocus.graphics import render
+from reinfocus.graphics import world
+from reinfocus.environment import dynamics
+from reinfocus.environment import observation_filter
+from reinfocus import vision
 
 TARGET = 0
 LENS = 1
 FOCUS = 2
 
-State = npt.NDArray[np.float32]
-Action = typing.TypeVar('Action', bound=np.number)
-Observation = npt.NDArray[np.float32]
+State = NDArray[numpy.float32]
+Action = TypeVar('Action', bound=numpy.number)
+Observation = NDArray[numpy.float32]
 
-StateInitializer = typing.Callable[[], State]
-ObservationNormer = typing.Callable[[Observation], Observation]
-Rewarder = typing.Callable[[Observation], float]
+StateInitializer = Callable[[], State]
+ObservationNormer = Callable[[Observation], Observation]
+Rewarder = Callable[[Observation], float]
 
 def make_uniform_initializer(low: float, high: float, size: int) -> StateInitializer:
     '''Makes a function that samples the initial state from a uniform distribution
@@ -37,11 +40,10 @@ def make_uniform_initializer(low: float, high: float, size: int) -> StateInitial
 
     Returns:
         A function that randomly initializes states of size size between low and high.'''
-    return lambda: np.random.uniform(low, high, size).astype(np.float32)
 
-def make_ranged_initializer(
-    ranges: list[list[tuple[float, float]]]
-) -> StateInitializer:
+    return lambda: random.uniform(low, high, size).astype(numpy.float32)
+
+def make_ranged_initializer(ranges: list[list[tuple[float, float]]]) -> StateInitializer:
     '''Makes a function that samples the initial state from a number of uniform
         distributions listed in ranges.
 
@@ -55,13 +57,10 @@ def make_ranged_initializer(
         A function that randomly initializes states to be uniformly within the listed
         ranges.'''
 
-    return lambda: np.array(
-        [np.random.uniform(*r[np.random.choice(len(r))]) for r in ranges])
+    return lambda: numpy.array(
+        [random.uniform(*r[random.choice(len(r))]) for r in ranges])
 
-def make_observation_normer(
-    mid: Observation,
-    scale: Observation
-) -> ObservationNormer:
+def make_observation_normer(mid: Observation, scale: Observation) -> ObservationNormer:
     '''Makes a function that scales inputs to [-1., 1.].
 
     Args:
@@ -70,6 +69,7 @@ def make_observation_normer(
 
     Returns:
         A function that scales inputs to [-1., 1.].'''
+
     return lambda x: (x - mid) / scale
 
 def make_lens_distance_penalty(span: float) -> Rewarder:
@@ -82,6 +82,7 @@ def make_lens_distance_penalty(span: float) -> Rewarder:
 
     Returns:
         A function that returns a penalty when the lens is off target.'''
+
     return lambda o: -abs(o[TARGET] - o[LENS]) / span
 
 def make_lens_on_target_reward(radius: float) -> Rewarder:
@@ -95,6 +96,7 @@ def make_lens_on_target_reward(radius: float) -> Rewarder:
     Returns:
         A function that returns a reward when the lens is within some distance of the
         target.'''
+
     return lambda o: 1 if abs(o[TARGET] - o[LENS]) < radius else 0
 
 def make_focus_reward() -> Rewarder:
@@ -104,31 +106,39 @@ def make_focus_reward() -> Rewarder:
         A function that returns a reward equal to the focus value.'''
     return lambda o: o[FOCUS]
 
-def render_and_measure(world: wor.World, focus_distance: float) -> float:
+def render_and_measure(render_world: world.World, focus_distance: float) -> float:
     '''Renders then measures the focus value of world when focused on the plane at
         focus_distance.
 
     Args:
-        world: The world to render.
+        render_world: The world to render.
         focus_distance: The distance from the camera of the focus plane.
 
     Returns:
         A measure of how in focus the given scene is, with higher values implying a
         better focus.'''
-    return vis.focus_value(
-        ren.render(frame_shape=(150, 150), world=world, focus_distance=focus_distance))
 
-def pretty_render(world: wor.World, focus_distance: float) -> npt.NDArray:
+    return vision.focus_value(
+        render.render(
+            frame_shape=(150, 150),
+            world=render_world,
+            focus_distance=focus_distance))
+
+def pretty_render(render_world: world.World, focus_distance: float) -> NDArray:
     '''Renders a high resolution image, intended for human consumption, of world when
         focused on a plane at focus_distance.
 
     Args:
-        world: The world to render.
+        render_world: The world to render.
         focus_distance: The distance from the camera of the focus plane.
 
     Returns:
         An image of world when focused on a plane focus_distance units away.'''
-    return ren.render(frame_shape=(600, 600), world=world, focus_distance=focus_distance)
+
+    return render.render(
+        frame_shape=(600, 600),
+        world=render_world,
+        focus_distance=focus_distance)
 
 def find_focus_value_limits(
     min_pos: float = 1.0,
@@ -146,42 +156,53 @@ def find_focus_value_limits(
     Returns:
         min: The minimum focus value.
         max: The maximum focus value.'''
-    space = np.linspace(min_pos, max_pos, measurement_steps)
 
-    def make_render_and_measure_world(target, focus):
-        return render_and_measure(wor.one_rect_world(target), focus_distance=focus)
+    space = numpy.linspace(min_pos, max_pos, measurement_steps)
 
-    focus_values = [make_render_and_measure_world(i, i) for i in space]
-    focus_values.append(make_render_and_measure_world(space[0], space[-1]))
-    focus_values.append(make_render_and_measure_world(space[-1], space[0]))
+    focus_values = [
+        render_and_measure(world.one_rect_world(world.ShapeParameters(distance=i)), i)
+        for i in space]
+    focus_values.append(
+        render_and_measure(
+            world.one_rect_world(world.ShapeParameters(distance=space[0])),
+            space[-1]))
+    focus_values.append(
+        render_and_measure(
+            world.one_rect_world(world.ShapeParameters(distance=space[-1])),
+            space[0]))
 
     return min(focus_values), max(focus_values)
 
 class DynamicsType(enum.Enum):
     '''The dynamics types.'''
+
     CONTINUOUS = 1
     DISCRETE = 2
 
 class InitializerType(enum.Enum):
     '''How the target's position can be initialized.'''
+
     UNIFORM = 1
     DEVIATED = 2
 
 class ObservableType(enum.Enum):
     '''How this environment can mask it's observations.'''
+
     FULL = 1
     NO_TARGET = 2
     ONLY_FOCUS = 3
 
 class RewardType(enum.Enum):
     '''The various reward types.'''
+
     PENALTY = 1
     TARGET = 2
     FOCUS = 3
 
-class FocusEnvironment(gym.Env, typing.Generic[Action]):
+class FocusEnvironment(gymnasium.Env, Generic[Action]):
     '''A reinforcement learning environment that simulates focusing a camera by rendering
         simple scenes in a ray tracer.'''
+
     metadata = {"render_modes": ["rgb_array"]}
 
     @dataclasses.dataclass
@@ -195,9 +216,10 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
             normer: A function that normalizes observations.
             filter: A function that filters out unobservable observations.
             rewarder: A function that returns rewards.'''
-        dynamics: dyn.Dynamics
+
+        dynamics: dynamics.Dynamics
         initializer: StateInitializer
-        filter: fil.ObservationFilter
+        filter: observation_filter.ObservationFilter
         normer: ObservationNormer
         rewarder: Rewarder
 
@@ -220,6 +242,7 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
                 plane is from the target. TARGET returns a 0 unless the focus plane is
                 no futher from the target than 5% of the target's range. FOCUS returns
                 the focus value from the scene as the reward.'''
+
         dynamics_type: DynamicsType = DynamicsType.CONTINUOUS
         initializer_type: InitializerType = InitializerType.UNIFORM
         observable_type: ObservableType = ObservableType.FULL
@@ -238,20 +261,20 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
             limits: The low and high limits of the lens and target positions.
             reward_type: Which type of reward this environment should emit.'''
 
-        min_focus_value, max_focus_value = find_focus_value_limits(
-            *limits,
-            91)
+        min_focus_value, max_focus_value = find_focus_value_limits(*limits, 91)
 
-        low = np.array([limits[0], limits[0], min_focus_value], dtype=np.float32)
-        high = np.array([limits[1], limits[1], max_focus_value], dtype=np.float32)
+        low = numpy.array([limits[0], limits[0], min_focus_value], dtype=numpy.float32)
+        high = numpy.array([limits[1], limits[1], max_focus_value], dtype=numpy.float32)
 
         diff = limits[1] - limits[0]
 
         if modes.dynamics_type == DynamicsType.CONTINUOUS:
-            dynamics = dyn.make_continuous_dynamics(limits, diff * .1)
+            dynamics_function = dynamics.make_continuous_dynamics(
+                limits,
+                diff * .1)
         else:
             step = diff * .01
-            dynamics = dyn.make_discrete_dynamics(
+            dynamics_function = dynamics.make_discrete_dynamics(
                 limits,
                 [0, step, -step, 5 * step, -5 * step, 10 * step, -10 * step])
 
@@ -280,9 +303,9 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
             rewarder = make_focus_reward()
 
         self._helpers = FocusEnvironment.HelperFunctions(
-            dynamics,
+            dynamics_function,
             initializer,
-            fil.ObservationFilter(-1., 1., 3, mask),
+            observation_filter.ObservationFilter(-1., 1., 3, mask),
             make_observation_normer((low + high) / 2, (high - low) / 2),
             rewarder)
 
@@ -292,16 +315,17 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self._state = np.zeros(2, dtype=np.float32)
+        self._state = numpy.zeros(2, dtype=numpy.float32)
         self._world = None
 
     def reset(
         self,
         *,
         seed: int | None = None,
-        options: dict[str, typing.Any] | None = None
-    ) -> tuple[Observation, dict[str, typing.Any]]:
-        '''Resets the environment to an initial internal state, returning an initial observation.
+        options: dict[str, Any] | None = None
+    ) -> tuple[Observation, dict[str, Any]]:
+        '''Resets the environment to an initial internal state, returning an initial
+            observation.
 
         Args:
             seed: The seed used to initialize the environment.
@@ -310,18 +334,20 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
         Returns:
             observation: An observation of the initial state.
             info: An unused information dictionary.'''
+
         super().reset(seed=seed)
 
         self._state = self._helpers.initializer()
 
-        self._world = wor.one_rect_world(self._state[0])
+        self._world = world.one_rect_world(
+            world.ShapeParameters(distance=self._state[0]))
 
         return self._helpers.filter(self._get_obs()), {}
 
     def step(
         self,
         action: Action
-    ) -> tuple[Observation, typing.SupportsFloat, bool, bool, dict[str, typing.Any]]:
+    ) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
         '''Run one timestep of the environment's dynamics using action.
 
         Args:
@@ -346,12 +372,13 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
             False,
             {})
 
-    def render(self) -> None | npt.NDArray:
+    def render(self) -> None | NDArray:
         '''Returns a suitable rendering of the environment given the rendering mode.
 
         Returns:
             An image of the environment if the rendering mode is "rgb_array", otherwise
             None.'''
+
         assert self._world is not None
 
         if self.render_mode == "rgb_array":
@@ -367,16 +394,17 @@ class FocusEnvironment(gym.Env, typing.Generic[Action]):
 
         Returns:
             The current observation of the environment.'''
+
         assert self._world is not None
 
-        return np.clip(
+        return numpy.clip(
             self._helpers.normer(
-                np.array(
+                numpy.array(
                     [
                         self._state[0],
                         self._state[1],
                         render_and_measure(self._world, self._state[1])],
-                    np.float32)),
-            -1 * np.ones(3, dtype=np.float32),
-            np.ones(3, dtype=np.float32),
-            dtype=np.float32)
+                    numpy.float32)),
+            -1 * numpy.ones(3, dtype=numpy.float32),
+            numpy.ones(3, dtype=numpy.float32),
+            dtype=numpy.float32)

@@ -6,13 +6,14 @@ import numba as nb
 from numba import cuda
 from reinfocus.graphics import vector as vec
 
-GpuHitRecord = Tuple[vec.G3F, vec.G3F, nb.float32, vec.G2F, nb.float32] # type: ignore
+GpuHitRecord = Tuple[vec.G3F, vec.G3F, nb.float32, vec.G2F, vec.G2F, nb.float32] # type: ignore
 
 P = 0
 N = 1
 T = 2
 UV = 3
-M = 4
+UF = 4
+M = 5
 
 @cuda.jit
 def gpu_empty_hit_record() -> GpuHitRecord:
@@ -25,6 +26,7 @@ def gpu_empty_hit_record() -> GpuHitRecord:
         vec.empty_g3f(),
         nb.float32(0),
         vec.empty_g2f(),
+        vec.empty_g2f(),
         nb.float32(0))
 
 @cuda.jit
@@ -33,6 +35,7 @@ def gpu_hit_record(
     n: vec.G3F,
     t: float,
     uv: vec.G2F,
+    uf: vec.G2F,
     m: float
 ) -> GpuHitRecord:
     """Makes a hit record on the GPU.
@@ -42,8 +45,9 @@ def gpu_hit_record(
         n: The normal of the hit.
         t: How close the hit is to maximum ray length.
         uv: The texture coordinates of the hit.
+        uf: The checkerboard frequency of the thing hit.
         m: What got hit: SPHERE or RECTANGLE.
 
     Returns:
         A GPU representation of a ray tracer hit."""
-    return (p, n, t, uv, m)
+    return (p, n, t, uv, uf, m)

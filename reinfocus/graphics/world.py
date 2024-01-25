@@ -1,6 +1,7 @@
 """Methods relating to representing the world in a ray tracer."""
 
 import math
+import typing
 
 import numpy as np
 from numba import cuda
@@ -104,106 +105,170 @@ def gpu_hit_world(
 
     return hit_anything, record
 
-def one_sphere_world(distance: float=10.0, r_size=20.0):
-    """Makes a world with one sphere at (0, 0, -distance).
+class ShapeParameters(typing.NamedTuple):
+    """Defines all the necessary information for a shape in one of these worlds.
 
     Args:
-        distance: How far away from the origin the sphere should be.
-        r_size: How large should the sphere be in degrees of fov.
+        distance: How far away from the origin the shape is.
+        size: How large the shape is. If zero r_size will be used.
+        r_size: How many degrees of FOV this object should take up when size is zero.
+        texture_f: How often the checkerboard of this object changes in x and y."""
+
+    distance: float = 10.
+    size: float = 0.
+    r_size: float = 20.
+    texture_f: tuple[int, int] = (16, 16)
+
+def get_absolute_size(parameters: ShapeParameters) -> float:
+    """Returns the actual size of a shape defined with parameters.
+
+    Args:
+        parameters: The parameters defining the shape.
 
     Returns:
-        A world with one sphere at (0, 0, -distance)."""
+        The actual size of some shape defined by parameters."""
+
+    if parameters.size != 0.:
+        return parameters.size
+
+    return parameters.distance * math.tan(math.radians(parameters.r_size / 2))
+
+def one_sphere_world(
+    parameters: ShapeParameters = ShapeParameters()
+) -> World:
+    """Makes a world with one sphere on the z axis.
+
+    Args:
+        parameters: The parameters for the sphere.
+
+    Returns:
+        A world with one sphere on the z axis."""
+
     return World(
         sph.cpu_sphere(
-            vec.c3f(0, 0, -distance),
-            distance * math.tan(math.radians(r_size / 2))))
+            vec.c3f(0, 0, -parameters.distance),
+            get_absolute_size(parameters),
+            parameters.texture_f))
 
-def two_sphere_world(left_distance: float=20.0, right_distance: float=5.0):
+def two_sphere_world(
+    left_parameters: ShapeParameters = ShapeParameters(20.),
+    right_parameters: ShapeParameters = ShapeParameters(5.)
+) -> World:
     """Makes a world with spheres at different distances on the left and right.
 
     Args:
-        left_distance: How far away from the origin the left sphere should be.
-        right_distance: How far away from the origin the right sphere should be.
+        left_parameters: The parameters for the left sphere.
+        right_parameters: The parameters for the right sphere.
 
     Returns:
         A world with spheres at different distances on the left and right."""
-    distance_to_radius = math.tan(math.radians(10))
+
     distance_to_offset = math.tan(math.radians(15))
 
     return World(
         sph.cpu_sphere(
-            (-left_distance * distance_to_offset, 0, -left_distance),
-            left_distance * distance_to_radius),
+            vec.c3f(
+                -left_parameters.distance * distance_to_offset,
+                0,
+                -left_parameters.distance),
+            get_absolute_size(left_parameters),
+            left_parameters.texture_f),
         sph.cpu_sphere(
-            (right_distance * distance_to_offset, 0, -right_distance),
-            right_distance * distance_to_radius))
+            vec.c3f(
+                right_parameters.distance * distance_to_offset,
+                0,
+                -right_parameters.distance),
+            get_absolute_size(right_parameters),
+            right_parameters.texture_f))
 
-def one_rect_world(distance: float=10.0, r_size=20.0):
-    """Makes a world with one rectangle at (0, 0, -distance).
+def one_rect_world(
+    parameters: ShapeParameters = ShapeParameters()
+) -> World:
+    """Makes a world with one rectangle on the z axis.
 
     Args:
-        distance: How far away from the origin the rectangle should be.
-        r_size: How large should the rectangle be in degrees of fov.
+        parameters: The parameters for the rectangle.
 
     Returns:
-        A world with one rectangle at (0, 0, -distance)."""
-    radius = distance * math.tan(math.radians(r_size / 2))
-    return World(rec.cpu_rectangle(-radius, radius, -radius, radius, -distance))
+        A world with one rectangle on the z axis."""
 
-def two_rect_world(left_distance: float=20.0, right_distance: float=5.0):
+    size = get_absolute_size(parameters)
+
+    return World(
+        rec.cpu_rectangle(
+            -size, size, -size, size, -parameters.distance, parameters.texture_f))
+
+def two_rect_world(
+    left_parameters: ShapeParameters = ShapeParameters(20.),
+    right_parameters: ShapeParameters = ShapeParameters(5.)
+) -> World:
     """Makes a world with rectangles at different distances on the left and right.
 
     Args:
-        left_distance: How far away from the origin the left rectangle should be.
-        right_distance: How far away from the origin the right rectangle should be.
+        left_parameters: The parameters for the left rectangle.
+        right_parameters: The parameters for the right rectangle.
 
     Returns:
         A world with rectangles at different distances on the left and right."""
-    distance_to_radius = math.tan(math.radians(10))
+
     distance_to_offset = math.tan(math.radians(15))
 
-    left_offset = left_distance * distance_to_offset
-    left_radius = left_distance * distance_to_radius
+    left_offset = left_parameters.distance * distance_to_offset
+    left_size = get_absolute_size(left_parameters)
 
-    right_offset = right_distance * distance_to_offset
-    right_radius = right_distance * distance_to_radius
+    right_offset = right_parameters.distance * distance_to_offset
+    right_size = get_absolute_size(right_parameters)
 
     return World(
         rec.cpu_rectangle(
-            -left_offset - left_radius,
-            -left_offset + left_radius,
-            -left_radius,
-            left_radius,
-            -left_distance),
+            -left_offset - left_size,
+            -left_offset + left_size,
+            -left_size,
+            left_size,
+            -left_parameters.distance,
+            left_parameters.texture_f),
         rec.cpu_rectangle(
-            right_offset - right_radius,
-            right_offset + right_radius,
-            -right_radius,
-            right_radius,
-            -right_distance))
+            right_offset - right_size,
+            right_offset + right_size,
+            -right_size,
+            right_size,
+            -right_parameters.distance,
+            right_parameters.texture_f))
 
-def mixed_world(left_distance: float=5.0, right_distance: float=10.0):
-    """Makes a world with shapes at different distances on the left and right.
+def mixed_world(
+    left_parameters: ShapeParameters = ShapeParameters(5.),
+    right_parameters: ShapeParameters = ShapeParameters()
+) -> World:
+    """Makes a world with a sphere on the left at a different distance from the rectangle
+        on the right.
 
     Args:
-        left_distance: How far away from the origin the left sphere should be.
-        right_distance: How far away from the origin the right rectangle should be.
+        left_parameters: The parameters for the left sphere.
+        right_parameters: The parameters for the right sphere.
 
     Returns:
-        A world with shapes at different distances on the left and right."""
-    distance_to_radius = math.tan(math.radians(10))
+        A world with a sphere on the left at a different distance from the rectangle on
+            the right."""
+
     distance_to_offset = math.tan(math.radians(15))
 
-    right_offset = right_distance * distance_to_offset
-    right_radius = right_distance * distance_to_radius
+    left_size = get_absolute_size(left_parameters)
+
+    right_offset = right_parameters.distance * distance_to_offset
+    right_size = get_absolute_size(right_parameters)
 
     return World(
         sph.cpu_sphere(
-            (-left_distance * distance_to_offset, 0, -left_distance),
-            left_distance * distance_to_radius),
+            vec.c3f(
+                -left_parameters.distance * distance_to_offset,
+                0,
+                -left_parameters.distance),
+            left_size,
+            left_parameters.texture_f),
         rec.cpu_rectangle(
-            right_offset - right_radius,
-            right_offset + right_radius,
-            -right_radius,
-            right_radius,
-            -right_distance))
+            right_offset - right_size,
+            right_offset + right_size,
+            -right_size,
+            right_size,
+            -right_parameters.distance,
+            right_parameters.texture_f))
