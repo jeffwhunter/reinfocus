@@ -16,15 +16,17 @@ from reinfocus.graphics import vector as vec
 from reinfocus.graphics import world as wor
 from tests.graphics import numba_test_utils as ntu
 
+
 class PhysicsTest(CUDATestCase):
-    """TestCases for reinfocus.graphics.physics."""
     # pylint: disable=no-value-for-parameter
+    """TestCases for reinfocus.graphics.physics."""
 
     def test_random_in_unit_sphere(self):
         """Tests that random_in_unit_sphere makes 3D GPU vectors in the unit sphere."""
+
         @cuda.jit
         def sample_from_sphere(target, random_states):
-            i = cuda.grid(1) # type: ignore
+            i = cuda.grid(1)  # type: ignore
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(phy.random_in_unit_sphere(random_states, i))
 
@@ -32,42 +34,46 @@ class PhysicsTest(CUDATestCase):
 
         cpu_array = ntu.cpu_target(nrow=tests)
 
-        sample_from_sphere[tests, 1]( # type: ignore
-            cpu_array,
-            create_xoroshiro128p_states(tests, seed=0))
+        sample_from_sphere[tests, 1](  # type: ignore
+            cpu_array, create_xoroshiro128p_states(tests, seed=0)
+        )
 
         tu.arrays_close(
-            self,
-            np.sum(np.abs(cpu_array) ** 2, axis=-1) ** .5 < 1.0,
-            np.ones(tests))
+            self, np.sum(np.abs(cpu_array) ** 2, axis=-1) ** 0.5 < 1.0, np.ones(tests)
+        )
 
     def test_colour_checkerboard(self):
         """Tests that colour_checkerboard produces the expected colours for different
-            frequencies and positions."""
+        frequencies and positions."""
+
         @cuda.jit
         def checkerboard_colour_points(target, f, p):
-            i = cuda.grid(1) # type: ignore
+            i = cuda.grid(1)  # type: ignore
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(
-                    phy.colour_checkerboard(vec.c2f_to_g2f(f[i]), vec.c2f_to_g2f(p[i])))
+                    phy.colour_checkerboard(vec.c2f_to_g2f(f[i]), vec.c2f_to_g2f(p[i]))
+                )
 
         tests = cuda.to_device(
-            np.array([
-                [vec.c2f(1, 1), vec.c2f(.25, .25)],
-                [vec.c2f(1, 1), vec.c2f(.25, .75)],
-                [vec.c2f(1, 1), vec.c2f(.75, .25)],
-                [vec.c2f(1, 1), vec.c2f(.75, .75)],
-                [vec.c2f(2, 2), vec.c2f(.25, .25)],
-                [vec.c2f(2, 2), vec.c2f(.25, .75)],
-                [vec.c2f(2, 2), vec.c2f(.75, .25)],
-                [vec.c2f(2, 2), vec.c2f(.75, .75)]]))
+            np.array(
+                [
+                    [vec.c2f(1, 1), vec.c2f(0.25, 0.25)],
+                    [vec.c2f(1, 1), vec.c2f(0.25, 0.75)],
+                    [vec.c2f(1, 1), vec.c2f(0.75, 0.25)],
+                    [vec.c2f(1, 1), vec.c2f(0.75, 0.75)],
+                    [vec.c2f(2, 2), vec.c2f(0.25, 0.25)],
+                    [vec.c2f(2, 2), vec.c2f(0.25, 0.75)],
+                    [vec.c2f(2, 2), vec.c2f(0.75, 0.25)],
+                    [vec.c2f(2, 2), vec.c2f(0.75, 0.75)],
+                ]
+            )
+        )
 
         cpu_array = ntu.cpu_target(nrow=len(tests))
 
-        checkerboard_colour_points[len(tests), 1]( # type: ignore
-            cpu_array,
-            tests[:, 0],
-            tests[:, 1])
+        checkerboard_colour_points[len(tests), 1](  # type: ignore
+            cpu_array, tests[:, 0], tests[:, 1]
+        )
 
         tu.arrays_close(
             self,
@@ -80,123 +86,148 @@ class PhysicsTest(CUDATestCase):
                 [1, 0, 0],
                 [0, 1, 0],
                 [0, 1, 0],
-                [1, 0, 0]])
+                [1, 0, 0],
+            ],
+        )
 
     def test_scatter_with_rectangles(self):
         """Tests that scatter scatters a rectangle hit in the expected way."""
+
         @cuda.jit
         def scatter_with_rectangle(target, random_states):
-            i = cuda.grid(1) # type: ignore
+            i = cuda.grid(1)  # type: ignore
             if i < target.size:
                 target[i] = ntu.flatten_coloured_ray(
                     phy.scatter(
                         hit.gpu_hit_record(
                             vec.g3f(0, 0, 0),
                             vec.g3f(0, 0, 1),
-                            1.,
-                            vec.g2f(2 ** -4, 2 ** -4),
-                            vec.g2f(1., 1.),
-                            sha.RECTANGLE),
+                            1.0,
+                            vec.g2f(2**-4, 2**-4),
+                            vec.g2f(1.0, 1.0),
+                            sha.RECTANGLE,
+                        ),
                         random_states,
-                        i))
+                        i,
+                    )
+                )
 
         cpu_array = ntu.cpu_target(ndim=9)
 
-        scatter_with_rectangle[1, 1]( # type: ignore
-            cpu_array,
-            create_xoroshiro128p_states(1, seed=0))
+        scatter_with_rectangle[1, 1](  # type: ignore
+            cpu_array, create_xoroshiro128p_states(1, seed=0)
+        )
 
-        tu.arrays_close(self, cpu_array[0, 0 : 3], [0, 0, 0])
+        tu.arrays_close(self, cpu_array[0, 0:3], [0, 0, 0])
         self.assertTrue(
-            np.sum(np.abs(cpu_array[0, 3 : 6] - np.array([0, 0, 1])) ** 2) ** .5 < 1.)
-        tu.arrays_close(self, cpu_array[0, 6 : 9], [1, 0, 0])
+            np.sum(np.abs(cpu_array[0, 3:6] - np.array([0, 0, 1])) ** 2) ** 0.5 < 1.0
+        )
+        tu.arrays_close(self, cpu_array[0, 6:9], [1, 0, 0])
 
     def test_scatter_with_spheres(self):
         """Tests that scatter scatters a sphere hit in the expected way."""
+
         @cuda.jit
         def scatter_with_sphere(target, random_states):
-            i = cuda.grid(1) # type: ignore
+            i = cuda.grid(1)  # type: ignore
             if i < target.size:
                 target[i] = ntu.flatten_coloured_ray(
                     phy.scatter(
                         hit.gpu_hit_record(
                             vec.g3f(0, 0, 1),
                             vec.g3f(0, 0, 1),
-                            1.,
-                            vec.g2f(2 ** -7, 2 ** -6),
-                            vec.g2f(1., 1.),
-                            sha.SPHERE),
+                            1.0,
+                            vec.g2f(2**-7, 2**-6),
+                            vec.g2f(1.0, 1.0),
+                            sha.SPHERE,
+                        ),
                         random_states,
-                        i))
+                        i,
+                    )
+                )
 
         cpu_array = ntu.cpu_target(ndim=9)
 
-        scatter_with_sphere[1, 1]( # type: ignore
-            cpu_array,
-            create_xoroshiro128p_states(1, seed=0))
+        scatter_with_sphere[1, 1](  # type: ignore
+            cpu_array, create_xoroshiro128p_states(1, seed=0)
+        )
 
-        tu.arrays_close(self, cpu_array[0, 0 : 3], [0, 0, 1])
+        tu.arrays_close(self, cpu_array[0, 0:3], [0, 0, 1])
         self.assertTrue(
-            np.sum(np.abs(cpu_array[0, 3 : 6] - np.array([0, 0, 1])) ** 2) ** .5 < 1.)
-        tu.arrays_close(self, cpu_array[0, 6 : 9], [1, 0, 0])
+            np.sum(np.abs(cpu_array[0, 3:6] - np.array([0, 0, 1])) ** 2) ** 0.5 < 1.0
+        )
+        tu.arrays_close(self, cpu_array[0, 6:9], [1, 0, 0])
 
     def test_find_colour_with_rectangles(self):
-        """Tests that find_colour finds the expected colour when we fire a ray at a rectangle."""
+        """Tests that find_colour finds the expected colour when we fire a ray at a
+        rectangle."""
+
         @cuda.jit
         def find_rectangle_colour(target, random_states, shapes_parameters, shapes_types):
-            i = cuda.grid(1) # type: ignore
+            i = cuda.grid(1)  # type: ignore
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(
                     phy.find_colour(
                         shapes_parameters,
                         shapes_types,
                         ray.gpu_ray(
-                            vec.g3f(-2 ** -4, -2 ** -4, 0),
-                            vec.g3f(-2 ** -4, -2 ** -4, 1)),
+                            vec.g3f(-(2**-4), -(2**-4), 0),
+                            vec.g3f(-(2**-4), -(2**-4), 1),
+                        ),
                         random_states,
-                        i))
+                        i,
+                    )
+                )
 
         cpu_array = ntu.cpu_target()
 
         world = wor.World(rec.cpu_rectangle(-1, 1, -1, 1, 1))
 
-        find_rectangle_colour[1, 1]( # type: ignore
+        find_rectangle_colour[1, 1](  # type: ignore
             cpu_array,
             create_xoroshiro128p_states(1, seed=0),
             world.device_shape_parameters(),
-            world.device_shape_types())
+            world.device_shape_types(),
+        )
 
-        self.assertTrue(0 < cpu_array[0, 0] <= 1.)
-        tu.arrays_close(self, cpu_array[0, 1 : 3], [0, 0])
+        self.assertTrue(0 < cpu_array[0, 0] <= 1.0)
+        tu.arrays_close(self, cpu_array[0, 1:3], [0, 0])
 
     def test_find_colour_with_spheres(self):
-        """Tests that find_colour finds the expected colour when we fire a ray at a sphere."""
+        """Tests that find_colour finds the expected colour when we fire a ray at a
+        sphere."""
+
         @cuda.jit
         def find_sphere_colour(target, random_states, shapes_parameters, shapes_types):
-            i = cuda.grid(1) # type: ignore
+            i = cuda.grid(1)  # type: ignore
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(
                     phy.find_colour(
                         shapes_parameters,
                         shapes_types,
                         ray.gpu_ray(
-                            vec.g3f(-2 ** -7, -2 ** -6, 0),
-                            vec.g3f(-2 ** -7, -2 ** -6, 1)),
+                            vec.g3f(-(2**-7), -(2**-6), 0),
+                            vec.g3f(-(2**-7), -(2**-6), 1),
+                        ),
                         random_states,
-                        i))
+                        i,
+                    )
+                )
 
         cpu_array = ntu.cpu_target()
 
         world = wor.World(sph.cpu_sphere(vec.c3f(0, 0, 10), 1))
 
-        find_sphere_colour[1, 1]( # type: ignore
+        find_sphere_colour[1, 1](  # type: ignore
             cpu_array,
             create_xoroshiro128p_states(1, seed=0),
             world.device_shape_parameters(),
-            world.device_shape_types())
+            world.device_shape_types(),
+        )
 
-        self.assertTrue(0 < cpu_array[0, 1] <= 1.)
+        self.assertTrue(0 < cpu_array[0, 1] <= 1.0)
         tu.arrays_close(self, cpu_array[0, ::2], [0, 0])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

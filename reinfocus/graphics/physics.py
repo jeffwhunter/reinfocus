@@ -14,11 +14,9 @@ from reinfocus.graphics import world as wor
 
 GpuColouredRay = Tuple[ray.GpuRay, vec.G3F]
 
+
 @cuda.jit
-def random_in_unit_sphere(
-    random_states: cda.DeviceNDArray,
-    pixel_index: int
-) -> vec.G3F:
+def random_in_unit_sphere(random_states: cda.DeviceNDArray, pixel_index: int) -> vec.G3F:
     """Returns a 3D GPU vector somewhere in the unit sphere.
 
     Args:
@@ -27,17 +25,22 @@ def random_in_unit_sphere(
 
     Returns:
         A 3D GPU vector somewhere in the unit sphere."""
+
     while True:
         p = vec.sub_g3f(
             vec.smul_g3f(
                 vec.g3f(
-                    xoroshiro128p_uniform_float32(random_states, pixel_index), # type: ignore
-                    xoroshiro128p_uniform_float32(random_states, pixel_index), # type: ignore
-                    xoroshiro128p_uniform_float32(random_states, pixel_index)), # type: ignore
-                2.0),
-            vec.g3f(1, 1, 1))
+                    xoroshiro128p_uniform_float32(random_states, pixel_index),  # type: ignore
+                    xoroshiro128p_uniform_float32(random_states, pixel_index),  # type: ignore
+                    xoroshiro128p_uniform_float32(random_states, pixel_index),  # type: ignore
+                ),
+                2.0,
+            ),
+            vec.g3f(1, 1, 1),
+        )
         if vec.squared_length_g3f(p) < 1.0:
             return p
+
 
 @cuda.jit
 def colour_checkerboard(uf: vec.G2F, uv: vec.G2F) -> vec.G3F:
@@ -49,16 +52,17 @@ def colour_checkerboard(uf: vec.G2F, uv: vec.G2F) -> vec.G3F:
 
     Returns:
         The frequency f checkerboard colour of uv."""
+
     return (
         vec.g3f(1, 0, 0)
-        if math.sin(uf.x * math.pi * uv.x) * math.sin(uf.y * math.pi * uv.y) > 0 else
-        vec.g3f(0, 1, 0))
+        if math.sin(uf.x * math.pi * uv.x) * math.sin(uf.y * math.pi * uv.y) > 0
+        else vec.g3f(0, 1, 0)
+    )
+
 
 @cuda.jit
 def scatter(
-    record: hit.GpuHitRecord,
-    random_states: cda.DeviceNDArray,
-    pixel_index: int
+    record: hit.GpuHitRecord, random_states: cda.DeviceNDArray, pixel_index: int
 ) -> GpuColouredRay:
     """Returns a new ray and colour pair that results from the hit described by record.
 
@@ -74,8 +78,11 @@ def scatter(
     return (
         ray.gpu_ray(
             record[hit.P],
-            vec.add_g3f(record[hit.N], random_in_unit_sphere(random_states, pixel_index))),
-        colour_checkerboard(record[hit.UF], record[hit.UV]))
+            vec.add_g3f(record[hit.N], random_in_unit_sphere(random_states, pixel_index)),
+        ),
+        colour_checkerboard(record[hit.UF], record[hit.UV]),
+    )
+
 
 @cuda.jit
 def find_colour(
@@ -83,7 +90,7 @@ def find_colour(
     shapes_types: sha.GpuShapeTypes,
     r: ray.GpuRay,
     random_states: cda.DeviceNDArray,
-    pixel_index: int
+    pixel_index: int,
 ) -> vec.G3F:
     """Returns the colour picked up by r as it bounces around the world defined by
         shapes_parameters and shapes_types.
@@ -98,16 +105,14 @@ def find_colour(
     Returns:
         The colour picked up by r as it bounced around the world defined by
         shapes_parameters and shapes_types."""
+
     current_ray = r
     current_attenuation = vec.g3f(1, 1, 1)
 
     for _ in range(50):
         did_hit, record = wor.gpu_hit_world(
-            shapes_parameters,
-            shapes_types,
-            current_ray,
-            0.001,
-            1000000.0)
+            shapes_parameters, shapes_types, current_ray, 0.001, 1000000.0
+        )
         if did_hit:
             current_ray, attenuation = scatter(record, random_states, pixel_index)
 
@@ -118,7 +123,9 @@ def find_colour(
             return vec.vmul_g3f(
                 vec.add_g3f(
                     vec.smul_g3f(vec.g3f(1, 1, 1), 1.0 - t),
-                    vec.smul_g3f(vec.g3f(.5, .7, 1), t)),
-                current_attenuation)
+                    vec.smul_g3f(vec.g3f(0.5, 0.7, 1), t),
+                ),
+                current_attenuation,
+            )
 
     return vec.g3f(0, 0, 0)

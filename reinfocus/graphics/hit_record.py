@@ -6,7 +6,7 @@ import numba as nb
 from numba import cuda
 from reinfocus.graphics import vector as vec
 
-GpuHitRecord = Tuple[vec.G3F, vec.G3F, nb.float32, vec.G2F, vec.G2F, nb.float32] # type: ignore
+GpuHitRecord = Tuple[vec.G3F, vec.G3F, nb.float32, vec.G2F, vec.G2F, nb.float32]  # type: ignore
 
 P = 0
 N = 1
@@ -15,28 +15,27 @@ UV = 3
 UF = 4
 M = 5
 
+
 @cuda.jit
 def gpu_empty_hit_record() -> GpuHitRecord:
     """Makes an empty hit record on the GPU.
 
     Returns:
         An GPU representation of a ray not hitting anything."""
+
     return (
         vec.empty_g3f(),
         vec.empty_g3f(),
         nb.float32(0),
         vec.empty_g2f(),
         vec.empty_g2f(),
-        nb.float32(0))
+        nb.float32(0),
+    )
+
 
 @cuda.jit
 def gpu_hit_record(
-    p: vec.G3F,
-    n: vec.G3F,
-    t: float,
-    uv: vec.G2F,
-    uf: vec.G2F,
-    m: float
+    p: vec.G3F, n: vec.G3F, t: float, uv: vec.G2F, uf: vec.G2F, m: float
 ) -> GpuHitRecord:
     """Makes a hit record on the GPU.
 
@@ -50,4 +49,5 @@ def gpu_hit_record(
 
     Returns:
         A GPU representation of a ray tracer hit."""
+
     return (p, n, t, uv, uf, m)

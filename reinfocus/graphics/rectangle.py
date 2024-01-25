@@ -15,13 +15,14 @@ Z_POS = 4
 FX = 5
 FY = 6
 
+
 def cpu_rectangle(
     x_min: float,
     x_max: float,
     y_min: float,
     y_max: float,
     z_pos: float,
-    texture: vec.C2F = vec.c2f(16, 16)
+    texture: vec.C2F = vec.c2f(16, 16),
 ) -> sha.CpuShape:
     """Makes a representation of a z-aligned rectangle suitable for transfer to the GPU.
 
@@ -35,19 +36,23 @@ def cpu_rectangle(
 
     Returns:
         A z-aligned rectangle that's easy to transfer to a GPU."""
+
     return sha.CpuShape(
         np.array([x_min, x_max, y_min, y_max, z_pos, *texture], dtype=np.float32),
-        sha.RECTANGLE)
+        sha.RECTANGLE,
+    )
+
 
 @cuda.jit
 def gpu_hit_rectangle(
     rectangle_parameters: sha.GpuShapeParameters,
     r: ray.GpuRay,
     t_min: float,
-    t_max: float
+    t_max: float,
 ) -> sha.GpuHitResult:
     """Determines if the ray r hits the z-aligned rectangle defined byrectangle_parameters
-        between t_min and t_max, returning a hit_record contraining the details if it does.
+        between t_min and t_max, returning a hit_record contraining the details if it
+        does.
 
     Args:
         rectangle_parameters: The left, right, bottom, and top of the rectangle, then the
@@ -61,8 +66,8 @@ def gpu_hit_rectangle(
     Returns:
         A GpuHitResult where the first element is True if a hit happened, while the
             second element is a GpuHitRecord with the details of the hit, which
-            is empty if there was no hit.
-    """
+            is empty if there was no hit."""
+
     t = (rectangle_parameters[Z_POS] - r[ray.ORIGIN].z) / r[ray.DIRECTION].z
 
     if t < t_min or t > t_max:
@@ -86,18 +91,17 @@ def gpu_hit_rectangle(
             t,
             gpu_rectangle_uv(vec.g2f(p.x, p.y), x_min, x_max, y_min, y_max),
             vec.g2f(rectangle_parameters[FX], rectangle_parameters[FY]),
-            sha.RECTANGLE))
+            sha.RECTANGLE,
+        ),
+    )
+
 
 @cuda.jit
 def gpu_rectangle_uv(
-    point: vec.G2F,
-    x_min: float,
-    x_max: float,
-    y_min: float,
-    y_max: float
+    point: vec.G2F, x_min: float, x_max: float, y_min: float, y_max: float
 ) -> vec.G2F:
     """Returns the texture coordinate of point in the rectangle [x|y]_[max|min].
-    
+
     Args:
         point: A G2F on the [x|y]_[min|max] rectangle.
         x_min: The lower extent of the rectangle in the x direction.
@@ -107,6 +111,7 @@ def gpu_rectangle_uv(
 
     Returns:
         A G2F with the texture coordinates of that point."""
+
     return vec.g2f(
-        (point.x - x_min) / (x_max - x_min),
-        (point.y - y_min) / (y_max - y_min))
+        (point.x - x_min) / (x_max - x_min), (point.y - y_min) / (y_max - y_min)
+    )

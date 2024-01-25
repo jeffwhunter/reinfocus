@@ -13,8 +13,10 @@ from reinfocus.graphics import shape as sha
 from reinfocus.graphics import sphere as sph
 from reinfocus.graphics import vector as vec
 
+
 class World:
     """Represents the world of a ray tracer in a way easy to transfer to the GPU."""
+
     def __init__(self, *shapes: sha.CpuShape):
         self.shapes = shapes
         self.__device_shape_parameters = self.__make_device_shape_parameters()
@@ -25,12 +27,13 @@ class World:
 
         Returns:
             A device array containing the parameters of each shape in this world."""
-        parameters = np.zeros(shape=(
-            len(self.shapes),
-            max(len(shape.parameters) for shape in self.shapes)))
+
+        parameters = np.zeros(
+            shape=(len(self.shapes), max(len(shape.parameters) for shape in self.shapes))
+        )
 
         for i, shape in enumerate(self.shapes):
-            parameters[i, :len(shape.parameters)] = shape.parameters
+            parameters[i, : len(shape.parameters)] = shape.parameters
 
         return cuda.to_device(parameters)
 
@@ -39,6 +42,7 @@ class World:
 
         Returns:
             A device array containing the parameters of each shape in this world."""
+
         return self.__device_shape_parameters
 
     def __make_device_shape_types(self) -> cda.DeviceNDArray:
@@ -46,6 +50,7 @@ class World:
 
         Returns:
             A device array containing the type of each shape in this world."""
+
         return cuda.to_device(np.array([shape.type for shape in self.shapes]))
 
     def device_shape_types(self) -> cda.DeviceNDArray:
@@ -53,7 +58,9 @@ class World:
 
         Returns:
             A device array containing the type of each shape in this world."""
+
         return self.__device_shape_types
+
 
 @cuda.jit
 def gpu_hit_world(
@@ -61,7 +68,7 @@ def gpu_hit_world(
     shapes_types: cda.DeviceNDArray,
     r: ray.GpuRay,
     t_min: float,
-    t_max: float
+    t_max: float,
 ) -> sha.GpuHitResult:
     """Determines if the ray r hits any of the shapes defined by shape_parameters between
         t_min and t_max, according to their types in shapes_types, returning a hit_record
@@ -78,6 +85,7 @@ def gpu_hit_world(
         A GpuHitResult where the first element is True if a hit happened, while the second
             element is a GpuHitRecord with the details of the hit, which is empty if there
             was no hit."""
+
     hit_anything = False
     closest_so_far = t_max
     record = hit.gpu_empty_hit_record()
@@ -87,16 +95,12 @@ def gpu_hit_world(
 
         if shape_type == sha.SPHERE:
             h, temp_record = sph.gpu_hit_sphere(
-                shape_parameters,
-                r,
-                t_min,
-                closest_so_far)
+                shape_parameters, r, t_min, closest_so_far
+            )
         else:
             h, temp_record = rec.gpu_hit_rectangle(
-                shape_parameters,
-                r,
-                t_min,
-                closest_so_far)
+                shape_parameters, r, t_min, closest_so_far
+            )
 
         if h:
             hit_anything = True
@@ -104,6 +108,7 @@ def gpu_hit_world(
             record = temp_record
 
     return hit_anything, record
+
 
 class ShapeParameters(typing.NamedTuple):
     """Defines all the necessary information for a shape in one of these worlds.
@@ -114,10 +119,11 @@ class ShapeParameters(typing.NamedTuple):
         r_size: How many degrees of FOV this object should take up when size is zero.
         texture_f: How often the checkerboard of this object changes in x and y."""
 
-    distance: float = 10.
-    size: float = 0.
-    r_size: float = 20.
+    distance: float = 10.0
+    size: float = 0.0
+    r_size: float = 20.0
     texture_f: tuple[int, int] = (16, 16)
+
 
 def get_absolute_size(parameters: ShapeParameters) -> float:
     """Returns the actual size of a shape defined with parameters.
@@ -128,14 +134,13 @@ def get_absolute_size(parameters: ShapeParameters) -> float:
     Returns:
         The actual size of some shape defined by parameters."""
 
-    if parameters.size != 0.:
+    if parameters.size != 0.0:
         return parameters.size
 
     return parameters.distance * math.tan(math.radians(parameters.r_size / 2))
 
-def one_sphere_world(
-    parameters: ShapeParameters = ShapeParameters()
-) -> World:
+
+def one_sphere_world(parameters: ShapeParameters = ShapeParameters()) -> World:
     """Makes a world with one sphere on the z axis.
 
     Args:
@@ -148,11 +153,14 @@ def one_sphere_world(
         sph.cpu_sphere(
             vec.c3f(0, 0, -parameters.distance),
             get_absolute_size(parameters),
-            parameters.texture_f))
+            parameters.texture_f,
+        )
+    )
+
 
 def two_sphere_world(
-    left_parameters: ShapeParameters = ShapeParameters(20.),
-    right_parameters: ShapeParameters = ShapeParameters(5.)
+    left_parameters: ShapeParameters = ShapeParameters(20.0),
+    right_parameters: ShapeParameters = ShapeParameters(5.0),
 ) -> World:
     """Makes a world with spheres at different distances on the left and right.
 
@@ -170,20 +178,24 @@ def two_sphere_world(
             vec.c3f(
                 -left_parameters.distance * distance_to_offset,
                 0,
-                -left_parameters.distance),
+                -left_parameters.distance,
+            ),
             get_absolute_size(left_parameters),
-            left_parameters.texture_f),
+            left_parameters.texture_f,
+        ),
         sph.cpu_sphere(
             vec.c3f(
                 right_parameters.distance * distance_to_offset,
                 0,
-                -right_parameters.distance),
+                -right_parameters.distance,
+            ),
             get_absolute_size(right_parameters),
-            right_parameters.texture_f))
+            right_parameters.texture_f,
+        ),
+    )
 
-def one_rect_world(
-    parameters: ShapeParameters = ShapeParameters()
-) -> World:
+
+def one_rect_world(parameters: ShapeParameters = ShapeParameters()) -> World:
     """Makes a world with one rectangle on the z axis.
 
     Args:
@@ -196,11 +208,14 @@ def one_rect_world(
 
     return World(
         rec.cpu_rectangle(
-            -size, size, -size, size, -parameters.distance, parameters.texture_f))
+            -size, size, -size, size, -parameters.distance, parameters.texture_f
+        )
+    )
+
 
 def two_rect_world(
-    left_parameters: ShapeParameters = ShapeParameters(20.),
-    right_parameters: ShapeParameters = ShapeParameters(5.)
+    left_parameters: ShapeParameters = ShapeParameters(20.0),
+    right_parameters: ShapeParameters = ShapeParameters(5.0),
 ) -> World:
     """Makes a world with rectangles at different distances on the left and right.
 
@@ -226,18 +241,22 @@ def two_rect_world(
             -left_size,
             left_size,
             -left_parameters.distance,
-            left_parameters.texture_f),
+            left_parameters.texture_f,
+        ),
         rec.cpu_rectangle(
             right_offset - right_size,
             right_offset + right_size,
             -right_size,
             right_size,
             -right_parameters.distance,
-            right_parameters.texture_f))
+            right_parameters.texture_f,
+        ),
+    )
+
 
 def mixed_world(
-    left_parameters: ShapeParameters = ShapeParameters(5.),
-    right_parameters: ShapeParameters = ShapeParameters()
+    left_parameters: ShapeParameters = ShapeParameters(5.0),
+    right_parameters: ShapeParameters = ShapeParameters(),
 ) -> World:
     """Makes a world with a sphere on the left at a different distance from the rectangle
         on the right.
@@ -262,13 +281,17 @@ def mixed_world(
             vec.c3f(
                 -left_parameters.distance * distance_to_offset,
                 0,
-                -left_parameters.distance),
+                -left_parameters.distance,
+            ),
             left_size,
-            left_parameters.texture_f),
+            left_parameters.texture_f,
+        ),
         rec.cpu_rectangle(
             right_offset - right_size,
             right_offset + right_size,
             -right_size,
             right_size,
             -right_parameters.distance,
-            right_parameters.texture_f))
+            right_parameters.texture_f,
+        ),
+    )

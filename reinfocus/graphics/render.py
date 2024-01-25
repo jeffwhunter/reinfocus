@@ -15,14 +15,16 @@ from reinfocus.graphics import world as wor
 
 GpuFrame = cda.DeviceNDArray
 
+
 @cuda.jit
 def device_render(
     frame: GpuFrame,
     camera: cam.CpuCamera,
     samples_per_pixel: int,
     random_states: cda.DeviceNDArray,
-    shapes: sha.GpuShapes
+    shapes: sha.GpuShapes,
 ):
+    # pylint: disable=no-value-for-parameter,comparison-with-callable
     """Uses the GPU to ray trace an image of the world defined in shapes into frame using
         camera's view.
 
@@ -32,9 +34,8 @@ def device_render(
         samples_per_pixel: How many rays to fire per pixel.
         random_states: An array of RNG states.
         shapes: The shapes to render."""
-    # pylint: disable=no-value-for-parameter,comparison-with-callable
 
-    y, x = cuda.grid(2) # type: ignore
+    y, x = cuda.grid(2)  # type: ignore
 
     height, width = frame.shape[:2]
 
@@ -54,13 +55,12 @@ def device_render(
         colour = vec.add_g3f(
             colour,
             phy.find_colour(
-                shapes[sha.PARAMETERS],
-                shapes[sha.TYPES],
-                r,
-                random_states,
-                pixel_index))
+                shapes[sha.PARAMETERS], shapes[sha.TYPES], r, random_states, pixel_index
+            ),
+        )
 
     frame[y, x] = vec.g3f_to_c3f(vec.div_g3f(colour, samples_per_pixel))
+
 
 def make_device_frame(x: int, y: int) -> cda.DeviceNDArray:
     """Returns an empty image of shape frame_shape in GPU memory.
@@ -71,14 +71,16 @@ def make_device_frame(x: int, y: int) -> cda.DeviceNDArray:
 
     Returns:
         An empty image of shape frame_shape in GPU memory."""
-    return cuda.to_device([[(np.float32(0), ) * 3] * y] * x)
+
+    return cuda.to_device([[(np.float32(0),) * 3] * y] * x)
+
 
 def render(
     frame_shape=(300, 600),
     block_shape=(16, 16),
     world=wor.mixed_world(),
     samples_per_pixel=100,
-    focus_distance=10.0
+    focus_distance=10.0,
 ) -> npt.NDArray:
     """Returns a ray traced image, focused on a plane at focus_distance, of world, made
         on the GPU, to the CPU.
@@ -92,22 +94,21 @@ def render(
 
     Returns:
         A ray traced image, focused on a plane at focus_distance, of world."""
+
     d_frame = make_device_frame(*frame_shape)
 
-    device_render[ # type: ignore
-        tuple(math.ceil(f / b) for f, b in zip(frame_shape, block_shape)),
-        block_shape
+    device_render[  # type: ignore
+        tuple(math.ceil(f / b) for f, b in zip(frame_shape, block_shape)), block_shape
     ](
         d_frame,
         cam.cpu_camera(
-            cam.CameraOrientation(
-                vec.c3f(0, 0, -10),
-                vec.c3f(0, 0, 0),
-                vec.c3f(0, 1, 0)),
+            cam.CameraOrientation(vec.c3f(0, 0, -10), vec.c3f(0, 0, 0), vec.c3f(0, 1, 0)),
             cam.CameraView(frame_shape[1] / frame_shape[0], 30.0),
-            cam.CameraLens(0.1, focus_distance)),
+            cam.CameraLens(0.1, focus_distance),
+        ),
         samples_per_pixel,
         create_xoroshiro128p_states(frame_shape[0] * frame_shape[1], seed=0),
-        (world.device_shape_parameters(), world.device_shape_types()))
+        (world.device_shape_parameters(), world.device_shape_types()),
+    )
 
     return d_frame.copy_to_host()

@@ -16,10 +16,9 @@ R = 3
 FX = 4
 FY = 5
 
+
 def cpu_sphere(
-    centre: vec.C3F,
-    radius: float,
-    texture: vec.C2F = vec.c2f(16, 16)
+    centre: vec.C3F, radius: float, texture: vec.C2F = vec.c2f(16, 16)
 ) -> sha.CpuShape:
     """Makes a representation of a sphere suitable for transfer to the GPU.
 
@@ -32,15 +31,13 @@ def cpu_sphere(
         A sphere that's easy to transfer to a GPU."""
 
     return sha.CpuShape(
-        np.array([*centre, radius, *texture], dtype=np.float32),
-        sha.SPHERE)
+        np.array([*centre, radius, *texture], dtype=np.float32), sha.SPHERE
+    )
+
 
 @cuda.jit
 def gpu_hit_sphere(
-    sphere_parameters: sha.GpuShapeParameters,
-    r: ray.GpuRay,
-    t_min: float,
-    t_max: float
+    sphere_parameters: sha.GpuShapeParameters, r: ray.GpuRay, t_min: float, t_max: float
 ) -> sha.GpuHitResult:
     """Determines if the ray r hits the sphere defined by sphere_parameters between
         t_min and t_max, returning a hit_record containing the details if it does.
@@ -58,7 +55,10 @@ def gpu_hit_sphere(
         A GpuHitResult where the first element is True if a hit happened, while the
             second element is a GpuHitRecord with the details of the hit, which
             is empty if there was no hit."""
-    sphere_centre = vec.g3f(sphere_parameters[X], sphere_parameters[Y], sphere_parameters[Z])
+
+    sphere_centre = vec.g3f(
+        sphere_parameters[X], sphere_parameters[Y], sphere_parameters[Z]
+    )
     sphere_radius = sphere_parameters[R]
 
     oc = vec.sub_g3f(r[ray.ORIGIN], sphere_centre)
@@ -89,17 +89,21 @@ def gpu_hit_sphere(
             root,
             gpu_sphere_uv(n),
             vec.g2f(sphere_parameters[FX], sphere_parameters[FY]),
-            sha.SPHERE))
+            sha.SPHERE,
+        ),
+    )
+
 
 @cuda.jit
 def gpu_sphere_uv(point):
     """Returns the spherical texture coordinates of any point on the unit sphere.
-    
+
     Args:
         point: A G3F on the unit sphere.
-        
+
     Returns:
         A G2F with the texture coordinates of that point."""
+
     return vec.g2f(
-        (math.atan2(-point.z, point.x) + math.pi) / math.pi,
-        math.acos(-point.y) / math.pi)
+        (math.atan2(-point.z, point.x) + math.pi) / math.pi, math.acos(-point.y) / math.pi
+    )

@@ -22,12 +22,14 @@ TYPES = 1
 SPHERE = 0
 RECTANGLE = 1
 
+
 @dataclass
 class CpuShape:
     """Convenience class for transferring 'polymorphic' geometry to the GPU.
-    
+
     Args:
         parameters: The necessary parameters to bounce a ray off the shape.
         type: The 'polymorphic' type of the shape."""
+
     parameters: CpuShapeParameters
     type: int

@@ -10,25 +10,9 @@ from numba.cuda.random import xoroshiro128p_uniform_float32
 from reinfocus.graphics import ray
 from reinfocus.graphics import vector as vec
 
-CpuCamera = Tuple[
-    vec.C3F,
-    vec.C3F,
-    vec.C3F,
-    vec.C3F,
-    vec.C3F,
-    vec.C3F,
-    vec.C3F,
-    float]
+CpuCamera = Tuple[vec.C3F, vec.C3F, vec.C3F, vec.C3F, vec.C3F, vec.C3F, vec.C3F, float]
 
-GpuCamera = Tuple[
-    vec.G3F,
-    vec.G3F,
-    vec.G3F,
-    vec.G3F,
-    vec.G3F,
-    vec.G3F,
-    vec.G3F,
-    float]
+GpuCamera = Tuple[vec.G3F, vec.G3F, vec.G3F, vec.G3F, vec.G3F, vec.G3F, vec.G3F, float]
 
 LOWER_LEFT = 0
 HORIZONTAL = 1
@@ -39,6 +23,7 @@ CAM_V = 5
 CAM_W = 6
 LENS_RADIUS = 7
 
+
 @dataclass
 class CameraOrientation:
     """Represents the orientation of a 3D camera in space.
@@ -47,9 +32,11 @@ class CameraOrientation:
         look_at: The position the camera is looking at.
         look_from: The position of the camera.
         up: Which direction is up for the camera."""
+
     look_at: vec.C3F
     look_from: vec.C3F
     up: vec.C3F
+
 
 @dataclass
 class CameraView:
@@ -58,8 +45,10 @@ class CameraView:
     Args:
         aspect: Output image aspect ratio.
         vfov: Vertical field of view in degrees."""
+
     aspect: float
     vfov: float
+
 
 @dataclass
 class CameraLens:
@@ -68,18 +57,21 @@ class CameraLens:
     Args:
         aperture: How large the lens is.
         focus_dist: Distance from look_from of plane of perfect focus."""
+
     aperture: float
     focus_dist: float
+
 
 @cuda.jit
 def to_gpu_camera(camera: CpuCamera) -> GpuCamera:
     """Moves a camera from the GPU to the CPU.
-    
+
     Args:
         camera: The CPU representation of a camera.
 
     Returns:
         A GPU representation of that camera."""
+
     return (
         vec.c3f_to_g3f(camera[LOWER_LEFT]),
         vec.c3f_to_g3f(camera[HORIZONTAL]),
@@ -88,12 +80,12 @@ def to_gpu_camera(camera: CpuCamera) -> GpuCamera:
         vec.c3f_to_g3f(camera[CAM_U]),
         vec.c3f_to_g3f(camera[CAM_V]),
         vec.c3f_to_g3f(camera[CAM_W]),
-        camera[LENS_RADIUS])
+        camera[LENS_RADIUS],
+    )
+
 
 def cpu_camera(
-    orientation: CameraOrientation,
-    view: CameraView,
-    lens: CameraLens
+    orientation: CameraOrientation, view: CameraView, lens: CameraLens
 ) -> CpuCamera:
     """Makes a representation of a camera suitable for transfer to the GPU.
 
@@ -104,6 +96,7 @@ def cpu_camera(
 
     Returns:
         A CPU retresentation of a camera."""
+
     half_height = math.tan((view.vfov * math.pi / 180.0) / 2.0)
     half_width = view.aspect * half_height
     w = vec.norm_c3f(vec.sub_c3f(orientation.look_from, orientation.look_at))
@@ -116,20 +109,21 @@ def cpu_camera(
             vec.add3_c3f(
                 vec.smul_c3f(u, half_width * lens.focus_dist),
                 vec.smul_c3f(v, half_height * lens.focus_dist),
-                vec.smul_c3f(w, lens.focus_dist))),
+                vec.smul_c3f(w, lens.focus_dist),
+            ),
+        ),
         vec.smul_c3f(u, 2.0 * half_width * lens.focus_dist),
         vec.smul_c3f(v, 2.0 * half_height * lens.focus_dist),
         orientation.look_from,
         u,
         v,
         w,
-        lens.aperture / 2.0)
+        lens.aperture / 2.0,
+    )
+
 
 @cuda.jit
-def random_in_unit_disc(
-    random_states: cda.DeviceNDArray,
-    pixel_index: int
-) -> vec.G2F:
+def random_in_unit_disc(random_states: cda.DeviceNDArray, pixel_index: int) -> vec.G2F:
     """Returns a 2D GPU vector somewhere in the unit disc.
 
     Args:
@@ -138,14 +132,18 @@ def random_in_unit_disc(
 
     Returns:
         A 2D GPU vector somewhere in the unit disc."""
+
     while True:
         p = vec.sub_g2f(
             vec.smul_g2f(
                 vec.g2f(
-                    xoroshiro128p_uniform_float32(random_states, pixel_index), # type: ignore
-                    xoroshiro128p_uniform_float32(random_states, pixel_index)), # type: ignore
-                2.0),
-            vec.g2f(1, 1))
+                    xoroshiro128p_uniform_float32(random_states, pixel_index),  # type: ignore
+                    xoroshiro128p_uniform_float32(random_states, pixel_index),  # type: ignore
+                ),
+                2.0,
+            ),
+            vec.g2f(1, 1),
+        )
         if vec.dot_g2f(p, p) < 1.0:
             return p
 
@@ -156,7 +154,7 @@ def get_ray(
     s: float,
     t: float,
     random_states: cda.DeviceNDArray,
-    pixel_index: int
+    pixel_index: int,
 ) -> ray.GpuRay:
     """Returns a defocussed ray passing through camera pixel (s, t).
 
@@ -169,11 +167,15 @@ def get_ray(
 
     Returns:
         A ray shooting out of camera through (s, t)."""
-    rd = vec.smul_g2f(random_in_unit_disc(random_states, pixel_index), camera[LENS_RADIUS])
+
+    rd = vec.smul_g2f(
+        random_in_unit_disc(random_states, pixel_index), camera[LENS_RADIUS]
+    )
     offset_origin = vec.add3_g3f(
         camera[ORIGIN],
         vec.smul_g3f(camera[CAM_U], rd.x),
-        vec.smul_g3f(camera[CAM_V], rd.y))
+        vec.smul_g3f(camera[CAM_V], rd.y),
+    )
 
     return ray.gpu_ray(
         offset_origin,
@@ -181,5 +183,8 @@ def get_ray(
             vec.add3_g3f(
                 camera[LOWER_LEFT],
                 vec.smul_g3f(camera[HORIZONTAL], s),
-                vec.smul_g3f(camera[VERTICAL], t)),
-            offset_origin))
+                vec.smul_g3f(camera[VERTICAL], t),
+            ),
+            offset_origin,
+        ),
+    )
