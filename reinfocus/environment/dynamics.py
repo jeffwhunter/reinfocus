@@ -26,7 +26,7 @@ class Dynamics(abc.ABC, Generic[Action]):
         Args:
             action_space: The gymnasium action space these dynamics respond to.
             limits: The bounds of the state's elements.
-            update: Returns the next state that results from some action."""
+            update: Returns the change in state that results from some action."""
 
         self._space = action_space
         self._limits = limits
@@ -53,39 +53,73 @@ class Dynamics(abc.ABC, Generic[Action]):
         return self._space
 
 
+def make_continuous_update(speed: float) -> Callable[[numpy.float32], State]:
+    """Creates a function that returns how the state changes given some floating point
+    action.
+
+    Args:
+        speed: The fastest speed possible. How far a 1 or -1 will travel.
+
+    Returns:
+        A function that returns how the state changes given some floating point action."""
+
+    mask = numpy.array([0.0, 1.0], dtype=StateElement)
+
+    return lambda action: numpy.multiply(numpy.clip(action, -1.0, 1.0), speed) * mask
+
+
 def make_continuous_dynamics(
     limits: tuple[float, float], speed: float
 ) -> Dynamics[numpy.float32]:
     """Creates a dynamics system that moves between the limits at speed. Actions of 1 and
-    -1 move at the given speed towards the max and min limit, respectively. Actions
-    of 0 keep the state in the same place.
+    -1 move at the given speed towards the max and min limit, respectively. Actions of 0
+    keep the state in the same place.
 
     Args:
         limits: A tuple containing the lower and upper bound of the state's elements.
-        speed: How far a 1 or -1 will travel."""
+        speed: The fastest speed possible. How far a 1 or -1 will travel.
+
+    Returns: A dynamics system that moves between the limits at speed."""
 
     return Dynamics(
         spaces.Box(-1.0, 1.0, (1,), dtype=numpy.float32),
         numpy.array(limits),
-        lambda action: numpy.multiply(numpy.clip(action, -1, 1), numpy.float32(speed))
-        * numpy.array([0.0, 1.0], dtype=StateElement),
+        make_continuous_update(speed),
     )
+
+
+def make_discrete_update(actions: list[float]) -> Callable[[numpy.int32], State]:
+    """Creates a function that returns how the state changes given some action picked from
+    actions.
+
+    Args:
+        actions: The set of actions that can be taken.
+
+    Returns:
+        A function that returns how the state changes given some action picked from
+        actions."""
+
+    mask = numpy.array([0.0, 1.0], dtype=StateElement)
+
+    return lambda action: numpy.float32(actions[action]) * mask
 
 
 def make_discrete_dynamics(
     limits: tuple[float, float], actions: list[float]
 ) -> Dynamics[numpy.int32]:
     """Creates a dynamics system that moves between the limits with a number of fixed
-    steps. Actions are indices to actions, which are the distances in the state space
-    each action moves. For example, an action of 2 moves a distance of actions[2].
+    steps. Actions are indices to actions, which are the distances in the state space each
+    action moves. For example, an action of 2 moves a distance of actions[2].
 
     Args:
         limits: A tuple containing the lower and upper bound of the state's elements.
-        actions: The list of actions these dynamics should model."""
+        actions: The list of actions these dynamics should model.
+
+    Returns:
+        A dynamics system that moves between the limits with a number of fixed steps."""
 
     return Dynamics(
         spaces.Discrete(len(actions)),
         numpy.array(limits),
-        lambda action: numpy.float32(actions[action])
-        * numpy.array([0.0, 1.0], dtype=StateElement),
+        make_discrete_update(actions),
     )
