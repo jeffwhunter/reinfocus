@@ -223,7 +223,7 @@ class FocusEnvironment(gymnasium.Env, Generic[Action]):
 
     @dataclasses.dataclass
     class HelperFunctions:
-        """A simple helper to reduce the amount of instance attributes of FocusEnvironment.
+        """A helper to reduce the amount of instance attributes of FocusEnvironment.
 
         Args:
             dynamics: A function that calculates the next state from the current state
