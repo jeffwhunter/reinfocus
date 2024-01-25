@@ -111,6 +111,7 @@ def make_focus_reward() -> Rewarder:
 
     Returns:
         A function that returns a reward equal to the focus value."""
+
     return lambda o: o[FOCUS]
 
 
