@@ -3,15 +3,13 @@
 import dataclasses
 import math
 
-from typing import Tuple
-
 from numba import cuda
 from numba.cuda.cudadrv import devicearray
 from reinfocus.graphics import random
 from reinfocus.graphics import ray
 from reinfocus.graphics import vector
 
-CpuCamera = Tuple[
+CpuCamera = tuple[
     vector.C3F,
     vector.C3F,
     vector.C3F,
@@ -22,7 +20,7 @@ CpuCamera = Tuple[
     float,
 ]
 
-GpuCamera = Tuple[
+GpuCamera = tuple[
     vector.G3F,
     vector.G3F,
     vector.G3F,
