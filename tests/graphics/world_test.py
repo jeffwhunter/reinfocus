@@ -23,7 +23,7 @@ class WorldTest(CUDATestCase):
 
         w = wor.World(
             sph.cpu_sphere(vec.c3f(1, 2, 3), 4, vec.c2f(5, 6)),
-            rec.cpu_rectangle(-1, 1, -1, 1, 1, vec.c2f(4, 8)),
+            rec.cpu_rectangle(vec.c2f(-1, 1), vec.c2f(-1, 1), 1, vec.c2f(4, 8)),
         )
 
         tu.arrays_close(
@@ -51,7 +51,7 @@ class WorldTest(CUDATestCase):
 
         w = wor.World(
             sph.cpu_sphere(vec.c3f(1, 2, 3), 4, vec.c2f(5, 6)),
-            rec.cpu_rectangle(-1, 1, -1, 1, 1, vec.c2f(4, 8)),
+            rec.cpu_rectangle(vec.c2f(-1, 1), vec.c2f(-1, 1), 1, vec.c2f(4, 8)),
         )
 
         tu.arrays_close(
@@ -112,7 +112,9 @@ class WorldTest(CUDATestCase):
 
         cpu_array = ntu.cpu_target(ndim=13)
 
-        world = wor.World(rec.cpu_rectangle(-1, 1, -1, 1, 1, vec.c2f(4, 8)))
+        world = wor.World(
+            rec.cpu_rectangle(vec.c2f(-1, 1), vec.c2f(-1, 1), 1, vec.c2f(4, 8))
+        )
 
         hit_rectangle_world[1, 1](  # type: ignore
             cpu_array,

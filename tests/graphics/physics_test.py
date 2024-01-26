@@ -187,7 +187,9 @@ class PhysicsTest(testing.CUDATestCase):
 
         cpu_array = numba_test_utils.cpu_target()
 
-        cpu_world = world.World(rectangle.cpu_rectangle(-1, 1, -1, 1, 1))
+        cpu_world = world.World(
+            rectangle.cpu_rectangle(vector.c2f(-1, 1), vector.c2f(-1, 1), 1)
+        )
 
         cutil.launcher(find_rectangle_colour, (1, 1))(
             cpu_array,

@@ -208,7 +208,10 @@ def one_rect_world(parameters: ShapeParameters = ShapeParameters()) -> World:
 
     return World(
         rec.cpu_rectangle(
-            -size, size, -size, size, -parameters.distance, parameters.texture_f
+            vec.c2f(-size, size),
+            vec.c2f(-size, size),
+            -parameters.distance,
+            parameters.texture_f,
         )
     )
 
@@ -236,18 +239,14 @@ def two_rect_world(
 
     return World(
         rec.cpu_rectangle(
-            -left_offset - left_size,
-            -left_offset + left_size,
-            -left_size,
-            left_size,
+            vec.c2f(-left_offset - left_size, -left_offset + left_size),
+            vec.c2f(-left_size, left_size),
             -left_parameters.distance,
             left_parameters.texture_f,
         ),
         rec.cpu_rectangle(
-            right_offset - right_size,
-            right_offset + right_size,
-            -right_size,
-            right_size,
+            vec.c2f(right_offset - right_size, right_offset + right_size),
+            vec.c2f(-right_size, right_size),
             -right_parameters.distance,
             right_parameters.texture_f,
         ),
@@ -287,10 +286,8 @@ def mixed_world(
             left_parameters.texture_f,
         ),
         rec.cpu_rectangle(
-            right_offset - right_size,
-            right_offset + right_size,
-            -right_size,
-            right_size,
+            vec.c2f(right_offset - right_size, right_offset + right_size),
+            vec.c2f(-right_size, right_size),
             -right_parameters.distance,
             right_parameters.texture_f,
         ),

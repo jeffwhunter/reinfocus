@@ -1,11 +1,12 @@
 """Methods relating to ray traced rectangles."""
 
-import numpy as np
+import numpy
+
 from numba import cuda
-from reinfocus.graphics import hit_record as hit
+from reinfocus.graphics import hit_record
 from reinfocus.graphics import ray
-from reinfocus.graphics import shape as sha
-from reinfocus.graphics import vector as vec
+from reinfocus.graphics import shape
+from reinfocus.graphics import vector
 
 X_MIN = 0
 X_MAX = 1
@@ -17,39 +18,35 @@ FY = 6
 
 
 def cpu_rectangle(
-    x_min: float,
-    x_max: float,
-    y_min: float,
-    y_max: float,
+    x_span: vector.C2F,
+    y_span: vector.C2F,
     z_pos: float,
-    texture: vec.C2F = vec.c2f(16, 16),
-) -> sha.CpuShape:
+    texture: vector.C2F = vector.c2f(16, 16),
+) -> shape.CpuShape:
     """Makes a representation of a z-aligned rectangle suitable for transfer to the GPU.
 
     Args:
-        x_min: The lower extent of the rectangle in the x direction.
-        x_max: The upper extent of the rectangle in the x direction.
-        y_min: The lower extent of the rectangle in the y direction.
-        y_max: The upper extent of the rectangle in the y direction.
+        x_span: The lower and upper extent of the rectangle in the x direction.
+        y_span: The lower and upper extent of the rectangle in the y direction.
         z_pos: The position of the rectangle in the z direction.
         texture: The frequency of this rectangle's checkerboard texture.
 
     Returns:
         A z-aligned rectangle that's easy to transfer to a GPU."""
 
-    return sha.CpuShape(
-        np.array([x_min, x_max, y_min, y_max, z_pos, *texture], dtype=np.float32),
-        sha.RECTANGLE,
+    return shape.CpuShape(
+        numpy.array([*x_span, *y_span, z_pos, *texture], dtype=numpy.float32),
+        shape.RECTANGLE,
     )
 
 
 @cuda.jit
 def gpu_hit_rectangle(
-    rectangle_parameters: sha.GpuShapeParameters,
+    rectangle_parameters: shape.GpuShapeParameters,
     r: ray.GpuRay,
     t_min: float,
     t_max: float,
-) -> sha.GpuHitResult:
+) -> shape.GpuHitResult:
     """Determines if the ray r hits the z-aligned rectangle defined byrectangle_parameters
         between t_min and t_max, returning a hit_record contraining the details if it
         does.
@@ -71,7 +68,7 @@ def gpu_hit_rectangle(
     t = (rectangle_parameters[Z_POS] - r[ray.ORIGIN].z) / r[ray.DIRECTION].z
 
     if t < t_min or t > t_max:
-        return (False, hit.gpu_empty_hit_record())
+        return (False, hit_record.gpu_empty_hit_record())
 
     p = ray.gpu_point_at_parameter(r, t)
 
@@ -81,25 +78,25 @@ def gpu_hit_rectangle(
     y_max = rectangle_parameters[Y_MAX]
 
     if p.x < x_min or p.x > x_max or p.y < y_min or p.y > y_max:
-        return (False, hit.gpu_empty_hit_record())
+        return (False, hit_record.gpu_empty_hit_record())
 
     return (
         True,
-        hit.gpu_hit_record(
+        hit_record.gpu_hit_record(
             p,
-            vec.g3f(0, 0, 1),
+            vector.g3f(0, 0, 1),
             t,
-            gpu_rectangle_uv(vec.g2f(p.x, p.y), x_min, x_max, y_min, y_max),
-            vec.g2f(rectangle_parameters[FX], rectangle_parameters[FY]),
-            sha.RECTANGLE,
+            gpu_rectangle_uv(vector.g2f(p.x, p.y), x_min, x_max, y_min, y_max),
+            vector.g2f(rectangle_parameters[FX], rectangle_parameters[FY]),
+            shape.RECTANGLE,
         ),
     )
 
 
 @cuda.jit
 def gpu_rectangle_uv(
-    point: vec.G2F, x_min: float, x_max: float, y_min: float, y_max: float
-) -> vec.G2F:
+    point: vector.G2F, x_min: float, x_max: float, y_min: float, y_max: float
+) -> vector.G2F:
     """Returns the texture coordinate of point in the rectangle [x|y]_[max|min].
 
     Args:
@@ -112,6 +109,6 @@ def gpu_rectangle_uv(
     Returns:
         A G2F with the texture coordinates of that point."""
 
-    return vec.g2f(
+    return vector.g2f(
         (point.x - x_min) / (x_max - x_min), (point.y - y_min) / (y_max - y_min)
     )
