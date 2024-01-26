@@ -2,6 +2,7 @@
 
 import dataclasses
 import enum
+import functools
 
 from typing import Any, Callable, Generic, SupportsFloat, TypeVar
 
@@ -150,6 +151,7 @@ def pretty_render(render_world: world.World, focus_distance: float) -> NDArray:
     )
 
 
+@functools.cache
 def find_focus_value_limits(
     min_pos: float = 1.0, max_pos: float = 10.0, measurement_steps: int = 91
 ) -> tuple[float, float]:
