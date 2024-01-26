@@ -1,19 +1,19 @@
-# pylint: disable=no-member
 """Contains tests for reinfocus.graphics.hit_record."""
 
-import numpy as np
+import numpy
 
 from numba import cuda
-from numba.cuda.testing import CUDATestCase, unittest
+from numba.cuda import testing
+from numba.cuda.testing import unittest
 
-import tests.test_utils as tu
-from reinfocus.graphics import hit_record as hit
-from reinfocus.graphics import vector as vec
-from tests.graphics import numba_test_utils as ntu
+from reinfocus.graphics import cutil
+from reinfocus.graphics import hit_record
+from reinfocus.graphics import vector
+from tests import test_utils
+from tests.graphics import numba_test_utils
 
 
-class HitRecordTest(CUDATestCase):
-    # pylint: disable=no-value-for-parameter
+class HitRecordTest(testing.CUDATestCase):
     """TestCases for reinfocus.graphics.hit_record."""
 
     def test_empty_record(self):
@@ -21,50 +21,58 @@ class HitRecordTest(CUDATestCase):
 
         @cuda.jit
         def make_empty_record(target):
-            i = cuda.grid(1)  # type: ignore
+            i = cutil.line_index()
             if i < target.size:
-                rec = hit.gpu_empty_hit_record()
-                target[i] = ntu.flatten_hit_record(rec)
+                rec = hit_record.gpu_empty_hit_record()
+                target[i] = numba_test_utils.flatten_hit_record(rec)
 
-        cpu_array = ntu.cpu_target(ndim=12)
+        cpu_array = numba_test_utils.cpu_target(ndim=12)
 
-        make_empty_record[1, 1](cpu_array)  # type: ignore
+        cutil.launcher(make_empty_record, (1, 1))(cpu_array)
 
-        tu.arrays_close(self, cpu_array[0], (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+        test_utils.arrays_close(self, cpu_array[0], numpy.zeros(12))
 
     def test_hit_record(self):
         """Tests that hit_record makes an appropriate hit record on the GPU."""
 
         @cuda.jit
         def make_hit_record(target, args):
-            i = cuda.grid(1)  # type: ignore
+            i = cutil.line_index()
             if i < target.size:
-                target[i] = ntu.flatten_hit_record(
-                    hit.gpu_hit_record(
-                        vec.g3f(args[hit.P][0], args[hit.P][1], args[hit.P][2]),
-                        vec.g3f(args[hit.N][0], args[hit.N][1], args[hit.N][2]),
-                        args[hit.T],
-                        vec.g2f(args[hit.UV][0], args[hit.UV][1]),
-                        vec.g2f(args[hit.UF][0], args[hit.UF][1]),
-                        args[hit.M],
+                target[i] = numba_test_utils.flatten_hit_record(
+                    hit_record.gpu_hit_record(
+                        vector.g3f(
+                            args[hit_record.P][0],
+                            args[hit_record.P][1],
+                            args[hit_record.P][2],
+                        ),
+                        vector.g3f(
+                            args[hit_record.N][0],
+                            args[hit_record.N][1],
+                            args[hit_record.N][2],
+                        ),
+                        args[hit_record.T],
+                        vector.g2f(args[hit_record.UV][0], args[hit_record.UV][1]),
+                        vector.g2f(args[hit_record.UF][0], args[hit_record.UF][1]),
+                        args[hit_record.M],
                     )
                 )
 
-        cpu_array = ntu.cpu_target(ndim=12)
+        cpu_array = numba_test_utils.cpu_target(ndim=12)
 
-        make_hit_record[1, 1](  # type: ignore
+        cutil.launcher(make_hit_record, (1, 1))(
             cpu_array,
             (
-                np.array([0, 1, 2]),
-                np.array([3, 4, 5]),
+                numpy.array([0, 1, 2]),
+                numpy.array([3, 4, 5]),
                 6,
-                np.array([7, 8]),
-                np.array([9, 10]),
+                numpy.array([7, 8]),
+                numpy.array([9, 10]),
                 11,
             ),
         )
 
-        tu.arrays_close(self, cpu_array[0], (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
+        test_utils.arrays_close(self, cpu_array[0], range(12))
 
 
 if __name__ == "__main__":
