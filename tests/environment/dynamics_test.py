@@ -33,7 +33,6 @@ class DynamicsTest(unittest.TestCase):
         test_utils.arrays_close(self, slow_update(numpy.float32(-0.1)), [0.0, -0.01])
         test_utils.arrays_close(self, slow_update(numpy.float32(0.0)), [0.0, 0.0])
 
-
     def test_continuous_dynamics(self):
         """Tests that make_continuous_dynamics makes a system of dynamics that moves the
         state with the expected speed."""
@@ -82,7 +81,6 @@ class DynamicsTest(unittest.TestCase):
         test_utils.arrays_close(self, slow_dynamics(state, numpy.float32(-1)), [1, 0.4])
         test_utils.arrays_close(self, slow_dynamics(state, numpy.float32(-2)), [1, 0.4])
 
-
     def test_discrete_update(self):
         """Tests that make_discrete_update makes a function that returns the expected
         change given some set of actions."""
@@ -92,7 +90,6 @@ class DynamicsTest(unittest.TestCase):
 
         for i, move in enumerate(moves):
             test_utils.arrays_close(self, update(numpy.int32(i)), [0.0, move])
-
 
     def test_discrete_dynamics(self):
         """Tests that ContinuousDynamics mvoes the state with the expected actions."""
