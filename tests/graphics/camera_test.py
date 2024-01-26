@@ -5,6 +5,7 @@ import numpy
 from numba import cuda
 from numba.cuda import testing
 from numba.cuda.testing import unittest
+from numpy import linalg
 
 from reinfocus.graphics import camera
 from reinfocus.graphics import cutil
@@ -70,7 +71,7 @@ class CameraTest(testing.CUDATestCase):
             cpu_array, random.make_random_states(tests, 0)
         )
 
-        self.assertTrue(numpy.all(numpy.sum(cpu_array**2, axis=-1) ** 0.5 < 1.0))
+        self.assertTrue(numpy.all(linalg.norm(cpu_array, axis=-1) < 1.0))
 
     def test_get_ray(self):
         """Tests that get_ray returns a GPU ray through the expected pixel."""
