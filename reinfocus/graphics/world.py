@@ -1,43 +1,50 @@
 """Methods relating to representing the world in a ray tracer."""
 
 import math
-import typing
 
-import numpy as np
+from typing import NamedTuple
+
+import numpy
+
 from numba import cuda
-from numba.cuda.cudadrv import devicearray as cda
-from reinfocus.graphics import hit_record as hit
+from numba.cuda.cudadrv.devicearray import DeviceNDArray
+from reinfocus.graphics import hit_record
 from reinfocus.graphics import ray
-from reinfocus.graphics import rectangle as rec
-from reinfocus.graphics import shape as sha
-from reinfocus.graphics import sphere as sph
-from reinfocus.graphics import vector as vec
+from reinfocus.graphics import rectangle
+from reinfocus.graphics import shape
+from reinfocus.graphics import sphere
+from reinfocus.graphics import vector
 
 
 class World:
     """Represents the world of a ray tracer in a way easy to transfer to the GPU."""
 
-    def __init__(self, *shapes: sha.CpuShape):
+    def __init__(self, *shapes: shape.CpuShape):
+        """Constructor for the World.
+
+        Args:
+            shape: The shapes this world will hold."""
+
         self.shapes = shapes
         self.__device_shape_parameters = self.__make_device_shape_parameters()
         self.__device_shape_types = self.__make_device_shape_types()
 
-    def __make_device_shape_parameters(self) -> cda.DeviceNDArray:
+    def __make_device_shape_parameters(self) -> DeviceNDArray:
         """Makes a device array containing the parameters of each shape in this world.
 
         Returns:
             A device array containing the parameters of each shape in this world."""
 
-        parameters = np.zeros(
-            shape=(len(self.shapes), max(len(shape.parameters) for shape in self.shapes))
+        parameters = numpy.zeros(
+            shape=(len(self.shapes), max(len(s.parameters) for s in self.shapes))
         )
 
-        for i, shape in enumerate(self.shapes):
-            parameters[i, : len(shape.parameters)] = shape.parameters
+        for i, s in enumerate(self.shapes):
+            parameters[i, : len(s.parameters)] = s.parameters
 
         return cuda.to_device(parameters)
 
-    def device_shape_parameters(self) -> cda.DeviceNDArray:
+    def device_shape_parameters(self) -> DeviceNDArray:
         """Returns a device array containing the parameters of each shape in this world.
 
         Returns:
@@ -45,15 +52,15 @@ class World:
 
         return self.__device_shape_parameters
 
-    def __make_device_shape_types(self) -> cda.DeviceNDArray:
+    def __make_device_shape_types(self) -> DeviceNDArray:
         """Makes a device array containing the type of each shape in this world.
 
         Returns:
             A device array containing the type of each shape in this world."""
 
-        return cuda.to_device(np.array([shape.type for shape in self.shapes]))
+        return cuda.to_device(numpy.array([s.type for s in self.shapes]))
 
-    def device_shape_types(self) -> cda.DeviceNDArray:
+    def device_shape_types(self) -> DeviceNDArray:
         """Returns a device array containing the type of each shape in this world.
 
         Returns:
@@ -64,12 +71,12 @@ class World:
 
 @cuda.jit
 def gpu_hit_world(
-    shapes_parameters: cda.DeviceNDArray,
-    shapes_types: cda.DeviceNDArray,
+    shapes_parameters: DeviceNDArray,
+    shapes_types: DeviceNDArray,
     r: ray.GpuRay,
     t_min: float,
     t_max: float,
-) -> sha.GpuHitResult:
+) -> shape.GpuHitResult:
     """Determines if the ray r hits any of the shapes defined by shape_parameters between
         t_min and t_max, according to their types in shapes_types, returning a hit_record
         containing the details if it does.
@@ -88,29 +95,29 @@ def gpu_hit_world(
 
     hit_anything = False
     closest_so_far = t_max
-    record = hit.gpu_empty_hit_record()
+    record = hit_record.gpu_empty_hit_record()
     for shape_parameters, shape_type in zip(shapes_parameters, shapes_types):
         h = False
-        temp_record = hit.gpu_empty_hit_record()
+        temp_record = hit_record.gpu_empty_hit_record()
 
-        if shape_type == sha.SPHERE:
-            h, temp_record = sph.gpu_hit_sphere(
+        if shape_type == shape.SPHERE:
+            h, temp_record = sphere.gpu_hit_sphere(
                 shape_parameters, r, t_min, closest_so_far
             )
         else:
-            h, temp_record = rec.gpu_hit_rectangle(
+            h, temp_record = rectangle.gpu_hit_rectangle(
                 shape_parameters, r, t_min, closest_so_far
             )
 
         if h:
             hit_anything = True
-            closest_so_far = temp_record[hit.T]
+            closest_so_far = temp_record[hit_record.T]
             record = temp_record
 
     return hit_anything, record
 
 
-class ShapeParameters(typing.NamedTuple):
+class ShapeParameters(NamedTuple):
     """Defines all the necessary information for a shape in one of these worlds.
 
     Args:
@@ -150,8 +157,8 @@ def one_sphere_world(parameters: ShapeParameters = ShapeParameters()) -> World:
         A world with one sphere on the z axis."""
 
     return World(
-        sph.cpu_sphere(
-            vec.c3f(0, 0, -parameters.distance),
+        sphere.cpu_sphere(
+            vector.c3f(0, 0, -parameters.distance),
             get_absolute_size(parameters),
             parameters.texture_f,
         )
@@ -174,8 +181,8 @@ def two_sphere_world(
     distance_to_offset = math.tan(math.radians(15))
 
     return World(
-        sph.cpu_sphere(
-            vec.c3f(
+        sphere.cpu_sphere(
+            vector.c3f(
                 -left_parameters.distance * distance_to_offset,
                 0,
                 -left_parameters.distance,
@@ -183,8 +190,8 @@ def two_sphere_world(
             get_absolute_size(left_parameters),
             left_parameters.texture_f,
         ),
-        sph.cpu_sphere(
-            vec.c3f(
+        sphere.cpu_sphere(
+            vector.c3f(
                 right_parameters.distance * distance_to_offset,
                 0,
                 -right_parameters.distance,
@@ -207,9 +214,9 @@ def one_rect_world(parameters: ShapeParameters = ShapeParameters()) -> World:
     size = get_absolute_size(parameters)
 
     return World(
-        rec.cpu_rectangle(
-            vec.c2f(-size, size),
-            vec.c2f(-size, size),
+        rectangle.cpu_rectangle(
+            vector.c2f(-size, size),
+            vector.c2f(-size, size),
             -parameters.distance,
             parameters.texture_f,
         )
@@ -238,15 +245,15 @@ def two_rect_world(
     right_size = get_absolute_size(right_parameters)
 
     return World(
-        rec.cpu_rectangle(
-            vec.c2f(-left_offset - left_size, -left_offset + left_size),
-            vec.c2f(-left_size, left_size),
+        rectangle.cpu_rectangle(
+            vector.c2f(-left_offset - left_size, -left_offset + left_size),
+            vector.c2f(-left_size, left_size),
             -left_parameters.distance,
             left_parameters.texture_f,
         ),
-        rec.cpu_rectangle(
-            vec.c2f(right_offset - right_size, right_offset + right_size),
-            vec.c2f(-right_size, right_size),
+        rectangle.cpu_rectangle(
+            vector.c2f(right_offset - right_size, right_offset + right_size),
+            vector.c2f(-right_size, right_size),
             -right_parameters.distance,
             right_parameters.texture_f,
         ),
@@ -276,8 +283,8 @@ def mixed_world(
     right_size = get_absolute_size(right_parameters)
 
     return World(
-        sph.cpu_sphere(
-            vec.c3f(
+        sphere.cpu_sphere(
+            vector.c3f(
                 -left_parameters.distance * distance_to_offset,
                 0,
                 -left_parameters.distance,
@@ -285,9 +292,9 @@ def mixed_world(
             left_size,
             left_parameters.texture_f,
         ),
-        rec.cpu_rectangle(
-            vec.c2f(right_offset - right_size, right_offset + right_size),
-            vec.c2f(-right_size, right_size),
+        rectangle.cpu_rectangle(
+            vector.c2f(right_offset - right_size, right_offset + right_size),
+            vector.c2f(-right_size, right_size),
             -right_parameters.distance,
             right_parameters.texture_f,
         ),

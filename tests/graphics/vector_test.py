@@ -14,7 +14,7 @@ from tests import test_utils
 
 
 class VectorTest(testing.CUDATestCase):
-# pylint: disable=too-many-public-methods
+    # pylint: disable=too-many-public-methods
     """TestCases for reinfocus.graphics.vector."""
 
     def test_c3f(self):
