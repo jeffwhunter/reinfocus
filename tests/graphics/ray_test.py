@@ -1,5 +1,7 @@
 """Contains tests for reinfocus.graphics.ray."""
 
+import numpy
+
 from numba import cuda
 from numba.cuda import testing
 from numba.cuda.testing import unittest
@@ -21,14 +23,16 @@ class RayTest(testing.CUDATestCase):
         @cuda.jit
         def copy_gpu_ray(target, origin, direction):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = numba_test_utils.flatten_ray(
-                    ray.cpu_to_gpu_ray(origin, direction)
-                )
+            if cutil.outside_shape(i, target.shape):
+                return
 
-        cpu_array = numba_test_utils.cpu_target(ndim=6)
+            target[i] = numba_test_utils.flatten_ray(
+                ray.cpu_to_gpu_ray(origin, direction)
+            )
 
-        cutil.launcher(copy_gpu_ray, (1, 1))(
+        cpu_array = numpy.zeros((1, 6), dtype=numpy.float32)
+
+        cutil.launcher(copy_gpu_ray, 1)(
             cpu_array, vector.c3f(1, 2, 3), vector.c3f(4, 5, 6)
         )
 
@@ -43,14 +47,16 @@ class RayTest(testing.CUDATestCase):
         @cuda.jit
         def find_gpu_point_at_parameter(target, origin, direction, t):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = vector.g3f_to_c3f(
-                    ray.gpu_point_at_parameter(ray.cpu_to_gpu_ray(origin, direction), t)
-                )
+            if cutil.outside_shape(i, target.shape):
+                return
 
-        cpu_array = numba_test_utils.cpu_target()
+            target[i] = vector.g3f_to_c3f(
+                ray.gpu_point_at_parameter(ray.cpu_to_gpu_ray(origin, direction), t)
+            )
 
-        cutil.launcher(find_gpu_point_at_parameter, (1, 1))(
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
+
+        cutil.launcher(find_gpu_point_at_parameter, 1)(
             cpu_array, vector.c3f(1, 2, 3), vector.c3f(4, 5, 6), 2
         )
 

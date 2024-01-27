@@ -30,16 +30,16 @@ class PhysicsTest(testing.CUDATestCase):
         @cuda.jit
         def sample_from_sphere(target, random_states):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = vector.g3f_to_c3f(
-                    physics.random_in_unit_sphere(random_states, i)
-                )
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = vector.g3f_to_c3f(physics.random_in_unit_sphere(random_states, i))
 
         tests = 100
 
-        cpu_array = numba_test_utils.cpu_target(nrow=tests)
+        cpu_array = numpy.zeros((tests, 3), dtype=numpy.float32)
 
-        cutil.launcher(sample_from_sphere, (tests, 1))(
+        cutil.launcher(sample_from_sphere, tests)(
             cpu_array, random.make_random_states(tests, 0)
         )
 
@@ -52,12 +52,14 @@ class PhysicsTest(testing.CUDATestCase):
         @cuda.jit
         def checkerboard_colour_points(target, f, p):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = vector.g3f_to_c3f(
-                    physics.colour_checkerboard(
-                        vector.c2f_to_g2f(f[i]), vector.c2f_to_g2f(p[i])
-                    )
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = vector.g3f_to_c3f(
+                physics.colour_checkerboard(
+                    vector.c2f_to_g2f(f[i]), vector.c2f_to_g2f(p[i])
                 )
+            )
 
         tests = cuda.to_device(
             numpy.array(
@@ -74,9 +76,9 @@ class PhysicsTest(testing.CUDATestCase):
             )
         )
 
-        cpu_array = numba_test_utils.cpu_target(nrow=len(tests))
+        cpu_array = numpy.zeros((len(tests), 3), dtype=numpy.float32)
 
-        cutil.launcher(checkerboard_colour_points, (len(tests), 1))(
+        cutil.launcher(checkerboard_colour_points, len(tests))(
             cpu_array, tests[:, 0], tests[:, 1]
         )
 
@@ -101,25 +103,27 @@ class PhysicsTest(testing.CUDATestCase):
         @cuda.jit
         def scatter_with_rectangle(target, random_states):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = numba_test_utils.flatten_coloured_ray(
-                    physics.scatter(
-                        hit_record.gpu_hit_record(
-                            vector.g3f(0, 0, 0),
-                            vector.g3f(0, 0, 1),
-                            1.0,
-                            vector.g2f(2**-4, 2**-4),
-                            vector.g2f(1.0, 1.0),
-                            shape.RECTANGLE,
-                        ),
-                        random_states,
-                        i,
-                    )
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = numba_test_utils.flatten_coloured_ray(
+                physics.scatter(
+                    hit_record.gpu_hit_record(
+                        vector.g3f(0, 0, 0),
+                        vector.g3f(0, 0, 1),
+                        1.0,
+                        vector.g2f(2**-4, 2**-4),
+                        vector.g2f(1.0, 1.0),
+                        shape.RECTANGLE,
+                    ),
+                    random_states,
+                    i,
                 )
+            )
 
-        cpu_array = numba_test_utils.cpu_target(ndim=9)
+        cpu_array = numpy.zeros((1, 9), dtype=numpy.float32)
 
-        cutil.launcher(scatter_with_rectangle, (1, 1))(
+        cutil.launcher(scatter_with_rectangle, 1)(
             cpu_array, random.make_random_states(1, 0)
         )
 
@@ -136,27 +140,27 @@ class PhysicsTest(testing.CUDATestCase):
         @cuda.jit
         def scatter_with_sphere(target, random_states):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = numba_test_utils.flatten_coloured_ray(
-                    physics.scatter(
-                        hit_record.gpu_hit_record(
-                            vector.g3f(0, 0, 1),
-                            vector.g3f(0, 0, 1),
-                            1.0,
-                            vector.g2f(2**-7, 2**-6),
-                            vector.g2f(1.0, 1.0),
-                            shape.SPHERE,
-                        ),
-                        random_states,
-                        i,
-                    )
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = numba_test_utils.flatten_coloured_ray(
+                physics.scatter(
+                    hit_record.gpu_hit_record(
+                        vector.g3f(0, 0, 1),
+                        vector.g3f(0, 0, 1),
+                        1.0,
+                        vector.g2f(2**-7, 2**-6),
+                        vector.g2f(1.0, 1.0),
+                        shape.SPHERE,
+                    ),
+                    random_states,
+                    i,
                 )
+            )
 
-        cpu_array = numba_test_utils.cpu_target(ndim=9)
+        cpu_array = numpy.zeros((1, 9), dtype=numpy.float32)
 
-        cutil.launcher(scatter_with_sphere, (1, 1))(
-            cpu_array, random.make_random_states(1, 0)
-        )
+        cutil.launcher(scatter_with_sphere, 1)(cpu_array, random.make_random_states(1, 0))
 
         test_utils.arrays_close(self, cpu_array[0, 0:3], [0, 0, 1])
         self.assertTrue(
@@ -171,27 +175,29 @@ class PhysicsTest(testing.CUDATestCase):
         @cuda.jit
         def find_rectangle_colour(target, random_states, shapes_parameters, shapes_types):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = vector.g3f_to_c3f(
-                    physics.find_colour(
-                        shapes_parameters,
-                        shapes_types,
-                        ray.gpu_ray(
-                            vector.g3f(-(2**-4), -(2**-4), 0),
-                            vector.g3f(-(2**-4), -(2**-4), 1),
-                        ),
-                        random_states,
-                        i,
-                    )
-                )
+            if cutil.outside_shape(i, target.shape):
+                return
 
-        cpu_array = numba_test_utils.cpu_target()
+            target[i] = vector.g3f_to_c3f(
+                physics.find_colour(
+                    shapes_parameters,
+                    shapes_types,
+                    ray.gpu_ray(
+                        vector.g3f(-(2**-4), -(2**-4), 0),
+                        vector.g3f(-(2**-4), -(2**-4), 1),
+                    ),
+                    random_states,
+                    i,
+                )
+            )
+
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         cpu_world = world.World(
             rectangle.cpu_rectangle(vector.c2f(-1, 1), vector.c2f(-1, 1), 1)
         )
 
-        cutil.launcher(find_rectangle_colour, (1, 1))(
+        cutil.launcher(find_rectangle_colour, 1)(
             cpu_array,
             random.make_random_states(1, 0),
             cpu_world.device_shape_parameters(),
@@ -208,25 +214,27 @@ class PhysicsTest(testing.CUDATestCase):
         @cuda.jit
         def find_sphere_colour(target, random_states, shapes_parameters, shapes_types):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = vector.g3f_to_c3f(
-                    physics.find_colour(
-                        shapes_parameters,
-                        shapes_types,
-                        ray.gpu_ray(
-                            vector.g3f(-(2**-7), -(2**-6), 0),
-                            vector.g3f(-(2**-7), -(2**-6), 1),
-                        ),
-                        random_states,
-                        i,
-                    )
-                )
+            if cutil.outside_shape(i, target.shape):
+                return
 
-        cpu_array = numba_test_utils.cpu_target()
+            target[i] = vector.g3f_to_c3f(
+                physics.find_colour(
+                    shapes_parameters,
+                    shapes_types,
+                    ray.gpu_ray(
+                        vector.g3f(-(2**-7), -(2**-6), 0),
+                        vector.g3f(-(2**-7), -(2**-6), 1),
+                    ),
+                    random_states,
+                    i,
+                )
+            )
+
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         cpu_world = world.World(sphere.cpu_sphere(vector.c3f(0, 0, 10), 1))
 
-        cutil.launcher(find_sphere_colour, (1, 1))(
+        cutil.launcher(find_sphere_colour, 1)(
             cpu_array,
             random.make_random_states(1, 0),
             cpu_world.device_shape_parameters(),

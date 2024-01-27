@@ -80,8 +80,8 @@ class CameraLens:
 
 
 @cuda.jit
-def to_gpu_camera(camera: CpuCamera) -> GpuCamera:
-    """Moves a camera from the GPU to the CPU.
+def cast_to_gpu_camera(camera: CpuCamera) -> GpuCamera:
+    """Casts a CpuCamera to a GpuCamera while both are on the GPU.
 
     Args:
         camera: The CPU representation of a camera.

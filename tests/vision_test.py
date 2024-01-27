@@ -42,11 +42,11 @@ class VisionTest(unittest.TestCase):
 
         world = wor.one_rect_world(wor.ShapeParameters(distance=10))
 
-        distant_focus = vis.focus_value(ren.render(world=world, focus_distance=40))
-        far_focus = vis.focus_value(ren.render(world=world, focus_distance=20))
-        in_focus = vis.focus_value(ren.render(world=world, focus_distance=10))
-        near_focus = vis.focus_value(ren.render(world=world, focus_distance=5))
-        close_focus = vis.focus_value(ren.render(world=world, focus_distance=1))
+        distant_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=40))
+        far_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=20))
+        in_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=10))
+        near_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=5))
+        close_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=1))
 
         self.assertGreater(in_focus, near_focus)
         self.assertGreater(near_focus, close_focus)

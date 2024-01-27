@@ -1,6 +1,7 @@
 """Contains tests for reinfocus.graphics.world."""
 
-import numpy as np
+import numpy
+
 from numba import cuda
 from numba.cuda.testing import CUDATestCase, unittest
 
@@ -29,7 +30,7 @@ class WorldTest(CUDATestCase):
         tu.arrays_close(
             self,
             w.device_shape_parameters(),
-            np.array([[1, 2, 3, 4, 5, 6, 0], [-1, 1, -1, 1, 1, 4, 8]]),
+            numpy.array([[1, 2, 3, 4, 5, 6, 0], [-1, 1, -1, 1, 1, 4, 8]]),
         )
 
     def test_sphere_world_parameters(self):
@@ -43,7 +44,7 @@ class WorldTest(CUDATestCase):
         tu.arrays_close(
             self,
             w.device_shape_parameters(),
-            np.array([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]),
+            numpy.array([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]),
         )
 
     def test_world_shape_types(self):
@@ -55,7 +56,7 @@ class WorldTest(CUDATestCase):
         )
 
         tu.arrays_close(
-            self, w.device_shape_types(), np.array([sha.SPHERE, sha.RECTANGLE])
+            self, w.device_shape_types(), numpy.array([sha.SPHERE, sha.RECTANGLE])
         )
 
     def test_gpu_hit_sphere_world(self):
@@ -75,7 +76,7 @@ class WorldTest(CUDATestCase):
                     )
                 )
 
-        cpu_array = ntu.cpu_target(ndim=13)
+        cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
         world = wor.World(sph.cpu_sphere(vec.c3f(0, 0, 0), 1, vec.c2f(4, 8)))
 
@@ -110,7 +111,7 @@ class WorldTest(CUDATestCase):
                     )
                 )
 
-        cpu_array = ntu.cpu_target(ndim=13)
+        cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
         world = wor.World(
             rec.cpu_rectangle(vec.c2f(-1, 1), vec.c2f(-1, 1), 1, vec.c2f(4, 8))

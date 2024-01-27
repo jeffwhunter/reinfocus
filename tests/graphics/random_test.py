@@ -8,7 +8,6 @@ from numba.cuda.testing import unittest
 
 from reinfocus.graphics import cutil
 from reinfocus.graphics import random
-from tests.graphics import numba_test_utils
 
 
 class RandomTest(testing.CUDATestCase):
@@ -29,14 +28,16 @@ class RandomTest(testing.CUDATestCase):
         @cuda.jit
         def sample(target, random_states):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = random.uniform_float(random_states, i)
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = random.uniform_float(random_states, i)
 
         tests = 100
 
-        cpu_array = numba_test_utils.cpu_target(ndim=1, nrow=tests)
+        cpu_array = numpy.zeros(tests, dtype=numpy.float32)
 
-        cutil.launcher(sample, (tests, 1))(cpu_array, random.make_random_states(tests, 0))
+        cutil.launcher(sample, tests)(cpu_array, random.make_random_states(tests, 0))
 
         self.assertTrue(numpy.all(numpy.logical_and(0.0 <= cpu_array, cpu_array < 1.0)))
 

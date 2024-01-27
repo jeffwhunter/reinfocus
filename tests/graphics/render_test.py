@@ -1,17 +1,19 @@
 """Contains tests for reinfocus.graphics.render."""
 
-import numpy as np
-from numba.cuda.random import create_xoroshiro128p_states
-from numba.cuda.testing import CUDATestCase, unittest
+import numpy
 
-from reinfocus.graphics import camera as cam
-from reinfocus.graphics import render as ren
-from reinfocus.graphics import vector as vec
-from reinfocus.graphics import world as wor
+from numba.cuda import testing
+from numba.cuda.testing import unittest
+
+from reinfocus.graphics import camera
+from reinfocus.graphics import cutil
+from reinfocus.graphics import random
+from reinfocus.graphics import render
+from reinfocus.graphics import vector
+from reinfocus.graphics import world
 
 
-class RenderTest(CUDATestCase):
-    # pylint: disable=no-value-for-parameter
+class RenderTest(testing.CUDATestCase):
     """TestCases for reinfocus.graphics.render."""
 
     def test_device_render(self):
@@ -20,42 +22,42 @@ class RenderTest(CUDATestCase):
 
         frame_shape = (300, 300)
 
-        device_frame = ren.make_device_frame(*frame_shape)
+        frame = numpy.zeros(frame_shape + (3,), dtype=numpy.float32)
 
-        world = wor.one_rect_world(wor.ShapeParameters(r_size=30))
+        cpu_world = world.one_rect_world(world.ShapeParameters(r_size=30))
 
-        ren.device_render[(19, 19), (16, 16)](  # type: ignore
-            device_frame,
-            cam.cpu_camera(
-                cam.CameraOrientation(
-                    vec.c3f(0, 0, -10), vec.c3f(0, 0, 0), vec.c3f(0, 1, 0)
+        cutil.launcher(render.device_render, frame_shape)(
+            frame,
+            camera.cpu_camera(
+                camera.CameraOrientation(
+                    vector.c3f(0, 0, -10), vector.c3f(0, 0, 0), vector.c3f(0, 1, 0)
                 ),
-                cam.CameraView(1, 30.0),
-                cam.CameraLens(0.1, 10),
+                camera.CameraView(1, 30.0),
+                camera.CameraLens(0.1, 10),
             ),
             100,
-            create_xoroshiro128p_states(frame_shape[0] * frame_shape[1], seed=0),
-            (world.device_shape_parameters(), world.device_shape_types()),
+            random.make_random_states(frame_shape[0] * frame_shape[1], 0),
+            (cpu_world.device_shape_parameters(), cpu_world.device_shape_types()),
         )
 
-        average_colour = np.average(device_frame.copy_to_host(), axis=(0, 1))
+        average_colour = numpy.average(frame, axis=(0, 1))
 
-        self.assertTrue(np.all(average_colour >= [0.25, 0.25, 0]))
-        self.assertTrue(np.all(average_colour <= [0.5, 0.5, 0]))
+        self.assertTrue(numpy.all(average_colour >= [0.25, 0.25, 0]))
+        self.assertTrue(numpy.all(average_colour <= [0.5, 0.5, 0]))
 
     def test_render(self):
         """Tests that render produces a known image for a known set of parameters."""
 
-        average_colour = np.average(
-            ren.render(
+        average_colour = numpy.average(
+            render.render(
                 frame_shape=(300, 300),
-                world=wor.one_sphere_world(wor.ShapeParameters(r_size=30)),
+                cpu_world=world.one_sphere_world(world.ShapeParameters(r_size=30)),
             ),
             axis=(0, 1),
         )
 
-        self.assertTrue(np.all(average_colour >= [0.4, 0.4, 0.1]))
-        self.assertTrue(np.all(average_colour <= [0.6, 0.6, 0.2]))
+        self.assertTrue(numpy.all(average_colour >= [0.4, 0.4, 0.1]))
+        self.assertTrue(numpy.all(average_colour <= [0.6, 0.6, 0.2]))
 
 
 if __name__ == "__main__":

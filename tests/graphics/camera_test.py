@@ -58,16 +58,16 @@ class CameraTest(testing.CUDATestCase):
         @cuda.jit
         def sample_from_disc(target, random_states):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = vector.g2f_to_c2f(
-                    camera.random_in_unit_disc(random_states, i)
-                )
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = vector.g2f_to_c2f(camera.random_in_unit_disc(random_states, i))
 
         tests = 100
 
-        cpu_array = numba_test_utils.cpu_target(ndim=2, nrow=tests)
+        cpu_array = numpy.zeros((tests, 2), dtype=numpy.float32)
 
-        cutil.launcher(sample_from_disc, (tests, 1))(
+        cutil.launcher(sample_from_disc, tests)(
             cpu_array, random.make_random_states(tests, 0)
         )
 
@@ -77,16 +77,20 @@ class CameraTest(testing.CUDATestCase):
         """Tests that get_ray returns a GPU ray through the expected pixel."""
 
         @cuda.jit
-        def get_test_ray(target, cam, random_states):
+        def get_test_ray(target, cpu_camera, random_states):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = numba_test_utils.flatten_ray(
-                    camera.get_ray(camera.to_gpu_camera(cam), 0.5, 0.5, random_states, i)
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = numba_test_utils.flatten_ray(
+                camera.get_ray(
+                    camera.cast_to_gpu_camera(cpu_camera), 0.5, 0.5, random_states, i
                 )
+            )
 
-        cpu_array = numba_test_utils.cpu_target(ndim=6)
+        cpu_array = numpy.zeros((1, 6), dtype=numpy.float32)
 
-        cutil.launcher(get_test_ray, (1, 1))(
+        cutil.launcher(get_test_ray, 1)(
             cpu_array,
             camera.cpu_camera(
                 camera.CameraOrientation(

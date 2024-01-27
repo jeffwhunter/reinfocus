@@ -22,13 +22,15 @@ class HitRecordTest(testing.CUDATestCase):
         @cuda.jit
         def make_empty_record(target):
             i = cutil.line_index()
-            if i < target.size:
-                rec = hit_record.gpu_empty_hit_record()
-                target[i] = numba_test_utils.flatten_hit_record(rec)
+            if cutil.outside_shape(i, target.shape):
+                return
 
-        cpu_array = numba_test_utils.cpu_target(ndim=12)
+            rec = hit_record.gpu_empty_hit_record()
+            target[i] = numba_test_utils.flatten_hit_record(rec)
 
-        cutil.launcher(make_empty_record, (1, 1))(cpu_array)
+        cpu_array = numpy.ones((1, 12), dtype=numpy.float32)
+
+        cutil.launcher(make_empty_record, 1)(cpu_array)
 
         test_utils.arrays_close(self, cpu_array[0], numpy.zeros(12))
 
@@ -38,27 +40,29 @@ class HitRecordTest(testing.CUDATestCase):
         @cuda.jit
         def make_hit_record(target, args):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = numba_test_utils.flatten_hit_record(
-                    hit_record.gpu_hit_record(
-                        vector.g3f(
-                            args[hit_record.P][0],
-                            args[hit_record.P][1],
-                            args[hit_record.P][2],
-                        ),
-                        vector.g3f(
-                            args[hit_record.N][0],
-                            args[hit_record.N][1],
-                            args[hit_record.N][2],
-                        ),
-                        args[hit_record.T],
-                        vector.g2f(args[hit_record.UV][0], args[hit_record.UV][1]),
-                        vector.g2f(args[hit_record.UF][0], args[hit_record.UF][1]),
-                        args[hit_record.M],
-                    )
-                )
+            if cutil.outside_shape(i, target.shape):
+                return
 
-        cpu_array = numba_test_utils.cpu_target(ndim=12)
+            target[i] = numba_test_utils.flatten_hit_record(
+                hit_record.gpu_hit_record(
+                    vector.g3f(
+                        args[hit_record.P][0],
+                        args[hit_record.P][1],
+                        args[hit_record.P][2],
+                    ),
+                    vector.g3f(
+                        args[hit_record.N][0],
+                        args[hit_record.N][1],
+                        args[hit_record.N][2],
+                    ),
+                    args[hit_record.T],
+                    vector.g2f(args[hit_record.UV][0], args[hit_record.UV][1]),
+                    vector.g2f(args[hit_record.UF][0], args[hit_record.UF][1]),
+                    args[hit_record.M],
+                )
+            )
+
+        cpu_array = numpy.zeros((1, 12), dtype=numpy.float32)
 
         cutil.launcher(make_hit_record, (1, 1))(
             cpu_array,

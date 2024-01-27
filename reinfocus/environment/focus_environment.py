@@ -130,7 +130,7 @@ def render_and_measure(render_world: world.World, focus_distance: float) -> floa
 
     return vision.focus_value(
         render.render(
-            frame_shape=(150, 150), world=render_world, focus_distance=focus_distance
+            frame_shape=(150, 150), cpu_world=render_world, focus_distance=focus_distance
         )
     )
 
@@ -147,7 +147,7 @@ def pretty_render(render_world: world.World, focus_distance: float) -> NDArray:
         An image of world when focused on a plane focus_distance units away."""
 
     return render.render(
-        frame_shape=(600, 600), world=render_world, focus_distance=focus_distance
+        frame_shape=(600, 600), cpu_world=render_world, focus_distance=focus_distance
     )
 
 

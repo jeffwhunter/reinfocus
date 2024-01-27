@@ -2,6 +2,8 @@
 
 from math import sqrt
 
+import numpy
+
 from numba import cuda
 from numba.cuda.testing import CUDATestCase, unittest
 
@@ -77,7 +79,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g2f_to_c2f(vec.empty_g2f())
 
-        cpu_array = ntu.cpu_target(ndim=2)
+        cpu_array = numpy.zeros((1, 2), dtype=numpy.float32)
 
         copy_empty_g2f[1, 1](cpu_array)  # type: ignore
 
@@ -92,7 +94,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g2f_to_c2f(vec.g2f(*source))
 
-        cpu_array = ntu.cpu_target(ndim=2)
+        cpu_array = numpy.zeros((1, 2), dtype=numpy.float32)
 
         copy_g2f[1, 1](cpu_array, vec.c2f(1, 2))  # type: ignore
 
@@ -107,7 +109,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.empty_g3f())
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         copy_empty_g3f[1, 1](cpu_array)  # type: ignore
 
@@ -122,7 +124,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.g3f(*source))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         copy_g3f[1, 1](cpu_array, vec.c3f(1, 2, 3))  # type: ignore
 
@@ -137,7 +139,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.c3f_to_g3f(source))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         copy_g3f_from_c3f[1, 1](cpu_array, vec.c3f(1, 2, 3))  # type: ignore
 
@@ -152,7 +154,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.add_g3f(vec.g3f(*a), vec.g3f(*b)))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         add_2_g3f[1, 1](cpu_array, vec.c3f(1, 2, 3), vec.c3f(4, 5, 6))  # type: ignore
 
@@ -169,7 +171,7 @@ class VectorTest(CUDATestCase):
                     vec.add3_g3f(vec.g3f(*a), vec.g3f(*b), vec.g3f(*c))
                 )
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         add_3_g3f[1, 1](  # type: ignore
             cpu_array, vec.c3f(1, 2, 3), vec.c3f(4, 5, 6), vec.c3f(7, 8, 9)
@@ -186,7 +188,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.neg_g3f(vec.g3f(*a)))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         negate_g3f[1, 1](cpu_array, vec.c3f(1, -2, 3))  # type: ignore
 
@@ -201,7 +203,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.sub_g3f(vec.g3f(*a), vec.g3f(*b)))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         subtract_g3f[1, 1](cpu_array, vec.c3f(4, 5, 6), vec.c3f(3, 2, 1))  # type: ignore
 
@@ -216,7 +218,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.smul_g3f(vec.g3f(*a), b))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         scale_g3f[1, 1](cpu_array, vec.c3f(1, 2, 3), 3)  # type: ignore
 
@@ -232,7 +234,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.vmul_g3f(vec.g3f(*a), vec.g3f(*b)))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         elementwise_multiply_g3f[1, 1](  # type: ignore
             cpu_array, vec.c3f(1, 2, 3), vec.c3f(1, 2, 3)
@@ -249,7 +251,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.div_g3f(vec.g3f(*a), b))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         divide_g3f[1, 1](cpu_array, vec.c3f(3, 6, 9), 3)  # type: ignore
 
@@ -264,13 +266,13 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.dot_g3f(vec.g3f(*a), vec.g3f(*b))
 
-        cpu_array = ntu.cpu_target(ndim=1)
+        cpu_array = numpy.zeros(1, dtype=numpy.float32)
 
         dot_multiply_g3f[1, 1](  # type: ignore
             cpu_array, vec.c3f(1, 2, 3), vec.c3f(4, 5, 6)
         )
 
-        self.assertAlmostEqual(cpu_array[0][0], 32)
+        self.assertAlmostEqual(cpu_array[0], 32)
 
     def test_cross_g3f(self):
         """Tests that cross_g3f properly produces the cross product of two GPU vectors."""
@@ -281,7 +283,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.cross_g3f(vec.g3f(*a), vec.g3f(*b)))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         cross_multiply_g3f[1, 1](  # type: ignore
             cpu_array, vec.c3f(1, 2, 3), vec.c3f(4, 5, 6)
@@ -299,11 +301,11 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.squared_length_g3f(vec.g3f(*a))
 
-        cpu_array = ntu.cpu_target(ndim=1)
+        cpu_array = numpy.zeros(1, dtype=numpy.float32)
 
         find_g3f_vector_squared_length[1, 1](cpu_array, vec.c3f(1, 2, 3))  # type: ignore
 
-        self.assertAlmostEqual(cpu_array[0][0], 14)
+        self.assertAlmostEqual(cpu_array[0], 14)
 
     def test_length_g3f(self):
         """Tests that length_g3f properly produces the length of a GPU vector."""
@@ -314,11 +316,11 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.length_g3f(vec.g3f(*a))
 
-        cpu_array = ntu.cpu_target(ndim=1)
+        cpu_array = numpy.zeros(1, dtype=numpy.float32)
 
         find_g3f_vector_length[1, 1](cpu_array, vec.c3f(2, 3, 6))  # type: ignore
 
-        self.assertAlmostEqual(cpu_array[0][0], 7)
+        self.assertAlmostEqual(cpu_array[0], 7)
 
     def test_norm_g3f(self):
         """Tests that norm_g3f properly normalizes a GPU vector."""
@@ -329,7 +331,7 @@ class VectorTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g3f_to_c3f(vec.norm_g3f(vec.g3f(*a)))
 
-        cpu_array = ntu.cpu_target()
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         normalize_g3f[1, 1](cpu_array, vec.c3f(1, -1, 2))  # type: ignore
 

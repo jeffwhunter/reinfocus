@@ -34,19 +34,21 @@ class RectangleTest(testing.CUDATestCase):
         @cuda.jit
         def hit_rectangle(target, rectangle_parameters, origin, direction):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = numba_test_utils.flatten_hit_result(
-                    rectangle.gpu_hit_rectangle(
-                        rectangle_parameters,
-                        ray.cpu_to_gpu_ray(origin, direction),
-                        0,
-                        100,
-                    )
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = numba_test_utils.flatten_hit_result(
+                rectangle.gpu_hit_rectangle(
+                    rectangle_parameters,
+                    ray.cpu_to_gpu_ray(origin, direction),
+                    0,
+                    100,
                 )
+            )
 
-        cpu_array = numba_test_utils.cpu_target(ndim=13)
+        cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
-        cutil.launcher(hit_rectangle, (1, 1))(
+        cutil.launcher(hit_rectangle, 1)(
             cpu_array,
             rectangle.cpu_rectangle(
                 vector.c2f(-1, 1), vector.c2f(-1, 1), 1, vector.c2f(4, 8)
@@ -66,10 +68,12 @@ class RectangleTest(testing.CUDATestCase):
         @cuda.jit
         def get_texture_coord(target, points):
             i = cutil.line_index()
-            if i < target.size:
-                target[i] = vector.g2f_to_c2f(
-                    rectangle.gpu_rectangle_uv(vector.c2f_to_g2f(points[i]), -1, 1, -1, 1)
-                )
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = vector.g2f_to_c2f(
+                rectangle.gpu_rectangle_uv(vector.c2f_to_g2f(points[i]), -1, 1, -1, 1)
+            )
 
         tests = numpy.array(
             [
@@ -81,9 +85,9 @@ class RectangleTest(testing.CUDATestCase):
             ]
         )
 
-        cpu_array = numba_test_utils.cpu_target(ndim=2, nrow=len(tests))
+        cpu_array = numpy.zeros((len(tests), 2))
 
-        cutil.launcher(get_texture_coord, (len(tests), 1))(cpu_array, tests)
+        cutil.launcher(get_texture_coord, len(tests))(cpu_array, tests)
 
         test_utils.arrays_close(
             self, cpu_array, [[0, 0], [0, 1], [1, 0], [1, 1], [0.5, 0.5]]

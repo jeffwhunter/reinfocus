@@ -1,5 +1,7 @@
 """Contains tests for reinfocus.graphics.sphere."""
 
+import numpy
+
 from numba import cuda
 from numba.cuda.testing import CUDATestCase, unittest
 
@@ -37,7 +39,7 @@ class SphereTest(CUDATestCase):
                     )
                 )
 
-        cpu_array = ntu.cpu_target(ndim=13)
+        cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
         hit_sphere[1, 1](  # type: ignore
             cpu_array,
@@ -60,7 +62,7 @@ class SphereTest(CUDATestCase):
             if i < target.size:
                 target[i] = vec.g2f_to_c2f(sph.gpu_sphere_uv(vec.c3f_to_g3f(point)))
 
-        cpu_array = ntu.cpu_target(ndim=2)
+        cpu_array = numpy.zeros((1, 2), dtype=numpy.float32)
 
         get_texture_coord[1, 1](cpu_array, vec.c3f(-1, 0, 0))  # type: ignore
 

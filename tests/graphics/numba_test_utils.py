@@ -17,12 +17,6 @@ FlattenedHitRecord = Tuple[F, F, F, F, F, F, F, F, F, F, F, F]
 FlattenedHitResult = Tuple[F, F, F, F, F, F, F, F, F, F, F, F, F]
 
 
-def cpu_target(ndim=3, nrow=1):
-    """Makes a single vector target array for GPU test output."""
-
-    return np.array([(0.0,) * ndim] * nrow)
-
-
 @cuda.jit
 def flatten_ray(r: ray.GpuRay) -> FlattenedRay:
     """Flattens a ray into a tuple for easy testing."""
