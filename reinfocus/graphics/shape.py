@@ -1,20 +1,21 @@
 """Defines the possible shapes to render."""
 
-from dataclasses import dataclass
-from typing import Tuple
+import dataclasses
 
-import numpy as np
-import numpy.typing as npt
-from numba.cuda.cudadrv import devicearray as cda
-from reinfocus.graphics import hit_record as hit
+import numpy
 
-GpuHitResult = Tuple[bool, hit.GpuHitRecord]
+from numba.cuda.cudadrv.devicearray import DeviceNDArray
+from numpy.typing import NDArray
 
-CpuShapeParameters = npt.NDArray[np.float32]
-CpuShapeTypes = npt.NDArray[np.int32]
-GpuShapeParameters = cda.DeviceNDArray
-GpuShapeTypes = cda.DeviceNDArray
-GpuShapes = Tuple[GpuShapeParameters, GpuShapeTypes]
+from reinfocus.graphics import hit_record
+
+GpuHitResult = tuple[bool, hit_record.GpuHitRecord]
+
+CpuShapeParameters = NDArray[numpy.float32]
+CpuShapeTypes = NDArray[numpy.int32]
+GpuShapeParameters = DeviceNDArray
+GpuShapeTypes = DeviceNDArray
+GpuShapes = tuple[GpuShapeParameters, GpuShapeTypes]
 
 PARAMETERS = 0
 TYPES = 1
@@ -23,7 +24,7 @@ SPHERE = 0
 RECTANGLE = 1
 
 
-@dataclass
+@dataclasses.dataclass
 class CpuShape:
     """Convenience class for transferring 'polymorphic' geometry to the GPU.
 
