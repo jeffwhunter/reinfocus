@@ -3,12 +3,10 @@
 
 import math
 
-from typing import Tuple
-
 from numba import cuda
 
-C2F = Tuple[float, float]
-C3F = Tuple[float, float, float]
+C2F = tuple[float, float]
+C3F = tuple[float, float, float]
 G2F = cuda.float32x2  # type: ignore
 G3F = cuda.float32x3  # type: ignore
 
@@ -98,7 +96,11 @@ def add3_c3f(a: C3F, b: C3F, c: C3F) -> C3F:
 def add3_g3f(a: G3F, b: G3F, c: G3F) -> G3F:
     """Adds three 3D GPU vectors."""
 
-    return cuda.float32x3(a.x + b.x + c.x, a.y + b.y + c.y, a.z + b.z + c.z)  # type: ignore
+    return cuda.float32x3(  # type: ignore
+        a.x + b.x + c.x,
+        a.y + b.y + c.y,
+        a.z + b.z + c.z,
+    )
 
 
 @cuda.jit
@@ -145,7 +147,11 @@ def smul_c3f(vector: C3F, scalar: float) -> C3F:
 def smul_g3f(vector: G3F, scalar: float) -> G3F:
     """Multiplies a 3DGPU vector by a scalar."""
 
-    return cuda.float32x3(vector.x * scalar, vector.y * scalar, vector.z * scalar)  # type: ignore
+    return cuda.float32x3(  # type: ignore
+        vector.x * scalar,
+        vector.y * scalar,
+        vector.z * scalar,
+    )
 
 
 @cuda.jit
@@ -165,7 +171,11 @@ def div_c3f(vector: C3F, scalar: float) -> C3F:
 def div_g3f(vector: G3F, scalar: float) -> G3F:
     """Divides a 3D GPU vector by a scalar."""
 
-    return cuda.float32x3(vector.x / scalar, vector.y / scalar, vector.z / scalar)  # type: ignore
+    return cuda.float32x3(  # type: ignore
+        vector.x / scalar,
+        vector.y / scalar,
+        vector.z / scalar,
+    )
 
 
 @cuda.jit

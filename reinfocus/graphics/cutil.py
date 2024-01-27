@@ -69,7 +69,10 @@ def launcher(
 
     actual_block_shape = constant_like(16, shape) if block_shape is None else block_shape
 
-    return kernel[enough_blocks(shape, actual_block_shape), actual_block_shape]  # type: ignore
+    return kernel[  # type: ignore
+        enough_blocks(shape, actual_block_shape),
+        actual_block_shape,
+    ]
 
 
 @cuda.jit
