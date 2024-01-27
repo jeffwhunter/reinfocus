@@ -2,12 +2,13 @@
 
 import math
 
-import numpy as np
+import numpy
+
 from numba import cuda
-from reinfocus.graphics import hit_record as hit
+from reinfocus.graphics import hit_record
 from reinfocus.graphics import ray
-from reinfocus.graphics import shape as sha
-from reinfocus.graphics import vector as vec
+from reinfocus.graphics import shape
+from reinfocus.graphics import vector
 
 X = 0
 Y = 1
@@ -18,8 +19,8 @@ FY = 5
 
 
 def cpu_sphere(
-    centre: vec.C3F, radius: float, texture: vec.C2F = vec.c2f(16, 16)
-) -> sha.CpuShape:
+    centre: vector.C3F, radius: float, texture: vector.C2F = vector.c2f(16, 16)
+) -> shape.CpuShape:
     """Makes a representation of a sphere suitable for transfer to the GPU.
 
     Args:
@@ -30,15 +31,15 @@ def cpu_sphere(
     Returns:
         A sphere that's easy to transfer to a GPU."""
 
-    return sha.CpuShape(
-        np.array([*centre, radius, *texture], dtype=np.float32), sha.SPHERE
+    return shape.CpuShape(
+        numpy.array([*centre, radius, *texture], dtype=numpy.float32), shape.SPHERE
     )
 
 
 @cuda.jit
 def gpu_hit_sphere(
-    sphere_parameters: sha.GpuShapeParameters, r: ray.GpuRay, t_min: float, t_max: float
-) -> sha.GpuHitResult:
+    sphere_parameters: shape.GpuShapeParameters, r: ray.GpuRay, t_min: float, t_max: float
+) -> shape.GpuHitResult:
     """Determines if the ray r hits the sphere defined by sphere_parameters between
         t_min and t_max, returning a hit_record containing the details if it does.
 
@@ -56,20 +57,20 @@ def gpu_hit_sphere(
             second element is a GpuHitRecord with the details of the hit, which
             is empty if there was no hit."""
 
-    sphere_centre = vec.g3f(
+    sphere_centre = vector.g3f(
         sphere_parameters[X], sphere_parameters[Y], sphere_parameters[Z]
     )
     sphere_radius = sphere_parameters[R]
 
-    oc = vec.sub_g3f(r[ray.ORIGIN], sphere_centre)
-    a = vec.dot_g3f(r[ray.DIRECTION], r[ray.DIRECTION])
-    b = vec.dot_g3f(oc, r[ray.DIRECTION])
-    c = vec.dot_g3f(oc, oc) - sphere_radius * sphere_radius
+    oc = vector.sub_g3f(r[ray.ORIGIN], sphere_centre)
+    a = vector.dot_g3f(r[ray.DIRECTION], r[ray.DIRECTION])
+    b = vector.dot_g3f(oc, r[ray.DIRECTION])
+    c = vector.dot_g3f(oc, oc) - sphere_radius * sphere_radius
 
     discriminant = b * b - a * c
 
     if discriminant < 0:
-        return (False, hit.gpu_empty_hit_record())
+        return (False, hit_record.gpu_empty_hit_record())
 
     sqrtd = math.sqrt(discriminant)
 
@@ -77,19 +78,19 @@ def gpu_hit_sphere(
     if root < t_min or t_max < root:
         root = (-b + sqrtd) / a
         if root < t_min or t_max < root:
-            return (False, hit.gpu_empty_hit_record())
+            return (False, hit_record.gpu_empty_hit_record())
 
     p = ray.gpu_point_at_parameter(r, root)
-    n = vec.div_g3f(vec.sub_g3f(p, sphere_centre), sphere_radius)
+    n = vector.div_g3f(vector.sub_g3f(p, sphere_centre), sphere_radius)
     return (
         True,
-        hit.gpu_hit_record(
+        hit_record.gpu_hit_record(
             p,
             n,
             root,
             gpu_sphere_uv(n),
-            vec.g2f(sphere_parameters[FX], sphere_parameters[FY]),
-            sha.SPHERE,
+            vector.g2f(sphere_parameters[FX], sphere_parameters[FY]),
+            shape.SPHERE,
         ),
     )
 
@@ -104,6 +105,6 @@ def gpu_sphere_uv(point):
     Returns:
         A G2F with the texture coordinates of that point."""
 
-    return vec.g2f(
+    return vector.g2f(
         (math.atan2(-point.z, point.x) + math.pi) / math.pi, math.acos(-point.y) / math.pi
     )
