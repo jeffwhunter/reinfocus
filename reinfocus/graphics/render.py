@@ -87,7 +87,7 @@ def render(
     Returns:
         A ray traced image, focused on a plane at focus_distance, of world."""
 
-    frame = numpy.zeros(frame_shape + (3,), dtype=numpy.float32)
+    frame = cuda.device_array(frame_shape + (3,), dtype=numpy.float32)
 
     cutil.launcher(device_render, frame_shape, block_shape)(
         frame,
@@ -103,4 +103,4 @@ def render(
         (cpu_world.device_shape_parameters(), cpu_world.device_shape_types()),
     )
 
-    return frame
+    return frame.copy_to_host()

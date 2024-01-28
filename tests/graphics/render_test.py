@@ -2,6 +2,7 @@
 
 import numpy
 
+from numba import cuda
 from numba.cuda import testing
 from numba.cuda.testing import unittest
 
@@ -22,7 +23,7 @@ class RenderTest(testing.CUDATestCase):
 
         frame_shape = (300, 300)
 
-        frame = numpy.zeros(frame_shape + (3,), dtype=numpy.float32)
+        frame = cuda.device_array(frame_shape + (3,), dtype=numpy.float32)
 
         cpu_world = world.one_rect_world(world.ShapeParameters(r_size=30))
 
@@ -40,7 +41,7 @@ class RenderTest(testing.CUDATestCase):
             (cpu_world.device_shape_parameters(), cpu_world.device_shape_types()),
         )
 
-        average_colour = numpy.average(frame, axis=(0, 1))
+        average_colour = numpy.average(frame.copy_to_host(), axis=(0, 1))
 
         self.assertTrue(numpy.all(average_colour >= [0.25, 0.25, 0]))
         self.assertTrue(numpy.all(average_colour <= [0.5, 0.5, 0]))
