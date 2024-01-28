@@ -32,7 +32,7 @@ class HitRecordTest(testing.CUDATestCase):
 
         cutil.launcher(make_empty_record, 1)(cpu_array)
 
-        test_utils.arrays_close(self, cpu_array[0], numpy.zeros(12))
+        test_utils.all_close(cpu_array[0], numpy.zeros(12))
 
     def test_hit_record(self):
         """Tests that hit_record makes an appropriate hit record on the GPU."""
@@ -76,7 +76,7 @@ class HitRecordTest(testing.CUDATestCase):
             ),
         )
 
-        test_utils.arrays_close(self, cpu_array[0], range(12))
+        test_utils.all_close(cpu_array[0], range(12))
 
 
 if __name__ == "__main__":

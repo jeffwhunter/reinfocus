@@ -59,19 +59,17 @@ class ObservationFilterTest(unittest.TestCase):
 
         o = numpy.array([1, 2, 3])
 
-        test_utils.arrays_close(self, observation_filter.ObservationFilter(0, 0, 3)(o), o)
+        test_utils.all_close(observation_filter.ObservationFilter(0, 0, 3)(o), o)
 
         for m in range(3):
-            test_utils.arrays_close(
-                self,
+            test_utils.all_close(
                 observation_filter.ObservationFilter(0, 0, 3, {m})(o),
                 numpy.delete(o, m),
             )
 
         for p in range(3):
             m = numpy.delete(numpy.arange(3), p)
-            test_utils.arrays_close(
-                self,
+            test_utils.all_close(
                 observation_filter.ObservationFilter(0, 0, 3, set(m))(o),
                 numpy.delete(o, m),
             )

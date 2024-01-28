@@ -21,8 +21,7 @@ class SphereTest(testing.CUDATestCase):
     def test_cpu_sphere(self):
         """Tests that cpu_sphere makes a CPU sphere with the expected elements."""
 
-        test_utils.arrays_close(
-            self,
+        test_utils.all_close(
             sphere.cpu_sphere(vector.c3f(1, 2, 3), 4, vector.c2f(5, 6)).parameters,
             [1, 2, 3, 4, 5, 6],
         )
@@ -51,8 +50,8 @@ class SphereTest(testing.CUDATestCase):
             vector.c3f(-1, 0, 0),
         )
 
-        test_utils.arrays_close(
-            self, cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, 1, 0.5, 4, 8, shape.SPHERE)
+        test_utils.all_close(
+            cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, 1, 0.5, 4, 8, shape.SPHERE)
         )
 
     def test_gpu_sphere_uv(self):
@@ -71,7 +70,7 @@ class SphereTest(testing.CUDATestCase):
 
         cutil.launcher(get_texture_coord, 1)(cpu_array, vector.c3f(-1, 0, 0))
 
-        test_utils.arrays_close(self, cpu_array[0], (0.0, 0.5))
+        test_utils.all_close(cpu_array[0], (0.0, 0.5))
 
 
 if __name__ == "__main__":

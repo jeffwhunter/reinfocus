@@ -20,8 +20,7 @@ class RectangleTest(testing.CUDATestCase):
 
     def test_cpu_rectangle(self):
         """Tests that cpu_rectangle makes a CPU rectangle with the expected elements."""
-        test_utils.arrays_close(
-            self,
+        test_utils.all_close(
             rectangle.cpu_rectangle(
                 vector.c2f(0, 1), vector.c2f(2, 3), 4, vector.c2f(5, 6)
             ).parameters,
@@ -57,8 +56,8 @@ class RectangleTest(testing.CUDATestCase):
             vector.c3f(0, 0, 1),
         )
 
-        test_utils.arrays_close(
-            self, cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, 0.5, 0.5, 4, 8, shape.RECTANGLE)
+        test_utils.all_close(
+            cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, 0.5, 0.5, 4, 8, shape.RECTANGLE)
         )
 
     def test_gpu_rectangle_uv(self):
@@ -89,9 +88,7 @@ class RectangleTest(testing.CUDATestCase):
 
         cutil.launcher(get_texture_coord, len(tests))(cpu_array, tests)
 
-        test_utils.arrays_close(
-            self, cpu_array, [[0, 0], [0, 1], [1, 0], [1, 1], [0.5, 0.5]]
-        )
+        test_utils.all_close(cpu_array, [[0, 0], [0, 1], [1, 0], [1, 1], [0.5, 0.5]])
 
 
 if __name__ == "__main__":

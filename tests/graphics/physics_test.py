@@ -82,8 +82,7 @@ class PhysicsTest(testing.CUDATestCase):
             cpu_array, tests[:, 0], tests[:, 1]
         )
 
-        test_utils.arrays_close(
-            self,
+        test_utils.all_close(
             cpu_array,
             [
                 [1, 0, 0],
@@ -127,12 +126,12 @@ class PhysicsTest(testing.CUDATestCase):
             cpu_array, random.make_random_states(1, 0)
         )
 
-        test_utils.arrays_close(self, cpu_array[0, 0:3], [0, 0, 0])
+        test_utils.all_close(cpu_array[0, 0:3], [0, 0, 0])
 
         self.assertTrue(
             numpy.less(linalg.norm(cpu_array[0, 3:6] - numpy.array([0, 0, 1])), 1.0)
         )
-        test_utils.arrays_close(self, cpu_array[0, 6:9], [1, 0, 0])
+        test_utils.all_close(cpu_array[0, 6:9], [1, 0, 0])
 
     def test_scatter_with_spheres(self):
         """Tests that scatter scatters a sphere hit in the expected way."""
@@ -162,11 +161,11 @@ class PhysicsTest(testing.CUDATestCase):
 
         cutil.launcher(scatter_with_sphere, 1)(cpu_array, random.make_random_states(1, 0))
 
-        test_utils.arrays_close(self, cpu_array[0, 0:3], [0, 0, 1])
+        test_utils.all_close(cpu_array[0, 0:3], [0, 0, 1])
         self.assertTrue(
             numpy.less(linalg.norm(cpu_array[0, 3:6] - numpy.array([0, 0, 1])), 1.0)
         )
-        test_utils.arrays_close(self, cpu_array[0, 6:9], [1, 0, 0])
+        test_utils.all_close(cpu_array[0, 6:9], [1, 0, 0])
 
     def test_find_colour_with_rectangles(self):
         """Tests that find_colour finds the expected colour when we fire a ray at a
@@ -205,7 +204,7 @@ class PhysicsTest(testing.CUDATestCase):
         )
 
         self.assertTrue(0 < cpu_array[0, 0] <= 1.0)
-        test_utils.arrays_close(self, cpu_array[0, 1:3], [0, 0])
+        test_utils.all_close(cpu_array[0, 1:3], [0, 0])
 
     def test_find_colour_with_spheres(self):
         """Tests that find_colour finds the expected colour when we fire a ray at a
@@ -242,7 +241,7 @@ class PhysicsTest(testing.CUDATestCase):
         )
 
         self.assertTrue(0 < cpu_array[0, 1] <= 1.0)
-        test_utils.arrays_close(self, cpu_array[0, ::2], [0, 0])
+        test_utils.all_close(cpu_array[0, ::2], [0, 0])
 
 
 if __name__ == "__main__":

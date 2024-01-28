@@ -1,17 +1,45 @@
 """Contains utilities for array based unit tests."""
 
-import unittest
+from collections.abc import Sequence
+from typing import TypeVar
 
-from numpy import testing as npt
+import numpy
+
+from numpy import testing
+from numpy.typing import NDArray
+
+CollectionT = TypeVar("CollectionT", bound=Sequence | NDArray)
 
 
-def arrays_close(test_case: unittest.TestCase, a, b):
-    """Asserts that two arrays are fairly close."""
+def all_close(a: CollectionT, b: CollectionT, atol=1e-7, msg=None):
+    """Asserts that two arrays are fairly close. An exception containing `msg` will be
+    thrown if either array differs from the other in any place by more than `atol`.
 
-    test_case.assertIsNone(npt.assert_allclose(a, b, atol=1e-7))
+    Args:
+        `a`: One of the lists to compare.
+        `b`: The other list to compare."""
+
+    testing.assert_allclose(
+        numpy.asarray(a),
+        numpy.asarray(b),
+        atol=atol,
+        err_msg="" if msg is None else msg,
+    )
 
 
-def arrays_not_close(test_case: unittest.TestCase, a, b):
-    """Asserts that two arrays are not fairly close."""
+def differ(a: CollectionT, b: CollectionT, atol=1e-7, msg=None):
+    """Asserts that two arrays differ in some way. An exception containing `msg` will be
+    thrown if neither array differs from the other by more than `atol`.
 
-    test_case.assertIsNone(npt.assert_raises(AssertionError, npt.assert_allclose, a, b))
+    Args:
+        `a`: One of the lists to compare.
+        `b`: The other list to compare."""
+
+    testing.assert_raises(
+        AssertionError,
+        testing.assert_allclose,
+        numpy.asarray(a),
+        numpy.asarray(b),
+        atol=atol,
+        err_msg="" if msg is None else msg,
+    )

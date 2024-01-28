@@ -52,7 +52,7 @@ class CutilTest(testing.CUDATestCase):
 
         cutil.launcher(return_ones_line, tests)(cpu_array)
 
-        test_utils.arrays_close(self, cpu_array, numpy.ones(tests))
+        test_utils.all_close(cpu_array, numpy.ones(tests))
 
     def test_launcher_grid(self):
         """Tests that launcher creates a 2-D launchable cuda function."""
@@ -71,7 +71,7 @@ class CutilTest(testing.CUDATestCase):
 
         cutil.launcher(return_ones_grid, tests)(cpu_array)
 
-        test_utils.arrays_close(self, cpu_array, numpy.ones(tests))
+        test_utils.all_close(cpu_array, numpy.ones(tests))
 
     def test_outside_line_shape(self):
         """Tests that outside_shape returns if an index is outside one range."""
@@ -93,7 +93,7 @@ class CutilTest(testing.CUDATestCase):
         target = numpy.zeros(tests)
         target[0:3] = numpy.ones(3)
 
-        test_utils.arrays_close(self, cpu_array, target)
+        test_utils.all_close(cpu_array, target)
 
     def test_outside_grid_shape(self):
         """Tests that outside_shape returns if an index is outside two ranges."""
@@ -115,7 +115,7 @@ class CutilTest(testing.CUDATestCase):
         target = numpy.zeros(tests)
         target[0:2, 0:3] = numpy.ones((2, 3))
 
-        test_utils.arrays_close(self, cpu_array, target)
+        test_utils.all_close(cpu_array, target)
 
     def test_line_index(self):
         """Tests that line_index returns the proper thread index."""
@@ -134,7 +134,7 @@ class CutilTest(testing.CUDATestCase):
 
         cutil.launcher(return_line_index, tests)(cpu_array)
 
-        test_utils.arrays_close(self, cpu_array, range(tests))
+        test_utils.all_close(cpu_array, range(tests))
 
     def test_grid_index(self):
         """Tests that grid_index returns the proper thread index."""
@@ -153,9 +153,7 @@ class CutilTest(testing.CUDATestCase):
 
         cutil.launcher(return_grid_index, tests)(cpu_array)
 
-        test_utils.arrays_close(
-            self, cpu_array, numpy.moveaxis(numpy.indices(tests), 0, -1)
-        )
+        test_utils.all_close(cpu_array, numpy.moveaxis(numpy.indices(tests), 0, -1))
 
 
 if __name__ == "__main__":

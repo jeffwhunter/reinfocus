@@ -13,18 +13,15 @@ from reinfocus.graphics import random
 from reinfocus.graphics import shape
 from reinfocus.graphics import vector
 from reinfocus.graphics import world
-from reinfocus.graphics.camera import CpuCamera
-from reinfocus.graphics.shape import GpuShapes
-from reinfocus.graphics.world import World
 
 
 @cuda.jit
 def device_render(
     frame: NDArray,
-    cpu_camera: CpuCamera,
+    cpu_camera: camera.CpuCamera,
     samples_per_pixel: int,
     random_states: DeviceNDArray,
-    shapes: GpuShapes,
+    shapes: shape.GpuShapes,
 ):
     """Uses the GPU to ray trace an image of the world defined in shapes into frame using
         camera's view.
@@ -73,7 +70,7 @@ def device_render(
 def render(
     frame_shape: tuple[int, int] = (300, 600),
     block_shape: tuple[int, int] = (16, 16),
-    cpu_world: World = world.mixed_world(),
+    cpu_world: world.World = world.mixed_world(),
     samples_per_pixel: int = 100,
     focus_distance: float = 10.0,
 ) -> NDArray:

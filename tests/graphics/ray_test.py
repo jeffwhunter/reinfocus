@@ -36,9 +36,7 @@ class RayTest(testing.CUDATestCase):
             cpu_array, vector.c3f(1, 2, 3), vector.c3f(4, 5, 6)
         )
 
-        test_utils.arrays_close(
-            self, cpu_array[0], vector.c3f(1, 2, 3) + vector.c3f(4, 5, 6)
-        )
+        test_utils.all_close(cpu_array[0], vector.c3f(1, 2, 3) + vector.c3f(4, 5, 6))
 
     def test_gpu_point_at_parameter(self):
         """Tests that gpu_point_at_parameter correctly finds the point t distance along
@@ -60,7 +58,7 @@ class RayTest(testing.CUDATestCase):
             cpu_array, vector.c3f(1, 2, 3), vector.c3f(4, 5, 6), 2
         )
 
-        test_utils.arrays_close(self, cpu_array[0], vector.c3f(9, 12, 15))
+        test_utils.all_close(cpu_array[0], vector.c3f(9, 12, 15))
 
 
 if __name__ == "__main__":

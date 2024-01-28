@@ -27,8 +27,7 @@ class CameraTest(testing.CUDATestCase):
         def flatten_camera(cam):
             return flatten(cam[0:7]) + (cam[7],)
 
-        test_utils.arrays_close(
-            self,
+        test_utils.all_close(
             flatten_camera(
                 camera.cpu_camera(
                     camera.CameraOrientation(

@@ -21,8 +21,7 @@ class FocusEnvironmentTest(unittest.TestCase):
 
         initial_state = focus_environment.make_uniform_initializer(-1.0, 1.0, n_tests)()
 
-        test_utils.arrays_close(
-            self,
+        test_utils.all_close(
             (-1.0 <= initial_state) & (initial_state <= 1.0),
             numpy.full(n_tests, True),
         )
@@ -49,9 +48,9 @@ class FocusEnvironmentTest(unittest.TestCase):
         normer = focus_environment.make_observation_normer(
             numpy.array([1]), numpy.array([2])
         )
-        test_utils.arrays_close(self, normer(numpy.array([0])), numpy.array([-0.5]))
-        test_utils.arrays_close(self, normer(numpy.array([1])), numpy.array([0]))
-        test_utils.arrays_close(self, normer(numpy.array([2])), numpy.array([0.5]))
+        test_utils.all_close(normer(numpy.array([0])), numpy.array([-0.5]))
+        test_utils.all_close(normer(numpy.array([1])), numpy.array([0]))
+        test_utils.all_close(normer(numpy.array([2])), numpy.array([0.5]))
 
     def test_make_lens_distance_penalty(self):
         """Tests that make_lens_distance_penalty creates a rewarder that gives
@@ -117,15 +116,13 @@ class FocusEnvironmentTest(unittest.TestCase):
 
         environment = focus_environment.FocusEnvironment()
 
-        first_observation = environment.reset()[0]
+        environment.reset()
 
-        target_difference = first_observation[0] - first_observation[1]
+        left_position = environment.step(-1)[0][1]  # Move -1 is the largest inwards move
+        middle_position = environment.step(0.5)[0][1]
+        right_position = environment.step(0.5)[0][1]
 
-        action = target_difference / abs(target_difference)
-
-        self.assertAlmostEqual(
-            environment.step(action)[0][1], first_observation[1] + action * 0.2
-        )
+        self.assertAlmostEqual((left_position + right_position) / 2, middle_position)
 
     def test_environment_discrete_dynamics(self):
         """Tests that discrete dynamics respond to actions as expected."""
@@ -139,7 +136,6 @@ class FocusEnvironmentTest(unittest.TestCase):
         environment.reset()
 
         environment.step(6)  # Move 6 is the largest inwards move
-        environment.step(6)
 
         lens_positions = [environment.step(i)[0][1] for i in range(7)]
         lens_diffs = numpy.diff(lens_positions)

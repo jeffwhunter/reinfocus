@@ -30,8 +30,7 @@ class WorldTest(testing.CUDATestCase):
             ),
         )
 
-        test_utils.arrays_close(
-            self,
+        test_utils.all_close(
             w.device_shape_parameters(),
             numpy.array([[1, 2, 3, 4, 5, 6, 0], [-1, 1, -1, 1, 1, 4, 8]]),
         )
@@ -44,8 +43,7 @@ class WorldTest(testing.CUDATestCase):
             sphere.cpu_sphere(vector.c3f(7, 8, 9), 10, vector.c2f(11, 12)),
         )
 
-        test_utils.arrays_close(
-            self,
+        test_utils.all_close(
             w.device_shape_parameters(),
             numpy.array([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]),
         )
@@ -60,8 +58,8 @@ class WorldTest(testing.CUDATestCase):
             ),
         )
 
-        test_utils.arrays_close(
-            self, w.device_shape_types(), numpy.array([shape.SPHERE, shape.RECTANGLE])
+        test_utils.all_close(
+            w.device_shape_types(), numpy.array([shape.SPHERE, shape.RECTANGLE])
         )
 
     def test_gpu_hit_sphere_world(self):
@@ -97,8 +95,8 @@ class WorldTest(testing.CUDATestCase):
             vector.c3f(-1, 0, 0),
         )
 
-        test_utils.arrays_close(
-            self, cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, 1, 0.5, 4, 8, shape.SPHERE)
+        test_utils.all_close(
+            cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, 1, 0.5, 4, 8, shape.SPHERE)
         )
 
     def test_gpu_hit_rectangle_world(self):
@@ -138,36 +136,36 @@ class WorldTest(testing.CUDATestCase):
             vector.c3f(0, 0, 1),
         )
 
-        test_utils.arrays_close(
-            self, cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, 0.5, 0.5, 4, 8, shape.RECTANGLE)
+        test_utils.all_close(
+            cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, 0.5, 0.5, 4, 8, shape.RECTANGLE)
         )
 
     def test_one_sphere_world(self):
         """Tests that one_sphere_world creates a world with one sphere."""
 
-        test_utils.arrays_close(
-            self, world.one_sphere_world().device_shape_types(), [shape.SPHERE]
+        test_utils.all_close(
+            world.one_sphere_world().device_shape_types(), [shape.SPHERE]
         )
 
     def test_two_sphere_world(self):
         """Tests that two_sphere_world creates a world with two spheres."""
 
-        test_utils.arrays_close(
-            self, world.two_sphere_world().device_shape_types(), [shape.SPHERE] * 2
+        test_utils.all_close(
+            world.two_sphere_world().device_shape_types(), [shape.SPHERE] * 2
         )
 
     def test_one_rect_world(self):
         """Tests that one_rect_world creates a world with one rectangle."""
 
-        test_utils.arrays_close(
-            self, world.one_rect_world().device_shape_types(), [shape.RECTANGLE]
+        test_utils.all_close(
+            world.one_rect_world().device_shape_types(), [shape.RECTANGLE]
         )
 
     def test_two_rect_world(self):
         """Tests that two_rect_world creates a world with two rectangles."""
 
-        test_utils.arrays_close(
-            self, world.two_rect_world().device_shape_types(), [shape.RECTANGLE] * 2
+        test_utils.all_close(
+            world.two_rect_world().device_shape_types(), [shape.RECTANGLE] * 2
         )
 
     def test_mixed_world(self):

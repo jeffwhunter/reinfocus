@@ -2,17 +2,11 @@
 
 import unittest
 
-import numpy as np
-import numpy.typing as npt
-from reinfocus import vision as vis
-from reinfocus.graphics import render as ren
-from reinfocus.graphics import world as wor
+import numpy
 
-
-def make_frame(x: int = 10, y: int = 10, d: float = 0) -> npt.NDArray:
-    """Returns an x by y image full of d."""
-
-    return np.array([[(np.float32(d),) * 3] * y] * x)
+from reinfocus import vision
+from reinfocus.graphics import render
+from reinfocus.graphics import world
 
 
 class VisionTest(unittest.TestCase):
@@ -21,32 +15,46 @@ class VisionTest(unittest.TestCase):
     def test_focus_value_on_empty_image(self):
         """Tests that focus_value properly measures the focus in an empty image."""
 
-        self.assertAlmostEqual(vis.focus_value(make_frame()), 0)
+        self.assertAlmostEqual(
+            vision.focus_value(numpy.zeros((10, 10, 3), dtype=numpy.float32)), 0
+        )
 
     def test_focus_value_on_full_image(self):
         """Tests that focus_value properly measures the focus in a full image."""
 
-        self.assertAlmostEqual(vis.focus_value(make_frame(d=1.0)), 0)
+        self.assertAlmostEqual(
+            vision.focus_value(numpy.ones((10, 10, 3), dtype=numpy.float32)), 0
+        )
 
     def test_focus_value_on_checkerboard(self):
         """Tests that focus_value returns a large value for a checkerboard image."""
 
-        frame = make_frame()
+        frame = numpy.zeros((10, 10, 3), dtype=numpy.float32)
         frame[0:10:2, :, :] = 1.0
         frame[:, 0:10:2, :] = 1.0 - frame[:, 0:10:2, :]
-        self.assertGreater(vis.focus_value(frame), 9.0)
+        self.assertGreater(vision.focus_value(frame), 9.0)
 
     def test_focus_value_on_ray_traced_images(self):
         """Tests that in focus images have higher focus_values than out of focus
         images."""
 
-        world = wor.one_rect_world(wor.ShapeParameters(distance=10))
+        cpu_world = world.one_rect_world(world.ShapeParameters(distance=10))
 
-        distant_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=40))
-        far_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=20))
-        in_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=10))
-        near_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=5))
-        close_focus = vis.focus_value(ren.render(cpu_world=world, focus_distance=1))
+        distant_focus = vision.focus_value(
+            render.render(cpu_world=cpu_world, focus_distance=40)
+        )
+        far_focus = vision.focus_value(
+            render.render(cpu_world=cpu_world, focus_distance=20)
+        )
+        in_focus = vision.focus_value(
+            render.render(cpu_world=cpu_world, focus_distance=10)
+        )
+        near_focus = vision.focus_value(
+            render.render(cpu_world=cpu_world, focus_distance=5)
+        )
+        close_focus = vision.focus_value(
+            render.render(cpu_world=cpu_world, focus_distance=1)
+        )
 
         self.assertGreater(in_focus, near_focus)
         self.assertGreater(near_focus, close_focus)
