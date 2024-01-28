@@ -17,7 +17,9 @@ def all_close(a: CollectionT, b: CollectionT, atol=1e-7, msg=None):
 
     Args:
         `a`: One of the lists to compare.
-        `b`: The other list to compare."""
+        `b`: The other list to compare.
+        `atol`: The absolute tolerance of the differene.
+        `msg`: The message emitted if `a` and `b` differ."""
 
     testing.assert_allclose(
         numpy.asarray(a),
@@ -33,7 +35,9 @@ def differ(a: CollectionT, b: CollectionT, atol=1e-7, msg=None):
 
     Args:
         `a`: One of the lists to compare.
-        `b`: The other list to compare."""
+        `b`: The other list to compare.
+        `atol`: The absolute tolerance of the differene.
+        `msg`: The message emitted if `a` and `b` do not differ."""
 
     testing.assert_raises(
         AssertionError,
