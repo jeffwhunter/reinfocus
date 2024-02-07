@@ -42,7 +42,7 @@ def make_testee(
             initializer=initializer or mock.Mock(return_value=(0.0, 0.0)),
             obs_filter=obs_filter or mock.Mock(side_effect=lambda obs: obs),
             obs_producer=make_obs_producer(),
-            rewarder=mock.Mock(side_effect=lambda _: 0.0),
+            rewarder=mock.Mock(side_effect=lambda _1, _2: 0.0),
             visualizer=visualizer or mock.Mock(),
         ),
         render_mode=render_mode,

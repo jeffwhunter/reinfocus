@@ -131,12 +131,10 @@ class FocusEnvironment(gymnasium.Env, Generic[ActionT]):
             (self._state[SI.LENS], observation[OI.FOCUS])
         )
 
-        early_end, early_end_bonus = self._dependencies.ender.is_early_end(self._state)
-
         return (
             self._dependencies.obs_filter(observation),
-            self._dependencies.rewarder(observation) + early_end_bonus,
-            early_end,
+            self._dependencies.rewarder(self._state, observation),
+            self._dependencies.ender.is_early_end(self._state),
             False,
             {},
         )
@@ -195,18 +193,62 @@ class SimpleDiscreteEnviroment(FocusEnvironment[int]):
         diff = ends[1] - ends[0]
 
         step = diff * 0.01
-        dynamics_function = dynamics.discrete(
-            ends, [0, step, -step, 5 * step, -5 * step, 10 * step, -10 * step]
-        )
 
         super().__init__(
             FocusEnvironmentDependencies(
-                dynamics_function=dynamics_function,
+                dynamics_function=dynamics.discrete(
+                    ends, [0, step, -step, 5 * step, -5 * step, 10 * step, -10 * step]
+                ),
                 ender=episode_ender.OnTargetEpisodeEnder(diff * 0.1),
                 initializer=state_initializer.uniform(ends[0], ends[1], 2),
                 obs_filter=observation_filter.ObservationFilter(-1.0, 1.0, 3, {0}),
                 obs_producer=observation_producer.from_ends(ends),
-                rewarder=observation_rewarder.distance_penalty(2.0),
+                rewarder=observation_rewarder.distance(diff),
+                visualizer=visualization.FocusHistoryVisualizer(ends),
+            ),
+            render_mode=render_mode,
+        )
+
+
+class ContinuousLeftOrRight(FocusEnvironment[float]):
+    """An environment with the following properties:
+    * It's lens and target can start anywhere in (5.5, 6.5) or (8.5, 9.5).
+    * It ends early if the lens is within 0.5 of the target for 10 steps.
+    * It takes continuous steps in (-0.5, 0.5).
+    * It earns a reward of -1 ever step it's not on target."""
+
+    def __init__(self, render_mode: str | None = None):
+        """Creates a ContinuousLeftOrRight.
+
+        Args:
+            render_mode: 'rgb_array' or None. If 'rgb_array', a nice visualization will be
+                generated each time render is called. If None, None will be returned by
+                render.
+
+        Returns:
+            A ContinuousLeftOrRight."""
+
+        ends = (5.0, 10.0)
+        diff = ends[1] - ends[0]
+
+        target_size = diff * 0.1
+
+        super().__init__(
+            FocusEnvironmentDependencies(
+                dynamics_function=dynamics.continuous(ends, diff * 0.1),
+                ender=episode_ender.OnTargetEpisodeEnder(0.5),
+                initializer=state_initializer.ranged(
+                    [
+                        [
+                            (ends[0] + target_size, ends[0] + 3 * target_size),
+                            (ends[1] - 3 * target_size, ends[1] - target_size),
+                        ],
+                        [ends],
+                    ]
+                ),
+                obs_filter=observation_filter.ObservationFilter(-1.0, 1.0, 3, {0}),
+                obs_producer=observation_producer.from_ends(ends),
+                rewarder=observation_rewarder.on_target(target_size, -1, 0),
                 visualizer=visualization.FocusHistoryVisualizer(ends),
             ),
             render_mode=render_mode,
