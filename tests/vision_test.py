@@ -16,23 +16,23 @@ class VisionTest(unittest.TestCase):
         """Tests that focus_value properly measures the focus in an empty image."""
 
         self.assertAlmostEqual(
-            vision.focus_value(numpy.zeros((10, 10, 3), dtype=numpy.float32)), 0
+            vision.focus_value(numpy.zeros((10, 10, 3), dtype=numpy.uint8)), 0
         )
 
     def test_focus_value_on_full_image(self):
         """Tests that focus_value properly measures the focus in a full image."""
 
         self.assertAlmostEqual(
-            vision.focus_value(numpy.ones((10, 10, 3), dtype=numpy.float32)), 0
+            vision.focus_value(numpy.ones((10, 10, 3), dtype=numpy.uint8)), 0
         )
 
     def test_focus_value_on_checkerboard(self):
         """Tests that focus_value returns a large value for a checkerboard image."""
 
-        frame = numpy.zeros((10, 10, 3), dtype=numpy.float32)
-        frame[0:10:2, :, :] = 1.0
-        frame[:, 0:10:2, :] = 1.0 - frame[:, 0:10:2, :]
-        self.assertGreater(vision.focus_value(frame), 9.0)
+        frame = numpy.zeros((10, 10, 3), dtype=numpy.uint8)
+        frame[0:10:2, :, :] = 255
+        frame[:, 0:10:2, :] = 255 - frame[:, 0:10:2, :]
+        self.assertGreater(vision.focus_value(frame), 1)
 
     def test_focus_value_on_ray_traced_images(self):
         """Tests that in focus images have higher focus_values than out of focus

@@ -2,24 +2,23 @@
 
 import abc
 
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic
 
 import numpy
 
 from gymnasium import spaces
-from numpy.typing import NDArray
 
-StateElement = numpy.float32
-State = NDArray[StateElement]
-
-Action = TypeVar("Action", bound=numpy.number)
+from reinfocus.environment.types import ActionT, State, StateElement
 
 
-class Dynamics(abc.ABC, Generic[Action]):
+class Dynamics(abc.ABC, Generic[ActionT]):
     """Generic state dynamics controllers and their associated action spaces."""
 
     def __init__(
-        self, action_space: spaces.Space, limits: State, update: Callable[[Action], State]
+        self,
+        action_space: spaces.Space,
+        limits: State,
+        update: Callable[[ActionT], State],
     ):
         """Creates a Dynamics controller.
 
@@ -32,7 +31,7 @@ class Dynamics(abc.ABC, Generic[Action]):
         self._limits = limits
         self._update = update
 
-    def __call__(self, state: State, action: Action) -> State:
+    def __call__(self, state: State, action: ActionT) -> State:
         """Returns the new state that results from enacting action in state.
 
         Args:
@@ -53,24 +52,22 @@ class Dynamics(abc.ABC, Generic[Action]):
         return self._space
 
 
-def make_continuous_update(speed: float) -> Callable[[numpy.float32], State]:
-    """Creates a function that returns how the state changes given some floating point
-    action.
+def continuous_update(speed: float) -> Callable[[float], State]:
+    """Creates a function that calculates an update to a State given some float
+    action. This function will only repond to actions in t
 
     Args:
         speed: The fastest speed possible. How far a 1 or -1 will travel.
 
     Returns:
-        A function that returns how the state changes given some floating point action."""
+        A function that returns how the state changes given some float action."""
 
     mask = numpy.array([0.0, 1.0], dtype=StateElement)
 
     return lambda action: numpy.multiply(numpy.clip(action, -1.0, 1.0), speed) * mask
 
 
-def make_continuous_dynamics(
-    limits: tuple[float, float], speed: float
-) -> Dynamics[numpy.float32]:
+def continuous(limits: tuple[float, float], speed: float) -> Dynamics[float]:
     """Creates a dynamics system that moves between the limits at speed. Actions of 1 and
     -1 move at the given speed towards the max and min limit, respectively. Actions of 0
     keep the state in the same place.
@@ -84,11 +81,11 @@ def make_continuous_dynamics(
     return Dynamics(
         spaces.Box(-1.0, 1.0, (1,), dtype=numpy.float32),
         numpy.array(limits),
-        make_continuous_update(speed),
+        continuous_update(speed),
     )
 
 
-def make_discrete_update(actions: list[float]) -> Callable[[numpy.int32], State]:
+def discrete_update(actions: list[float]) -> Callable[[int], State]:
     """Creates a function that returns how the state changes given some action picked from
     actions.
 
@@ -104,9 +101,7 @@ def make_discrete_update(actions: list[float]) -> Callable[[numpy.int32], State]
     return lambda action: numpy.float32(actions[action]) * mask
 
 
-def make_discrete_dynamics(
-    limits: tuple[float, float], actions: list[float]
-) -> Dynamics[numpy.int32]:
+def discrete(limits: tuple[float, float], actions: list[float]) -> Dynamics[int]:
     """Creates a dynamics system that moves between the limits with a number of fixed
     steps. Actions are indices to actions, which are the distances in the state space each
     action moves. For example, an action of 2 moves a distance of actions[2].
@@ -121,5 +116,5 @@ def make_discrete_dynamics(
     return Dynamics(
         spaces.Discrete(len(actions)),
         numpy.array(limits),
-        make_discrete_update(actions),
+        discrete_update(actions),
     )

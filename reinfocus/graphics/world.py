@@ -23,23 +23,27 @@ class World:
         """Constructor for the World.
 
         Args:
-            shape: The shapes this world will hold."""
+            shapes: The shapes this world will hold."""
 
-        self.shapes = shapes
-        self.__device_shape_parameters = self.__make_device_shape_parameters()
-        self.__device_shape_types = self.__make_device_shape_types()
+        self._device_shape_parameters = self._make_device_shape_parameters(shapes)
+        self._device_shape_types = self._make_device_shape_types(shapes)
 
-    def __make_device_shape_parameters(self) -> DeviceNDArray:
+    def _make_device_shape_parameters(
+        self, shapes: tuple[shape.CpuShape, ...]
+    ) -> DeviceNDArray:
         """Makes a device array containing the parameters of each shape in this world.
+
+        Args:
+            shapes: The shapes whose parameters will be sent to the device.
 
         Returns:
             A device array containing the parameters of each shape in this world."""
 
         parameters = numpy.zeros(
-            shape=(len(self.shapes), max(len(s.parameters) for s in self.shapes))
+            shape=(len(shapes), max(len(s.parameters) for s in shapes))
         )
 
-        for i, s in enumerate(self.shapes):
+        for i, s in enumerate(shapes):
             parameters[i, : len(s.parameters)] = s.parameters
 
         return cuda.to_device(parameters)
@@ -50,15 +54,20 @@ class World:
         Returns:
             A device array containing the parameters of each shape in this world."""
 
-        return self.__device_shape_parameters
+        return self._device_shape_parameters
 
-    def __make_device_shape_types(self) -> DeviceNDArray:
+    def _make_device_shape_types(
+        self, shapes: tuple[shape.CpuShape, ...]
+    ) -> DeviceNDArray:
         """Makes a device array containing the type of each shape in this world.
+
+        Args:
+            shapes: The shapes whose types will be sent to the device.
 
         Returns:
             A device array containing the type of each shape in this world."""
 
-        return cuda.to_device(numpy.array([s.type for s in self.shapes]))
+        return cuda.to_device(numpy.array([s.type for s in shapes]))
 
     def device_shape_types(self) -> DeviceNDArray:
         """Returns a device array containing the type of each shape in this world.
@@ -66,7 +75,7 @@ class World:
         Returns:
             A device array containing the type of each shape in this world."""
 
-        return self.__device_shape_types
+        return self._device_shape_types
 
 
 @cuda.jit

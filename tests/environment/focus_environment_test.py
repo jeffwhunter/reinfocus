@@ -1,262 +1,119 @@
-"""Contains tests for reinfocus.learning.focus_environment."""
+"""Contains tests for reinfocus.environment.focus_environment."""
 
 import unittest
 
-import numpy
+from unittest import mock
 
-from reinfocus import vision
 from reinfocus.environment import focus_environment
-from reinfocus.graphics import world
-from tests import test_utils
+
+from reinfocus.environment.types import ActionT
+
+
+def make_ender() -> mock.Mock:
+    """Returns a Mock that pretends to be an EpisodeEnder."""
+
+    ender = mock.Mock()
+    ender.is_early_end.return_value = (False, 0.0)
+    return ender
+
+
+def make_obs_producer() -> mock.Mock:
+    """Returns a Mock that pretends to be an FocusObservationProducer"""
+
+    obs_producer = mock.Mock()
+    obs_producer.produce_observation.side_effect = lambda state, _: (*state, 0.0)
+    return obs_producer
+
+
+def make_testee(
+    dynamics_function: mock.Mock | None = None,
+    initializer: mock.Mock | None = None,
+    obs_filter: mock.Mock | None = None,
+    visualizer: mock.Mock | None = None,
+    render_mode: str | None = None,
+) -> focus_environment.FocusEnvironment[ActionT]:
+    """Produces a FocusEnvironment with all the given dependencies; missing ones will
+    be mocked."""
+
+    return focus_environment.FocusEnvironment[ActionT](
+        focus_environment.FocusEnvironmentDependencies(
+            dynamics_function=dynamics_function or mock.Mock(),
+            ender=make_ender(),
+            initializer=initializer or mock.Mock(return_value=(0.0, 0.0)),
+            obs_filter=obs_filter or mock.Mock(side_effect=lambda obs: obs),
+            obs_producer=make_obs_producer(),
+            rewarder=mock.Mock(side_effect=lambda _: 0.0),
+            visualizer=visualizer or mock.Mock(),
+        ),
+        render_mode=render_mode,
+    )
 
 
 class FocusEnvironmentTest(unittest.TestCase):
-    """TestCases for reinfocus.learning.focus_environment."""
+    """TestCases for reinfocus.environment.focus_environment."""
 
-    def test_make_uniform_initializer(self):
-        """Tests that make_uniform_initializer creates a state initializer that samples
-        initial states from between given limits."""
+    def test_environment_dynamics(self):
+        """Tests that an environment reports state changes produced by it's dynamics
+        function."""
 
-        n_tests = 100
+        target = (-4.0, 8.0)
 
-        initial_state = focus_environment.make_uniform_initializer(-1.0, 1.0, n_tests)()
+        testee = make_testee(dynamics_function=mock.Mock(return_value=target))
 
-        test_utils.all_close(
-            (-1.0 <= initial_state) & (initial_state <= 1.0),
-            numpy.full(n_tests, True),
-        )
+        testee.reset()
 
-    def test_make_ranged_initializer(self):
-        """Tests that make_ranged_initializer creates a state initializer that samples
-        initial states from between the listed ranges."""
-
-        initial_states = focus_environment.make_ranged_initializer(
-            [[(0.0, 0.2), (0.8, 1.0)], [(0.2, 0.4), (0.6, 0.8)], [(0.4, 0.6)]]
-        )()
-
-        self.assertTrue(
-            0.0 <= initial_states[0] <= 0.2 or 0.8 <= initial_states[0] <= 1.0
-        )
-        self.assertTrue(
-            0.2 <= initial_states[1] <= 0.4 or 0.6 <= initial_states[1] <= 0.8
-        )
-        self.assertTrue(0.4 <= initial_states[2] <= 0.6)
-
-    def test_make_observation_normer(self):
-        """Tests that make_observation_normer creates a normer that norms as expected."""
-
-        normer = focus_environment.make_observation_normer(
-            numpy.array([1]), numpy.array([2])
-        )
-        test_utils.all_close(normer(numpy.array([0])), numpy.array([-0.5]))
-        test_utils.all_close(normer(numpy.array([1])), numpy.array([0]))
-        test_utils.all_close(normer(numpy.array([2])), numpy.array([0.5]))
-
-    def test_make_lens_distance_penalty(self):
-        """Tests that make_lens_distance_penalty creates a rewarder that gives
-        the proper penalties."""
-
-        penalty = focus_environment.make_lens_distance_penalty(1.0)
-        self.assertEqual(penalty(numpy.array([0.0, 0.0])), 0)
-        self.assertEqual(penalty(numpy.array([0.0, 1.0])), -1)
-        self.assertEqual(penalty(numpy.array([1.0, 0.0])), -1)
-        self.assertEqual(penalty(numpy.array([1.0, 1.0])), 0)
-
-    def test_make_lens_on_target_reward(self):
-        """Tests that make_lens_on_target_reward creates a rewarder that gives a reward
-        of one when the lens is within the given distance."""
-
-        reward = focus_environment.make_lens_on_target_reward(0.1)
-        self.assertEqual(reward(numpy.array([0.5, 0.65])), 0)
-        self.assertEqual(reward(numpy.array([0.5, 0.55])), 1)
-        self.assertEqual(reward(numpy.array([0.5, 0.45])), 1)
-        self.assertEqual(reward(numpy.array([0.5, 0.35])), 0)
-
-    def test_make_focus_reward(self):
-        """Tests that make_focus_reward creates a rewarder that gives a reward equal to
-        the focus."""
-
-        reward = focus_environment.make_focus_reward()
-        self.assertEqual(reward(numpy.array([1, 2, 3])), 3)
-        self.assertEqual(reward(numpy.array([4, 5, 6])), 6)
-        self.assertEqual(reward(numpy.array([3, 2, 1])), 1)
-        self.assertEqual(reward(numpy.array([6, 5, 4])), 4)
-
-    def test_render_and_measure(self):
-        """Tests that render and measure produces measured focus_values that increase as
-        the lens moves towards the target."""
-
-        rect_world = world.one_rect_world()
-
-        self.assertGreaterEqual(
-            focus_environment.render_and_measure(rect_world, 10),
-            focus_environment.render_and_measure(rect_world, 5),
-        )
-
-    def test_pretty_render(self):
-        """Tests that pretty_render produces images that focus as the lens moves towards
-        the target."""
-
-        rect_world = world.one_rect_world()
-
-        self.assertGreaterEqual(
-            vision.focus_value(focus_environment.pretty_render(rect_world, 10)),
-            vision.focus_value(focus_environment.pretty_render(rect_world, 5)),
-        )
-
-    def test_find_focus_value_limits_returns_min_lower_than_max(self):
-        """Tests that find_focus_value_limits produces a min lower than it's max."""
-
-        limits = focus_environment.find_focus_value_limits()
-
-        self.assertGreaterEqual(limits[1], limits[0])
-
-    def test_environment_continuous_dynamics(self):
-        """Tests that continuous dynamics respond to actions as expected."""
-
-        environment = focus_environment.FocusEnvironment()
-
-        environment.reset()
-
-        left_position = environment.step(-1)[0][1]  # Move -1 is the largest inwards move
-        middle_position = environment.step(0.5)[0][1]
-        right_position = environment.step(0.5)[0][1]
-
-        self.assertAlmostEqual((left_position + right_position) / 2, middle_position)
-
-    def test_environment_discrete_dynamics(self):
-        """Tests that discrete dynamics respond to actions as expected."""
-
-        environment = focus_environment.FocusEnvironment(
-            modes=focus_environment.FocusEnvironment.Modes(
-                dynamics_type=focus_environment.DynamicsType.DISCRETE
-            )
-        )
-
-        environment.reset()
-
-        environment.step(6)  # Move 6 is the largest inwards move
-
-        lens_positions = [environment.step(i)[0][1] for i in range(7)]
-        lens_diffs = numpy.diff(lens_positions)
-
-        self.assertTrue(all(lens_positions[0] == lp for lp in lens_positions[::2]))
-        self.assertTrue(all(diff > 0 for diff in lens_diffs[::2]))
-        self.assertTrue(all(diff < 0 for diff in lens_diffs[1::2]))
+        self.assertEqual(testee.step(0.0)[0][0:2], target)
 
     def test_environment_initialization(self):
-        """Tests that FocusEnvironment.reset initializes the state with the given limits
-        for different initialization modes."""
+        """Tests that an environment initializes it's state with the return value from
+        it's state initializer."""
 
-        u_env = focus_environment.FocusEnvironment()
-        d_env = focus_environment.FocusEnvironment(
-            modes=focus_environment.FocusEnvironment.Modes(
-                initializer_type=focus_environment.InitializerType.DEVIATED
-            )
-        )
+        target = (-4.0, 8.0)
 
-        u_obs = u_env.reset()[0]
-        d_obs = d_env.reset()[0]
-
-        self.assertTrue(-1 <= u_obs[focus_environment.TARGET] <= 1)
-
-        self.assertTrue(
-            -0.8 <= d_obs[focus_environment.TARGET] <= -0.5
-            or 0.5 <= d_obs[focus_environment.TARGET] <= 0.8
+        self.assertEqual(
+            make_testee(initializer=mock.Mock(return_value=target)).reset()[0][0:2],
+            target,
         )
 
     def test_environment_observability(self):
-        """Tests that FocusEnvironment.observation_space is the right shape under
-        different observability modes."""
+        """Tests that observation_space is the right shape for the given observation
+        filter."""
 
-        self.assertEqual(
-            focus_environment.FocusEnvironment(
-                modes=focus_environment.FocusEnvironment.Modes(
-                    observable_type=focus_environment.ObservableType.FULL
-                )
-            ).observation_space.shape,
-            (3,),
-        )
-        self.assertEqual(
-            focus_environment.FocusEnvironment(
-                modes=focus_environment.FocusEnvironment.Modes(
-                    observable_type=focus_environment.ObservableType.NO_TARGET
-                )
-            ).observation_space.shape,
-            (2,),
-        )
-        self.assertEqual(
-            focus_environment.FocusEnvironment(
-                modes=focus_environment.FocusEnvironment.Modes(
-                    observable_type=focus_environment.ObservableType.ONLY_FOCUS
-                )
-            ).observation_space.shape,
-            (1,),
-        )
+        target = mock.Mock()
 
-    def test_environment_produces_observation_inside_observation_space(self):
-        """Tests that FocusEnvironment.reset() produces an observation inside
-        FocusEnvironment.observation_space."""
+        obs_filter = mock.Mock()
+        obs_filter.observation_space.return_value = target
 
-        environment = focus_environment.FocusEnvironment()
-
-        self.assertTrue(environment.observation_space.contains(environment.reset()[0]))
-
-    def test_environment_step_towards_target_increases_focus_value(self):
-        """Tests that FocusEnvironment.step() with an action that moves the lens towards
-        the target will return an observation with a focus_value higher than the
-        prior one."""
-
-        environment = focus_environment.FocusEnvironment()
-
-        observation = environment.reset()[0]
-
-        action = (
-            observation[focus_environment.TARGET] - observation[focus_environment.LENS]
-        ) / 4.0
-
-        self.assertGreaterEqual(
-            environment.step(action)[0][focus_environment.FOCUS],
-            observation[focus_environment.FOCUS],
-        )
+        self.assertEqual(make_testee(obs_filter=obs_filter).observation_space, target)
 
     def test_no_render(self):
-        """Tests that FocusEnvironment.render returns None when render_mode is None."""
+        """Tests that render returns None when render_mode is None."""
 
-        environment = focus_environment.FocusEnvironment()
+        testee = make_testee()
 
-        environment.reset()
+        testee.reset()
 
-        self.assertIsNone(environment.render())
+        self.assertIsNone(testee.render())
 
-    def test_environment_render(self):
-        """Tests that FocusEnvironment.render produces images that focus as the lens
-        approaches the target."""
+    def test_rgb_array_render(self):
+        """Tests that render returns a value from it's visualizer when render_mode is
+        'rgb_array'."""
 
-        environment = focus_environment.FocusEnvironment(render_mode="rgb_array")
+        target = mock.Mock()
 
-        observation = environment.reset()[0]
-        while not 0.5 <= observation[0] <= 0.9 or not -0.9 <= observation[1] <= -0.5:
-            observation = environment.reset()[0]
+        visualizer = mock.Mock()
+        visualizer.visualize.return_value = target
 
-        old_image = environment.render()
+        testee = make_testee(visualizer=visualizer, render_mode="rgb_array")
 
-        for _ in range(5):
-            environment.step(1.0)
+        testee.reset()
 
-        new_image = environment.render()
-
-        assert old_image is not None
-        assert new_image is not None
-
-        self.assertGreaterEqual(
-            vision.focus_value(new_image), vision.focus_value(old_image)
-        )
+        self.assertEqual(testee.render(), target)
 
     def test_close_does_nothing(self):
         """Test that close does nothing! Wheeee!!!"""
 
-        self.assertIsNone(focus_environment.FocusEnvironment().close())
+        self.assertIsNone(make_testee().close())
 
 
 if __name__ == "__main__":

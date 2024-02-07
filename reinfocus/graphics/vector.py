@@ -3,10 +3,13 @@
 
 import math
 
+import numpy
+
 from numba import cuda
 
 C2F = tuple[float, float]
 C3F = tuple[float, float, float]
+C3UI = tuple[numpy.uint8, numpy.uint8, numpy.uint8]
 G2F = cuda.float32x2  # type: ignore
 G3F = cuda.float32x3  # type: ignore
 
@@ -124,6 +127,19 @@ def g3f_to_c3f(vector: G3F) -> C3F:
         The newly converted C3F."""
 
     return (vector.x, vector.y, vector.z)
+
+
+@cuda.jit
+def g3f_to_c3ui(vector: G3F) -> C3UI:
+    """Converts a 3D GPU float vector to a CPU uint vector.
+
+    Args:
+        vector: The vector to convert.
+
+    Returns:
+        The newly converted C3UI."""
+
+    return (numpy.uint8(vector.x), numpy.uint8(vector.y), numpy.uint8(vector.z))
 
 
 @cuda.jit

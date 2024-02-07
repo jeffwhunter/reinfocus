@@ -64,7 +64,19 @@ def device_render(
             ),
         )
 
-    frame[index] = vector.g3f_to_c3f(vector.div_g3f(colour, samples_per_pixel))
+    frame[index] = vector.g3f_to_c3ui(vector.smul_g3f(colour, 255.0 / samples_per_pixel))
+
+
+def make_render_target(frame_shape: tuple[int, int] = (300, 600)) -> DeviceNDArray:
+    """Creates a render target on the GPU; reduces the number of linter ignores.
+
+    Args:
+        frame_shape: The shape of the frame to create.
+
+    Returns:
+        A render target on the GPU."""
+
+    return cuda.device_array(frame_shape + (3,), dtype=numpy.uint8)  # type: ignore
 
 
 def render(
@@ -87,7 +99,7 @@ def render(
     Returns:
         A ray traced image, focused on a plane at focus_distance, of world."""
 
-    frame = cuda.device_array(frame_shape + (3,), dtype=numpy.float32)
+    frame = make_render_target(frame_shape)
 
     cutil.launcher(device_render, frame_shape, block_shape)(
         frame,

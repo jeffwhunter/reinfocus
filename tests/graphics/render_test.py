@@ -2,7 +2,6 @@
 
 import numpy
 
-from numba import cuda
 from numba.cuda import testing
 from numba.cuda.testing import unittest
 
@@ -23,7 +22,7 @@ class RenderTest(testing.CUDATestCase):
 
         frame_shape = (300, 300)
 
-        frame = cuda.device_array(frame_shape + (3,), dtype=numpy.float32)
+        frame = render.make_render_target(frame_shape)
 
         cpu_world = world.one_rect_world(world.ShapeParameters(r_size=30))
 
@@ -43,8 +42,15 @@ class RenderTest(testing.CUDATestCase):
 
         average_colour = numpy.average(frame.copy_to_host(), axis=(0, 1))
 
-        self.assertTrue(numpy.all(average_colour >= [0.25, 0.25, 0]))
-        self.assertTrue(numpy.all(average_colour <= [0.5, 0.5, 0]))
+        self.assertTrue(numpy.all(average_colour >= numpy.multiply([0.25, 0.25, 0], 255)))
+        self.assertTrue(numpy.all(average_colour <= numpy.multiply([0.5, 0.5, 0], 255)))
+
+    def test_make_render_target(self):
+        """Tests that make_render_target produces targets of the proper shape."""
+
+        target = (-4, 8)
+
+        self.assertEqual(render.make_render_target(target).shape, target + (3,))
 
     def test_render(self):
         """Tests that render produces a known image for a known set of parameters."""
@@ -57,8 +63,16 @@ class RenderTest(testing.CUDATestCase):
             axis=(0, 1),
         )
 
-        self.assertTrue(numpy.all(average_colour >= [0.4, 0.4, 0.1]))
-        self.assertTrue(numpy.all(average_colour <= [0.6, 0.6, 0.2]))
+        self.assertTrue(
+            numpy.all(
+                average_colour >= numpy.multiply([0.4, 0.4, 0.1], 255)  # type: ignore
+            )
+        )
+        self.assertTrue(
+            numpy.all(
+                average_colour <= numpy.multiply([0.6, 0.6, 0.2], 255)  # type: ignore
+            )
+        )
 
 
 if __name__ == "__main__":

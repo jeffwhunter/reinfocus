@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.learning.dynamics."""
+"""Contains tests for reinfocus.environment.dynamics."""
 
 import unittest
 
@@ -9,115 +9,114 @@ from tests import test_utils
 
 
 class DynamicsTest(unittest.TestCase):
-    """TestCases for reinfocus.learning.dynamics."""
+    """TestCases for reinfocus.environment.dynamics."""
 
     def test_continuous_update(self):
-        """Tests that make_continuous_update makes a function that returns the expected
+        """Tests that continuous_update makes a function that returns the expected
         change given some speed."""
 
-        fast_update = dynamics.make_continuous_update(2.0)
-        test_utils.all_close(fast_update(numpy.float32(2.0)), [0.0, 2.0])
-        test_utils.all_close(fast_update(numpy.float32(-2.0)), [0.0, -2.0])
-        test_utils.all_close(fast_update(numpy.float32(1.0)), [0.0, 2.0])
-        test_utils.all_close(fast_update(numpy.float32(-1.0)), [0.0, -2.0])
-        test_utils.all_close(fast_update(numpy.float32(0.1)), [0.0, 0.2])
-        test_utils.all_close(fast_update(numpy.float32(-0.1)), [0.0, -0.2])
-        test_utils.all_close(fast_update(numpy.float32(0.0)), [0.0, 0.0])
+        fast_update = dynamics.continuous_update(2.0)
+        test_utils.all_close(fast_update(2.0), [0.0, 2.0])
+        test_utils.all_close(fast_update(-2.0), [0.0, -2.0])
+        test_utils.all_close(fast_update(1.0), [0.0, 2.0])
+        test_utils.all_close(fast_update(-1.0), [0.0, -2.0])
+        test_utils.all_close(fast_update(0.1), [0.0, 0.2])
+        test_utils.all_close(fast_update(-0.1), [0.0, -0.2])
+        test_utils.all_close(fast_update(0.0), [0.0, 0.0])
 
-        slow_update = dynamics.make_continuous_update(0.1)
-        test_utils.all_close(slow_update(numpy.float32(2.0)), [0.0, 0.1])
-        test_utils.all_close(slow_update(numpy.float32(-2.0)), [0.0, -0.1])
-        test_utils.all_close(slow_update(numpy.float32(1.0)), [0.0, 0.1])
-        test_utils.all_close(slow_update(numpy.float32(-1.0)), [0.0, -0.1])
-        test_utils.all_close(slow_update(numpy.float32(0.1)), [0.0, 0.01])
-        test_utils.all_close(slow_update(numpy.float32(-0.1)), [0.0, -0.01])
-        test_utils.all_close(slow_update(numpy.float32(0.0)), [0.0, 0.0])
+        slow_update = dynamics.continuous_update(0.1)
+        test_utils.all_close(slow_update(2.0), [0.0, 0.1])
+        test_utils.all_close(slow_update(-2.0), [0.0, -0.1])
+        test_utils.all_close(slow_update(1.0), [0.0, 0.1])
+        test_utils.all_close(slow_update(-1.0), [0.0, -0.1])
+        test_utils.all_close(slow_update(0.1), [0.0, 0.01])
+        test_utils.all_close(slow_update(-0.1), [0.0, -0.01])
+        test_utils.all_close(slow_update(0.0), [0.0, 0.0])
 
     def test_continuous_dynamics(self):
-        """Tests that make_continuous_dynamics makes a system of dynamics that moves the
-        state with the expected speed."""
+        """Tests that continuous makes a system of dynamics that moves the state with the
+        expected speed."""
 
-        fast_dynamics = dynamics.make_continuous_dynamics((0, 1), 1)
+        fast_dynamics = dynamics.continuous((0, 1), 1)
 
         state = numpy.array([1, 0.5])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(1.0)), [1, 1])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(0.75)), [1, 1])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(0.5)), [1, 1])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(0.25)), [1, 0.75])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(0.1)), [1, 0.6])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(0)), [1, 0.5])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(-0.1)), [1, 0.4])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(-0.25)), [1, 0.25])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(-0.5)), [1, 0])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(-0.75)), [1, 0])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(-1)), [1, 0])
+        test_utils.all_close(fast_dynamics(state, 1.0), [1, 1])
+        test_utils.all_close(fast_dynamics(state, 0.75), [1, 1])
+        test_utils.all_close(fast_dynamics(state, 0.5), [1, 1])
+        test_utils.all_close(fast_dynamics(state, 0.25), [1, 0.75])
+        test_utils.all_close(fast_dynamics(state, 0.1), [1, 0.6])
+        test_utils.all_close(fast_dynamics(state, 0), [1, 0.5])
+        test_utils.all_close(fast_dynamics(state, -0.1), [1, 0.4])
+        test_utils.all_close(fast_dynamics(state, -0.25), [1, 0.25])
+        test_utils.all_close(fast_dynamics(state, -0.5), [1, 0])
+        test_utils.all_close(fast_dynamics(state, -0.75), [1, 0])
+        test_utils.all_close(fast_dynamics(state, -1), [1, 0])
 
         state = numpy.array([1, 1])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(1)), [1, 1])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(0)), [1, 1])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(-0.5)), [1, 0.5])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(-1)), [1, 0])
+        test_utils.all_close(fast_dynamics(state, 1), [1, 1])
+        test_utils.all_close(fast_dynamics(state, 0), [1, 1])
+        test_utils.all_close(fast_dynamics(state, -0.5), [1, 0.5])
+        test_utils.all_close(fast_dynamics(state, -1), [1, 0])
 
         state = numpy.array([1, 0])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(1)), [1, 1])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(0.5)), [1, 0.5])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(0)), [1, 0])
-        test_utils.all_close(fast_dynamics(state, numpy.float32(-1)), [1, 0])
+        test_utils.all_close(fast_dynamics(state, 1), [1, 1])
+        test_utils.all_close(fast_dynamics(state, 0.5), [1, 0.5])
+        test_utils.all_close(fast_dynamics(state, 0), [1, 0])
+        test_utils.all_close(fast_dynamics(state, -1), [1, 0])
 
-        slow_dynamics = dynamics.make_continuous_dynamics((0, 1), 0.1)
+        slow_dynamics = dynamics.continuous((0, 1), 0.1)
 
         state = numpy.array([1, 0.5])
-        test_utils.all_close(slow_dynamics(state, numpy.float32(2)), [1, 0.6])
-        test_utils.all_close(slow_dynamics(state, numpy.float32(1)), [1, 0.6])
-        test_utils.all_close(slow_dynamics(state, numpy.float32(0.1)), [1, 0.51])
-        test_utils.all_close(slow_dynamics(state, numpy.float32(0)), [1, 0.5])
-        test_utils.all_close(slow_dynamics(state, numpy.float32(-0.1)), [1, 0.49])
-        test_utils.all_close(slow_dynamics(state, numpy.float32(-1)), [1, 0.4])
-        test_utils.all_close(slow_dynamics(state, numpy.float32(-2)), [1, 0.4])
+        test_utils.all_close(slow_dynamics(state, 2), [1, 0.6])
+        test_utils.all_close(slow_dynamics(state, 1), [1, 0.6])
+        test_utils.all_close(slow_dynamics(state, 0.1), [1, 0.51])
+        test_utils.all_close(slow_dynamics(state, 0), [1, 0.5])
+        test_utils.all_close(slow_dynamics(state, -0.1), [1, 0.49])
+        test_utils.all_close(slow_dynamics(state, -1), [1, 0.4])
+        test_utils.all_close(slow_dynamics(state, -2), [1, 0.4])
 
     def test_discrete_update(self):
-        """Tests that make_discrete_update makes a function that returns the expected
-        change given some set of actions."""
+        """Tests that discrete_update makes a function that returns the expected change
+        given some set of actions."""
 
         moves = [0.0, 1.0, -1.0, 10.0, -10.0]
-        update = dynamics.make_discrete_update(moves)
+        update = dynamics.discrete_update(moves)
 
         for i, move in enumerate(moves):
-            test_utils.all_close(update(numpy.int32(i)), [0.0, move])
+            test_utils.all_close(update(i), [0.0, move])
 
     def test_discrete_dynamics(self):
-        """Tests that ContinuousDynamics mvoes the state with the expected actions."""
+        """Tests that discrete makes a system of dynamics that moves the state with the
+        expected steps."""
 
-        discrete_dynamics = dynamics.make_discrete_dynamics(
-            (0, 1), [-1.0, -0.5, -0.1, 0, 0.1, 0.5, 1]
-        )
+        discrete_dynamics = dynamics.discrete((0, 1), [-1.0, -0.5, -0.1, 0, 0.1, 0.5, 1])
 
         state = numpy.array([1, 0.5])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(0)), [1, 0.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(1)), [1, 0.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(2)), [1, 0.4])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(3)), [1, 0.5])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(4)), [1, 0.6])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(5)), [1, 1.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(6)), [1, 1.0])
+        test_utils.all_close(discrete_dynamics(state, 0), [1, 0.0])
+        test_utils.all_close(discrete_dynamics(state, 1), [1, 0.0])
+        test_utils.all_close(discrete_dynamics(state, 2), [1, 0.4])
+        test_utils.all_close(discrete_dynamics(state, 3), [1, 0.5])
+        test_utils.all_close(discrete_dynamics(state, 4), [1, 0.6])
+        test_utils.all_close(discrete_dynamics(state, 5), [1, 1.0])
+        test_utils.all_close(discrete_dynamics(state, 6), [1, 1.0])
 
         state = numpy.array([1, 0.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(0)), [1, 0.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(1)), [1, 0.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(2)), [1, 0.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(3)), [1, 0.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(4)), [1, 0.1])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(5)), [1, 0.5])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(6)), [1, 1.0])
+        test_utils.all_close(discrete_dynamics(state, 0), [1, 0.0])
+        test_utils.all_close(discrete_dynamics(state, 1), [1, 0.0])
+        test_utils.all_close(discrete_dynamics(state, 2), [1, 0.0])
+        test_utils.all_close(discrete_dynamics(state, 3), [1, 0.0])
+        test_utils.all_close(discrete_dynamics(state, 4), [1, 0.1])
+        test_utils.all_close(discrete_dynamics(state, 5), [1, 0.5])
+        test_utils.all_close(discrete_dynamics(state, 6), [1, 1.0])
 
         state = numpy.array([1, 1.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(0)), [1, 0.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(1)), [1, 0.5])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(2)), [1, 0.9])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(3)), [1, 1.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(4)), [1, 1.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(5)), [1, 1.0])
-        test_utils.all_close(discrete_dynamics(state, numpy.int32(6)), [1, 1.0])
+        test_utils.all_close(discrete_dynamics(state, 0), [1, 0.0])
+        test_utils.all_close(discrete_dynamics(state, 1), [1, 0.5])
+        test_utils.all_close(discrete_dynamics(state, 2), [1, 0.9])
+        test_utils.all_close(discrete_dynamics(state, 3), [1, 1.0])
+        test_utils.all_close(discrete_dynamics(state, 4), [1, 1.0])
+        test_utils.all_close(discrete_dynamics(state, 5), [1, 1.0])
+        test_utils.all_close(discrete_dynamics(state, 6), [1, 1.0])
 
 
 if __name__ == "__main__":

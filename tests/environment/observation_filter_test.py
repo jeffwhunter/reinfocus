@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.learning.observation_filer."""
+"""Contains tests for reinfocus.environment.observation_filer."""
 
 import unittest
 
@@ -9,7 +9,7 @@ from tests import test_utils
 
 
 class ObservationFilterTest(unittest.TestCase):
-    """TestCases for reinfocus.learning.observation_filter."""
+    """TestCases for reinfocus.environment.observation_filter."""
 
     def test_long_mask_throws(self):
         """Tests that a mask as long as the number of dimensions will raise an error."""

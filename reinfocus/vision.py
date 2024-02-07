@@ -18,5 +18,5 @@ def focus_value(image: NDArray) -> float:
         a better focus."""
 
     return cv2.Laplacian(
-        cv2.medianBlur(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), 3), cv2.CV_32F
+        cv2.medianBlur(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), 3), cv2.CV_8U
     ).var()
