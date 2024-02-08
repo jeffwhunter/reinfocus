@@ -39,19 +39,27 @@ class FocusHistoryVisualizer:
     the environment are seen on the left, while a plot of the agent's performance over
     time is on the right."""
 
-    def __init__(self, limits: tuple[float, float] = (5.0, 10.0), max_moves: int = 10):
+    def __init__(
+        self,
+        limits: tuple[float, float] = (5.0, 10.0),
+        max_moves: int = 10,
+        target_radius: float | None = None,
+    ):
         """Creates a FocusHistoryVisualizer.
 
         Args:
             limits: The range over which the target and lens in some environment can vary.
             max_moves: The maximum number of moves to render in the performance history
                 before truncating it.
+            target_radius: The distance from the target to the edge of it's zone. If None
+                or below zero, no zone is rendered.
 
         Returns:
             A FocusHistoryVisualizer."""
 
         self._limits = limits
         self._max_moves = max_moves
+        self._target_radius = target_radius
 
         self._current_move = 0
         self._focus_history: list[tuple[float, ...]] = []
@@ -135,6 +143,15 @@ class FocusHistoryVisualizer:
         axes.set_ylabel("focus value")
 
         axes.axvline(x=target, linestyle=":", color="darkorange", label="target")
+
+        if self._target_radius is not None and self._target_radius > 0.0:
+            axes.axvspan(
+                target - self._target_radius,
+                target + self._target_radius,
+                edgecolor="darkorange",
+                facecolor=("darkorange", 0.1),
+                linestyle=(0, (5, 10)),
+            )
 
         fading_blues = fading_colours(
             matplotlib.colormaps["Blues"], self._max_moves, n_focus_history

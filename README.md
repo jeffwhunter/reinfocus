@@ -14,6 +14,7 @@ pip install git+https://github.com/jeffwhunter/reinfocus
 
 Special Thanks
 ------------------
-`reinfocus.graphics` is a numba translation of the wonderful [Ray Tracing in One Weekend
-in CUDA](https://github.com/rogerallen/raytracinginoneweekendincuda) by [Roger Allan](
-https://github.com/rogerallen).
+`reinfocus.graphics` is a [`numba`](
+https://numba.readthedocs.io/en/stable/cuda/index.html) translation of the wonderful [Ray
+Tracing in One Weekend in CUDA](https://github.com/rogerallen/raytracinginoneweekendincuda
+) by [Roger Allan](https://github.com/rogerallen).

@@ -74,6 +74,7 @@ def launcher(
         actual_block_shape,
     ]
 
+
 @cuda.jit
 def outside_shape(index: Shape, shape: tuple[int, ...]) -> bool:
     """Checks if index is outside shape.

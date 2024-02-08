@@ -194,17 +194,21 @@ class SimpleDiscreteEnviroment(FocusEnvironment[int]):
 
         step = diff * 0.01
 
+        target_radius = diff * 0.1
+
         super().__init__(
             FocusEnvironmentDependencies(
                 dynamics_function=dynamics.discrete(
                     ends, [0, step, -step, 5 * step, -5 * step, 10 * step, -10 * step]
                 ),
-                ender=episode_ender.OnTargetEpisodeEnder(diff * 0.1),
+                ender=episode_ender.OnTargetEpisodeEnder(target_radius),
                 initializer=state_initializer.uniform(ends[0], ends[1], 2),
                 obs_filter=observation_filter.ObservationFilter(-1.0, 1.0, 3, {0}),
                 obs_producer=observation_producer.from_ends(ends),
                 rewarder=observation_rewarder.distance(diff),
-                visualizer=visualization.FocusHistoryVisualizer(ends),
+                visualizer=visualization.FocusHistoryVisualizer(
+                    ends, target_radius=target_radius
+                ),
             ),
             render_mode=render_mode,
         )
@@ -231,7 +235,7 @@ class ContinuousLeftOrRight(FocusEnvironment[float]):
         ends = (5.0, 10.0)
         diff = ends[1] - ends[0]
 
-        target_size = diff * 0.1
+        target_radius = diff * 0.1
 
         super().__init__(
             FocusEnvironmentDependencies(
@@ -240,16 +244,18 @@ class ContinuousLeftOrRight(FocusEnvironment[float]):
                 initializer=state_initializer.ranged(
                     [
                         [
-                            (ends[0] + target_size, ends[0] + 3 * target_size),
-                            (ends[1] - 3 * target_size, ends[1] - target_size),
+                            (ends[0] + target_radius, ends[0] + 3 * target_radius),
+                            (ends[1] - 3 * target_radius, ends[1] - target_radius),
                         ],
                         [ends],
                     ]
                 ),
                 obs_filter=observation_filter.ObservationFilter(-1.0, 1.0, 3, {0}),
                 obs_producer=observation_producer.from_ends(ends),
-                rewarder=observation_rewarder.on_target(target_size, -1, 0),
-                visualizer=visualization.FocusHistoryVisualizer(ends),
+                rewarder=observation_rewarder.on_target(target_radius, -1, 0),
+                visualizer=visualization.FocusHistoryVisualizer(
+                    ends, target_radius=target_radius
+                ),
             ),
             render_mode=render_mode,
         )
