@@ -29,12 +29,12 @@ class FocusObservationProducer:
         self._obs_normer = obs_normer
         self._measure_focus = measure_focus
 
-    def produce_observation(self, state: State, render_world: world.World) -> Observation:
-        """Returns an observation of state and render_world.
+    def produce_observation(self, state: State, world_data: world.World) -> Observation:
+        """Returns an observation of state and world_data.
 
         Args:
             state: A tuple containing the target and lens positions.
-            render_world: The GPU data needed to render the environment.
+            world_data: The GPU data needed to render the environment.
 
         Returns:
             A tuple containing the state and measured focus of the world in that state,
@@ -43,7 +43,7 @@ class FocusObservationProducer:
         return numpy.clip(
             self._obs_normer(
                 numpy.array(
-                    [*state, self._measure_focus(render_world, state[SI.LENS])],
+                    [*state, self._measure_focus(world_data, state[SI.LENS])],
                     numpy.float32,
                 )
             ),

@@ -24,20 +24,20 @@ class RenderTest(testing.CUDATestCase):
 
         frame = render.make_render_target(frame_shape)
 
-        cpu_world = world.one_rect_world(world.ShapeParameters(r_size=30))
+        world_data = world.one_rect_world(world.ShapeParameters(r_size=30))
 
         cutil.launcher(render.device_render, frame_shape)(
             frame,
-            camera.cpu_camera(
+            camera.camera(
                 camera.CameraOrientation(
-                    vector.c3f(0, 0, -10), vector.c3f(0, 0, 0), vector.c3f(0, 1, 0)
+                    vector.v3f(0, 0, -10), vector.v3f(0, 0, 0), vector.v3f(0, 1, 0)
                 ),
                 camera.CameraView(1, 30.0),
                 camera.CameraLens(0.1, 10),
             ),
             100,
             random.make_random_states(frame_shape[0] * frame_shape[1], 0),
-            (cpu_world.device_shape_parameters(), cpu_world.device_shape_types()),
+            (world_data.device_shape_parameters(), world_data.device_shape_types()),
         )
 
         average_colour = numpy.average(frame.copy_to_host(), axis=(0, 1))
@@ -58,7 +58,7 @@ class RenderTest(testing.CUDATestCase):
         average_colour = numpy.average(
             render.render(
                 frame_shape=(300, 300),
-                cpu_world=world.one_sphere_world(world.ShapeParameters(r_size=30)),
+                world_data=world.one_sphere_world(world.ShapeParameters(r_size=30)),
             ),
             axis=(0, 1),
         )

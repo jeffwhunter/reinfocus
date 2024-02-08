@@ -2,6 +2,8 @@
 
 import math
 
+import numpy
+
 from numba import cuda
 from numba.cuda.cudadrv import devicearray
 
@@ -12,40 +14,40 @@ from reinfocus.graphics import shape
 from reinfocus.graphics import vector
 from reinfocus.graphics import world
 
-GpuColouredRay = tuple[ray.GpuRay, vector.G3F]
+ColouredRay = tuple[ray.Ray, vector.V3F]
 
 
 @cuda.jit
 def random_in_unit_sphere(
     random_states: devicearray.DeviceNDArray, pixel_index: int
-) -> vector.G3F:
-    """Returns a 3D GPU vector somewhere in the unit sphere.
+) -> vector.V3F:
+    """Returns a 3D vector somewhere in the unit sphere.
 
     Args:
         random_states: An array of RNG states.
         pixel_index: Which RNG state to use.
 
     Returns:
-        A 3D GPU vector somewhere in the unit sphere."""
+        A 3D vector somewhere in the unit sphere."""
 
     while True:
-        p = vector.sub_g3f(
-            vector.smul_g3f(
-                vector.g3f(
+        p = vector.d_sub_v3f(
+            vector.d_smul_v3f(
+                vector.d_v3f(
                     random.uniform_float(random_states, pixel_index),
                     random.uniform_float(random_states, pixel_index),
                     random.uniform_float(random_states, pixel_index),
                 ),
-                2.0,
+                numpy.float32(2.0),
             ),
-            vector.g3f(1, 1, 1),
+            vector.d_v3f(1, 1, 1),
         )
-        if vector.squared_length_g3f(p) < 1.0:
+        if numpy.less(vector.d_squared_length_v3f(p), 1.0):
             return p
 
 
 @cuda.jit
-def colour_checkerboard(uf: vector.G2F, uv: vector.G2F) -> vector.G3F:
+def colour_checkerboard(uf: vector.V2F, uv: vector.V2F) -> vector.V3F:
     """Returns the frequency f checkerboard colour of uv.
 
     Args:
@@ -55,19 +57,21 @@ def colour_checkerboard(uf: vector.G2F, uv: vector.G2F) -> vector.G3F:
     Returns:
         The frequency f checkerboard colour of uv."""
 
+    si = (uf[0] * math.pi * uv[0], uf[1] * math.pi * uv[1])  # type: ignore
+
     return (
-        vector.g3f(1, 0, 0)
-        if math.sin(uf.x * math.pi * uv.x) * math.sin(uf.y * math.pi * uv.y) > 0
-        else vector.g3f(0, 1, 0)
+        vector.d_v3f(1, 0, 0)
+        if math.sin(si[0]) * math.sin(si[1]) > 0
+        else vector.d_v3f(0, 1, 0)
     )
 
 
 @cuda.jit
 def scatter(
-    record: hit_record.GpuHitRecord,
+    record: hit_record.HitRecord,
     random_states: devicearray.DeviceNDArray,
     pixel_index: int,
-) -> GpuColouredRay:
+) -> ColouredRay:
     """Returns a new ray and colour pair that results from the hit described by record.
 
     Args:
@@ -80,10 +84,10 @@ def scatter(
         by record."""
 
     return (
-        ray.gpu_ray(
+        ray.ray(
             record[hit_record.P],
-            vector.add_g3f(
-                record[hit_record.N], random_in_unit_sphere(random_states, pixel_index)
+            vector.d_add_v3f(
+                (record[hit_record.N], random_in_unit_sphere(random_states, pixel_index))
             ),
         ),
         colour_checkerboard(record[hit_record.UF], record[hit_record.UV]),
@@ -94,10 +98,10 @@ def scatter(
 def find_colour(
     shapes_parameters: shape.GpuShapeParameters,
     shapes_types: shape.GpuShapeTypes,
-    r: ray.GpuRay,
+    r: ray.Ray,
     random_states: devicearray.DeviceNDArray,
     pixel_index: int,
-) -> vector.G3F:
+) -> vector.V3F:
     """Returns the colour picked up by r as it bounces around the world defined by
         shapes_parameters and shapes_types.
 
@@ -113,25 +117,31 @@ def find_colour(
         shapes_parameters and shapes_types."""
 
     current_ray = r
-    current_attenuation = vector.g3f(1, 1, 1)
+    current_attenuation = vector.d_v3f(1, 1, 1)
 
     for _ in range(50):
-        did_hit, record = world.gpu_hit_world(
-            shapes_parameters, shapes_types, current_ray, 0.001, 1000000.0
+        did_hit, record = world.hit(
+            shapes_parameters,
+            shapes_types,
+            current_ray,
+            numpy.float32(0.001),
+            numpy.float32(1000000.0),
         )
+
         if did_hit:
             current_ray, attenuation = scatter(record, random_states, pixel_index)
-
-            current_attenuation = vector.vmul_g3f(current_attenuation, attenuation)
+            current_attenuation = vector.d_vmul_v3f(current_attenuation, attenuation)
         else:
-            unit_direction = vector.norm_g3f(current_ray[ray.DIRECTION])
-            t = 0.5 * (unit_direction.y + 1.0)
-            return vector.vmul_g3f(
-                vector.add_g3f(
-                    vector.smul_g3f(vector.g3f(1, 1, 1), 1.0 - t),
-                    vector.smul_g3f(vector.g3f(0.5, 0.7, 1), t),
+            unit_direction = vector.d_norm_v3f(current_ray[ray.DIRECTION])
+            t = 0.5 * (unit_direction[1] + 1.0)  # type: ignore
+            return vector.d_vmul_v3f(
+                vector.d_add_v3f(
+                    (
+                        vector.d_smul_v3f(vector.d_v3f(1, 1, 1), 1.0 - t),
+                        vector.d_smul_v3f(vector.d_v3f(0.5, 0.7, 1), t),
+                    )
                 ),
                 current_attenuation,
             )
 
-    return vector.g3f(0, 0, 0)
+    return vector.d_v3f(0, 0, 0)

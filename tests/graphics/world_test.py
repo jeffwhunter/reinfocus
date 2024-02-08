@@ -24,9 +24,9 @@ class WorldTest(testing.CUDATestCase):
         """Tests that World.device_shape_parameters can handle spheres and rectangles."""
 
         w = world.World(
-            sphere.cpu_sphere(vector.c3f(1, 2, 3), 4, vector.c2f(5, 6)),
-            rectangle.cpu_rectangle(
-                vector.c2f(-1, 1), vector.c2f(-1, 1), 1, vector.c2f(4, 8)
+            sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
+            rectangle.rectangle(
+                vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8)
             ),
         )
 
@@ -39,8 +39,8 @@ class WorldTest(testing.CUDATestCase):
         """Tests that World.device_shape_parameters can handle spheres."""
 
         w = world.World(
-            sphere.cpu_sphere(vector.c3f(1, 2, 3), 4, vector.c2f(5, 6)),
-            sphere.cpu_sphere(vector.c3f(7, 8, 9), 10, vector.c2f(11, 12)),
+            sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
+            sphere.sphere(vector.v3f(7, 8, 9), 10, vector.v2f(11, 12)),
         )
 
         test_utils.all_close(
@@ -52,9 +52,9 @@ class WorldTest(testing.CUDATestCase):
         """Tests that World.device_shape_types can handle spheres and rectangles."""
 
         w = world.World(
-            sphere.cpu_sphere(vector.c3f(1, 2, 3), 4, vector.c2f(5, 6)),
-            rectangle.cpu_rectangle(
-                vector.c2f(-1, 1), vector.c2f(-1, 1), 1, vector.c2f(4, 8)
+            sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
+            rectangle.rectangle(
+                vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8)
             ),
         )
 
@@ -62,8 +62,8 @@ class WorldTest(testing.CUDATestCase):
             w.device_shape_types(), numpy.array([shape.SPHERE, shape.RECTANGLE])
         )
 
-    def test_gpu_hit_sphere_world(self):
-        """Tests if gpu_hit_world returns an appropriate hit_record for spheres."""
+    def test_hit_sphere_world(self):
+        """Tests if hit returns an appropriate hit_record for spheres."""
 
         @cuda.jit
         def hit_sphere_world(target, shapes_parameters, shapes_types, origin, direction):
@@ -72,35 +72,33 @@ class WorldTest(testing.CUDATestCase):
                 return
 
             target[i] = numba_test_utils.flatten_hit_result(
-                world.gpu_hit_world(
+                world.hit(
                     shapes_parameters,
                     shapes_types,
-                    ray.cpu_to_gpu_ray(origin, direction),
-                    0,
-                    100,
+                    ray.ray(origin, direction),
+                    numpy.float32(0),
+                    numpy.float32(100),
                 )
             )
 
         cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
-        cpu_world = world.World(
-            sphere.cpu_sphere(vector.c3f(0, 0, 0), 1, vector.c2f(4, 8))
-        )
+        world_data = world.World(sphere.sphere(vector.v3f(0, 0, 0), 1, vector.v2f(4, 8)))
 
         cutil.launcher(hit_sphere_world, 1)(
             cpu_array,
-            cpu_world.device_shape_parameters(),
-            cpu_world.device_shape_types(),
-            vector.c3f(10, 0, 0),
-            vector.c3f(-1, 0, 0),
+            world_data.device_shape_parameters(),
+            world_data.device_shape_types(),
+            vector.v3f(10, 0, 0),
+            vector.v3f(-1, 0, 0),
         )
 
         test_utils.all_close(
             cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, 1, 0.5, 4, 8, shape.SPHERE)
         )
 
-    def test_gpu_hit_rectangle_world(self):
-        """Tests if gpu_hit_world returns an appropriate hit_record for rectangles."""
+    def test_hit_rectangle_world(self):
+        """Tests if hit_world returns an appropriate hit_record for rectangles."""
 
         @cuda.jit
         def hit_rectangle_world(
@@ -111,33 +109,32 @@ class WorldTest(testing.CUDATestCase):
                 return
 
             target[i] = numba_test_utils.flatten_hit_result(
-                world.gpu_hit_world(
+                world.hit(
                     shapes_parameters,
                     shapes_types,
-                    ray.cpu_to_gpu_ray(origin, direction),
-                    0,
-                    100,
+                    ray.ray(origin, direction),
+                    numpy.float32(0),
+                    numpy.float32(100),
                 )
             )
 
         cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
-        cpu_world = world.World(
-            rectangle.cpu_rectangle(
-                vector.c2f(-1, 1), vector.c2f(-1, 1), 1, vector.c2f(4, 8)
-            )
+        world_data = world.World(
+            rectangle.rectangle(vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8))
         )
 
         cutil.launcher(hit_rectangle_world, 1)(
             cpu_array,
-            cpu_world.device_shape_parameters(),
-            cpu_world.device_shape_types(),
-            vector.c3f(0, 0, 0),
-            vector.c3f(0, 0, 1),
+            world_data.device_shape_parameters(),
+            world_data.device_shape_types(),
+            vector.v3f(0, 0, 0),
+            vector.v3f(0, 0, 1),
         )
 
         test_utils.all_close(
-            cpu_array[0], (1, 0, 0, 1, 0, 0, 1, 1, 0.5, 0.5, 4, 8, shape.RECTANGLE)
+            cpu_array[0],
+            (1, 0, 0, 1, 0, 0, 1, 1, 0.5, 0.5, 4, 8, numpy.float32(shape.RECTANGLE)),
         )
 
     def test_one_sphere_world(self):

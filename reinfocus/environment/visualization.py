@@ -75,7 +75,7 @@ class FocusHistoryVisualizer:
 
     def visualize(
         self,
-        render_world: world.World,
+        world_data: world.World,
         target: float,
         ender_status: str,
     ) -> NDArray:
@@ -85,7 +85,7 @@ class FocusHistoryVisualizer:
         left, while a plot of the agent's performance will be on the right.
 
         Args:
-            render_world: The world to render.
+            world_data: The world to render.
             target: At what position the target is in the world.
             ender_status: How close the agent is to ending the episode early.
 
@@ -96,7 +96,7 @@ class FocusHistoryVisualizer:
             [
                 render.render(
                     frame_shape=(600, 600),
-                    cpu_world=render_world,
+                    world_data=world_data,
                     focus_distance=self._focus_history[-1][0],
                 ),
                 self._visualize_move_history(target, ender_status),

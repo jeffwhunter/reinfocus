@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 """Methods relating to [2|3]D vectors."""
 
 import math
@@ -6,53 +5,42 @@ import math
 import numpy
 
 from numba import cuda
+from numpy import linalg
 
-C2F = tuple[float, float]
-C3F = tuple[float, float, float]
-C3UI = tuple[numpy.uint8, numpy.uint8, numpy.uint8]
-G2F = cuda.float32x2  # type: ignore
-G3F = cuda.float32x3  # type: ignore
-
-
-def c2f(x: float, y: float) -> C2F:
-    """Makes a 2D vector on the CPU.
-
-    Args:
-        x: The x coordinate of the vector.
-        y: The y coordinate of the vector.
-
-    Returns:
-        The 2D CPU vector."""
-
-    return (x, y)
+V2F = tuple[numpy.float32, numpy.float32]
+V3F = tuple[numpy.float32, numpy.float32, numpy.float32]
+V3UI = tuple[numpy.uint8, numpy.uint8, numpy.uint8]
 
 
-@cuda.jit
-def empty_g2f() -> G2F:
-    """Makes an empty 2D vector on the GPU.
-
-    Returns:
-        The empty 2D GPU vector."""
-
-    return cuda.float32x2(0, 0)  # type: ignore
-
-
-@cuda.jit
-def g2f(x: float, y: float) -> G2F:
-    """Makes a 2D vector on the GPU.
+def v2f(x: float = 0.0, y: float = 0.0) -> V2F:
+    """Makes a 2D float vector.
 
     Args:
         x: The x coordinate of the vector.
         y: The y coordinate of the vector.
 
     Returns:
-        The 2D GPU vector."""
+        The 2D float vector."""
 
-    return cuda.float32x2(x, y)  # type: ignore
+    return (numpy.float32(x), numpy.float32(y))
 
 
-def c3f(x: float, y: float, z: float) -> C3F:
-    """Makes a 3D vector on the CPU.
+@cuda.jit
+def d_v2f(x: float, y: float) -> V2F:
+    """Makes a 2D float vector on the device.
+
+    Args:
+        x: The x coordinate of the vector.
+        y: The y coordinate of the vector.
+
+    Returns:
+        The 2D float vector."""
+
+    return (numpy.float32(x), numpy.float32(y))
+
+
+def v3f(x: float = 0.0, y: float = 0.0, z: float = 0.0) -> V3F:
+    """Makes a 3D float vector.
 
     Args:
         x: The x coordinate of the vector.
@@ -60,250 +48,166 @@ def c3f(x: float, y: float, z: float) -> C3F:
         z: The z coordinate of the vector.
 
     Returns:
-        The 3D CPU vector."""
+        The 3D float vector."""
+
+    return (numpy.float32(x), numpy.float32(y), numpy.float32(z))
+
+
+@cuda.jit
+def d_v3f(x: float, y: float, z: float) -> V3F:
+    """Makes a 3D float vector on the device.
+
+    Args:
+        x: The x coordinate of the vector.
+        y: The y coordinate of the vector.
+        z: The z coordinate of the vector.
+
+    Returns:
+        The 3D float vector."""
+
+    return (numpy.float32(x), numpy.float32(y), numpy.float32(z))
+
+
+@cuda.jit
+def d_v3f_to_v3ui(v: V3F) -> V3UI:
+    """Casts a 3D float vector to an unsigned int vector on the device.
+
+    Args:
+        v: The vector to cast to uints.
+
+    Returns:
+        A 3D unsigned int vector."""
+
+    return (numpy.uint8(v[0]), numpy.uint8(v[1]), numpy.uint8(v[2]))
+
+
+def add_v3f(summands: tuple[V3F, ...]) -> V3F:
+    """Adds an arbitrary number of 3D float vectors.
+
+    Args:
+        summands: The vectors to add.
+
+    Returns:
+        The sum of summands."""
+
+    s = numpy.sum(summands, axis=0)
+
+    return (s[0], s[1], s[2])
+
+
+@cuda.jit
+def d_add_v3f(summands: tuple[V3F, ...]) -> V3F:
+    """Adds an arbitrary number of 3D float vectors on the device.
+
+    Args:
+        summands: The vectors to add.
+
+    Returns:
+        The sum of summands."""
+
+    x = y = z = numpy.float32(0.0)
+
+    for summand in summands:
+        x += summand[0]  # type: ignore
+        y += summand[1]  # type: ignore
+        z += summand[2]  # type: ignore
 
     return (x, y, z)
 
 
 @cuda.jit
-def empty_g3f() -> G3F:
-    """Makes an empty 3D vector on the GPU.
+def d_sub_v2f(a: V2F, b: V2F) -> V2F:
+    """Subtracts 2D float vectors on the device.
+
+    Args:
+        a: The vector to subtract from.
+        b: The vector to subtract.
 
     Returns:
-        The empty 3D GPU vector."""
+        The vector a - b."""
 
-    return cuda.float32x3(0, 0, 0)  # type: ignore
+    return (a[0] - b[0], a[1] - b[1])  # type: ignore
+
+
+def sub_v3f(a: V3F, b: V3F) -> V3F:
+    """Subtracts 3D float vectors.
+
+    Args:
+        a: The vector to subtract from.
+        b: The vector to subtract.
+
+    Returns:
+        The vector a - b."""
+
+    r = numpy.subtract(a, b)
+
+    return (r[0], r[1], r[2])
 
 
 @cuda.jit
-def g3f(x: float, y: float, z: float) -> G3F:
-    """Makes a 3D vector on the GPU.
+def d_sub_v3f(a: V3F, b: V3F) -> V3F:
+    """Subtracts 3D float vectors on the device.
 
     Args:
-        x: The x coordinate of the vector.
-        y: The y coordinate of the vector.
-        z: The z coordinate of the vector.
+        a: The vector to subtract from.
+        b: The vector to subtract.
 
     Returns:
-        The 3D GPU vector."""
+        The vector a - b."""
 
-    return cuda.float32x3(x, y, z)  # type: ignore
+    return (a[0] - b[0], a[1] - b[1], a[2] - b[2])  # type: ignore
 
 
 @cuda.jit
-def g2f_to_c2f(vector: G2F) -> C2F:
-    """Converts a 2D vector from GPU to CPU.
+def d_smul_v2f(v: V2F, s: numpy.float32) -> V2F:
+    """Multiplies a 2D float vector by a scalar on the device.
 
     Args:
-        vector: The vector to convert.
+        v: The vector to multiply.
+        s: The scalar to multiply by.
 
     Returns:
-        The newly converted C2F."""
+        The vector v * s."""
 
-    return (vector.x, vector.y)
+    return (v[0] * s, v[1] * s)  # type: ignore
+
+
+def smul_v3f(v: V3F, s: float) -> V3F:
+    """Multiplies a 3D float vector by a scalar.
+
+    Args:
+        v: The vector to multiply.
+        s: The scalar to multiply by.
+
+    Returns:
+        The vector v * s."""
+
+    r = numpy.multiply(v, s)
+
+    return (r[0], r[1], r[2])
 
 
 @cuda.jit
-def c2f_to_g2f(vector: C2F) -> G2F:
-    """Converts a 2D vector from CPU to GPU.
+def d_smul_v3f(v: V3F, s: numpy.float32) -> V3F:
+    """Multiplies a 3D float vector by a scalar on the device.
 
     Args:
-        vector: The vector to convert.
+        v: The vector to multiply.
+        s: The scalar to multiply by.
 
     Returns:
-        The newly converted G2F."""
+        The vector v * s."""
 
-    return cuda.float32x2(vector[0], vector[1])  # type: ignore
-
-
-@cuda.jit
-def g3f_to_c3f(vector: G3F) -> C3F:
-    """Converts a 3D vector from GPU to CPU.
-
-    Args:
-        vector: The vector to convert.
-
-    Returns:
-        The newly converted C3F."""
-
-    return (vector.x, vector.y, vector.z)
-
-
-@cuda.jit
-def g3f_to_c3ui(vector: G3F) -> C3UI:
-    """Converts a 3D GPU float vector to a CPU uint vector.
-
-    Args:
-        vector: The vector to convert.
-
-    Returns:
-        The newly converted C3UI."""
-
-    return (numpy.uint8(vector.x), numpy.uint8(vector.y), numpy.uint8(vector.z))
-
-
-@cuda.jit
-def c3f_to_g3f(vector: C3F) -> G3F:
-    """Converts a 3D vector from CPU to GPU.
-
-    Args:
-        vector: The vector to convert.
-
-    Returns:
-        The newly converted G3F."""
-
-    return cuda.float32x3(vector[0], vector[1], vector[2])  # type: ignore
-
-
-@cuda.jit
-def add_g3f(a: G3F, b: G3F) -> G3F:
-    """Adds two 3D GPU vectors.
-
-    Args:
-        a: The left vector.
-        b: The right vector.
-
-    Returns:
-        The sum of a and b."""
-
-    return cuda.float32x3(a.x + b.x, a.y + b.y, a.z + b.z)  # type: ignore
-
-
-def add3_c3f(a: C3F, b: C3F, c: C3F) -> C3F:
-    """Adds three 3D CPU vectors.
-
-    Args:
-        a: The left vector.
-        b: The middle vector.
-        c: The right vector.
-
-    Returns:
-        The sum of a, b, and c."""
-
-    return (a[0] + b[0] + c[0], a[1] + b[1] + c[1], a[2] + b[2] + c[2])
-
-
-@cuda.jit
-def add3_g3f(a: G3F, b: G3F, c: G3F) -> G3F:
-    """Adds three 3D GPU vectors.
-
-    Args:
-        a: The left vector.
-        b: The middle vector.
-        c: The right vector.
-
-    Returns:
-        The sum of a, b, and c."""
-
-    return cuda.float32x3(  # type: ignore
-        a.x + b.x + c.x,
-        a.y + b.y + c.y,
-        a.z + b.z + c.z,
+    return (
+        numpy.float32(v[0] * s),  # type: ignore
+        numpy.float32(v[1] * s),  # type: ignore
+        numpy.float32(v[2] * s),  # type: ignore
     )
 
 
 @cuda.jit
-def neg_g3f(v: G3F) -> G3F:
-    """Negates a 3D GPU vector.
-
-    Args:
-        v: The vector to negate.
-
-    Returns:
-        The negation of v."""
-
-    return cuda.float32x3(-v.x, -v.y, -v.z)  # type: ignore
-
-
-@cuda.jit
-def sub_g2f(a: G3F, b: G3F) -> G3F:
-    """Subtracts 2D GPU vectors.
-
-    Args:
-        a: The vector to subtract from.
-        b: The vector to subtract.
-
-    Returns:
-        The vector a - b."""
-
-    return cuda.float32x2(a.x - b.x, a.y - b.y)  # type: ignore
-
-
-def sub_c3f(a: C3F, b: C3F) -> C3F:
-    """Subtracts 3D CPU vectors.
-
-    Args:
-        a: The vector to subtract from.
-        b: The vector to subtract.
-
-    Returns:
-        The vector a - b."""
-
-    return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
-
-
-@cuda.jit
-def sub_g3f(a: G3F, b: G3F) -> G3F:
-    """Subtracts 3D GPU vectors.
-
-    Args:
-        a: The vector to subtract from.
-        b: The vector to subtract.
-
-    Returns:
-        The vector a - b."""
-
-    return cuda.float32x3(a.x - b.x, a.y - b.y, a.z - b.z)  # type: ignore
-
-
-@cuda.jit
-def smul_g2f(vector: G2F, scalar: float) -> G2F:
-    """Multiplies a 2D GPU vector by a scalar.
-
-    Args:
-        vector: The vector to multiply.
-        scalar: The scalar to multiply by.
-
-    Returns:
-        A copy of vector scaled by scalar."""
-
-    return cuda.float32x2(vector.x * scalar, vector.y * scalar)  # type: ignore
-
-
-def smul_c3f(vector: C3F, scalar: float) -> C3F:
-    """Multiplies a 3D CPU vector by a scalar.
-
-    Args:
-        vector: The vector to multiply.
-        scalar: The scalar to multiply by.
-
-    Returns:
-        A copy of vector scaled by scalar."""
-
-    return (vector[0] * scalar, vector[1] * scalar, vector[2] * scalar)
-
-
-@cuda.jit
-def smul_g3f(vector: G3F, scalar: float) -> G3F:
-    """Multiplies a 3DGPU vector by a scalar.
-
-    Args:
-        vector: The vector to multiply.
-        scalar: The scalar to multiply by.
-
-    Returns:
-        A copy of vector scaled by scalar."""
-
-    return cuda.float32x3(  # type: ignore
-        vector.x * scalar,
-        vector.y * scalar,
-        vector.z * scalar,
-    )
-
-
-@cuda.jit
-def vmul_g3f(a: G3F, b: G3F) -> G3F:
-    """Returns the Hadamard product of two 3D GPU vectors.
+def d_vmul_v3f(a: V3F, b: V3F) -> V3F:
+    """Returns the Hadamard product of two 3D float vectors on the device.
 
     Args:
         a: The left vector to multiply.
@@ -312,43 +216,12 @@ def vmul_g3f(a: G3F, b: G3F) -> G3F:
     Returns:
         The Hadamard product of a and b."""
 
-    return cuda.float32x3(a.x * b.x, a.y * b.y, a.z * b.z)  # type: ignore
-
-
-def div_c3f(vector: C3F, scalar: float) -> C3F:
-    """Divides a 3D CPU vector by a scalar.
-
-    Args:
-        vector: The vector to divide.
-        scalar: The scalar to divide by.
-
-    Returns:
-        The quotient of a divided by b."""
-
-    return (vector[0] / scalar, vector[1] / scalar, vector[2] / scalar)
+    return (a[0] * b[0], a[1] * b[1], a[2] * b[2])  # type: ignore
 
 
 @cuda.jit
-def div_g3f(vector: G3F, scalar: float) -> G3F:
-    """Divides a 3D GPU vector by a scalar.
-
-    Args:
-        vector: The vector to divide.
-        scalar: The scalar to divide by.
-
-    Returns:
-        The quotient of a divided by b."""
-
-    return cuda.float32x3(  # type: ignore
-        vector.x / scalar,
-        vector.y / scalar,
-        vector.z / scalar,
-    )
-
-
-@cuda.jit
-def dot_g2f(a: G2F, b: G2F) -> float:
-    """Returns the dot product of two 2D GPU vectors.
+def d_dot_v2f(a: V2F, b: V2F) -> numpy.float32:
+    """Returns the dot product of two 2D float vectors on the device.
 
     Args:
         a: The left vector to dot.
@@ -357,12 +230,12 @@ def dot_g2f(a: G2F, b: G2F) -> float:
     Returns:
         The dot product of a and b."""
 
-    return a.x * b.x + a.y * b.y
+    return a[0] * b[0] + a[1] * b[1]  # type: ignore
 
 
 @cuda.jit
-def dot_g3f(a: G3F, b: G3F) -> float:
-    """Returns the dot product of two 3D GPU vectors.
+def d_dot_v3f(a: V3F, b: V3F) -> numpy.float32:
+    """Returns the dot product of two 3D float vectors on the device.
 
     Args:
         a: The left vector to dot.
@@ -371,29 +244,11 @@ def dot_g3f(a: G3F, b: G3F) -> float:
     Returns:
         The dot product of a and b."""
 
-    return a.x * b.x + a.y * b.y + a.z * b.z
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]  # type: ignore
 
 
-def cross_c3f(a: C3F, b: C3F) -> C3F:
-    """Returns the cross product of two 3D CPU vectors.
-
-    Args:
-        a: The left vector to cross.
-        b: The right vector to cross.
-
-    Returns:
-        The cross product of a and b."""
-
-    return c3f(
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    )
-
-
-@cuda.jit
-def cross_g3f(a: G3F, b: G3F) -> G3F:
-    """Returns the cross product of two 3D GPU vectors.
+def cross_v3f(a: V3F, b: V3F) -> V3F:
+    """Returns the cross product of two 3D float vectors.
 
     Args:
         a: The left vector to cross.
@@ -402,16 +257,31 @@ def cross_g3f(a: G3F, b: G3F) -> G3F:
     Returns:
         The cross product of a and b."""
 
-    return cuda.float32x3(  # type: ignore
-        a.y * b.z - a.z * b.y,
-        a.z * b.x - a.x * b.z,
-        a.x * b.y - a.y * b.x,
+    c = tuple(numpy.cross(numpy.asarray(a), numpy.asarray(b)))
+    return (c[0], c[1], c[2])
+
+
+@cuda.jit
+def d_cross_v3f(a: V3F, b: V3F) -> V3F:
+    """Returns the cross product of two 3D float vectors on the device.
+
+    Args:
+        a: The left vector to cross.
+        b: The right vector to cross.
+
+    Returns:
+        The cross product of a and b."""
+
+    return (
+        a[1] * b[2] - a[2] * b[1],  # type: ignore
+        a[2] * b[0] - a[0] * b[2],  # type: ignore
+        a[0] * b[1] - a[1] * b[0],  # type: ignore
     )
 
 
 @cuda.jit
-def squared_length_g3f(vector: G3F) -> float:
-    """Returns the squared length of a 3D GPU vector.
+def d_squared_length_v3f(vector: V3F) -> numpy.float32:
+    """Returns the squared length of a 3D float vector on the device.
 
     Args:
         vector: The vector to measure.
@@ -419,26 +289,15 @@ def squared_length_g3f(vector: G3F) -> float:
     Returns:
         The squared length of vector."""
 
-    return vector.x * vector.x + vector.y * vector.y + vector.z * vector.z
-
-
-def length_c3f(vector: C3F) -> float:
-    """Returns the length of a 3D CPU vector.
-
-    Args:
-        vector: The vector to measure.
-
-    Returns:
-        The length of vector."""
-
-    return math.sqrt(
-        vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]
+    return (
+        numpy.float32(vector[0] ** 2)  # type: ignore
+        + numpy.float32(vector[1] ** 2)  # type: ignore
+        + numpy.float32(vector[2] ** 2)  # type: ignore
     )
 
 
-@cuda.jit
-def length_g3f(vector: G3F) -> float:
-    """Returns the length of a 3D GPU vector.
+def length_v3f(vector: V3F) -> float:
+    """Returns the length of a 3D float vector.
 
     Args:
         vector: The vector to measure.
@@ -446,24 +305,24 @@ def length_g3f(vector: G3F) -> float:
     Returns:
         The length of vector."""
 
-    return math.sqrt(squared_length_g3f(vector))
-
-
-def norm_c3f(vector: C3F) -> C3F:
-    """Normalizes a 3D CPU vector.
-
-    Args:
-        vector: The vector to normalize.
-
-    Returns:
-        The normalized vector."""
-
-    return div_c3f(vector, length_c3f(vector))
+    return float(linalg.norm(numpy.asarray(vector)))
 
 
 @cuda.jit
-def norm_g3f(vector: G3F) -> G3F:
-    """Normalizes a 3D GPU vector.
+def d_length_v3f(vector: V3F) -> numpy.float32:
+    """Returns the length of a 3D float vector on the device.
+
+    Args:
+        vector: The vector to measure.
+
+    Returns:
+        The length of vector."""
+
+    return numpy.float32(math.sqrt(d_squared_length_v3f(vector)))
+
+
+def norm_v3f(vector: V3F) -> V3F:
+    """Normalizes a 3D float vector.
 
     Args:
         vector: The vector to normalize.
@@ -471,4 +330,17 @@ def norm_g3f(vector: G3F) -> G3F:
     Returns:
         The normalized vector."""
 
-    return div_g3f(vector, length_g3f(vector))
+    return smul_v3f(vector, 1.0 / length_v3f(vector))
+
+
+@cuda.jit
+def d_norm_v3f(vector: V3F) -> V3F:
+    """Normalizes a 3D float vector on the device.
+
+    Args:
+        vector: The vector to normalize.
+
+    Returns:
+        The normalized vector."""
+
+    return d_smul_v3f(vector, numpy.float32(1.0) / d_length_v3f(vector))  # type: ignore

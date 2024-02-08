@@ -17,241 +17,204 @@ class VectorTest(testing.CUDATestCase):
     # pylint: disable=too-many-public-methods
     """TestCases for reinfocus.graphics.vector."""
 
-    def test_c3f(self):
-        """Tests that c3f makes a CPU vector with the expected elements."""
+    def test_v2f(self):
+        """Tests that v2f makes a vector with the expected elements."""
 
-        test_utils.all_close(vector.c3f(1, 2, 3), vector.c3f(1, 2, 3))
-        test_utils.differ(vector.c3f(1, 2, 3), vector.c3f(2, 2, 2))
+        test_utils.all_close(vector.v2f(1, 2), vector.v2f(1, 2))
+        test_utils.differ(vector.v2f(1, 2), vector.v2f(1, 3))
 
-    def test_add3_c3f(self):
-        """Tests that add3_c3f properly adds three CPU vectors."""
+    def test_v3f(self):
+        """Tests that v3f makes a vector with the expected elements."""
+
+        test_utils.all_close(vector.v3f(1, 2, 3), vector.v3f(1, 2, 3))
+        test_utils.differ(vector.v3f(1, 2, 3), vector.v3f(1, 2, 4))
+
+    def test_add_v3f(self):
+        """Tests that add_v3f properly adds three vectors."""
 
         test_utils.all_close(
-            vector.add3_c3f(
-                vector.c3f(1, 2, 3), vector.c3f(4, 5, 6), vector.c3f(7, 8, 9)
+            vector.add_v3f(
+                (vector.v3f(1, 2, 3), vector.v3f(4, 5, 6), vector.v3f(7, 8, 9))
             ),
-            vector.c3f(12, 15, 18),
+            vector.v3f(12, 15, 18),
         )
 
-    def test_sub_c3f(self):
-        """Tests that sub_c3f properly subtracts one CPU vector from another."""
+    def test_sub_v3f(self):
+        """Tests that sub_v3f properly subtracts one vector from another."""
 
         test_utils.all_close(
-            vector.sub_c3f(vector.c3f(4, 5, 6), vector.c3f(3, 2, 1)),
-            vector.c3f(1, 3, 5),
+            vector.sub_v3f(vector.v3f(4, 5, 6), vector.v3f(3, 2, 1)),
+            vector.v3f(1, 3, 5),
         )
 
-    def test_smul_c3f(self):
-        """Tests that smul_c3f properly multiplies a CPU vector by a scalar."""
+    def test_smul_v3f(self):
+        """Tests that smul_v3f properly multiplies a vector by a scalar."""
 
-        test_utils.all_close(vector.smul_c3f(vector.c3f(1, 2, 3), 3), vector.c3f(3, 6, 9))
+        test_utils.all_close(vector.smul_v3f(vector.v3f(1, 2, 3), 3), vector.v3f(3, 6, 9))
 
-    def test_div_c3f(self):
-        """Tests that div_c3f properly divides a CPU vector by a scalar."""
-
-        test_utils.all_close(vector.div_c3f(vector.c3f(3, 6, 9), 3), vector.c3f(1, 2, 3))
-
-    def test_cross_c3f(self):
-        """Tests that cross_c3f properly produces the cross product of two CPU
-        vectors."""
+    def test_cross_v3f(self):
+        """Tests that cross_v3f properly produces the cross product of two vectors."""
 
         test_utils.all_close(
-            vector.cross_c3f(vector.c3f(1, 2, 3), vector.c3f(4, 5, 6)),
-            vector.c3f(-3, 6, -3),
+            vector.cross_v3f(vector.v3f(1, 2, 3), vector.v3f(4, 5, 6)),
+            vector.v3f(-3, 6, -3),
         )
 
-    def test_length_c3f(self):
-        """Tests that length_c3f properly produces the length of a CPU vector."""
+    def test_length_v3f(self):
+        """Tests that length_v3f properly produces the length of a vector."""
 
-        self.assertAlmostEqual(vector.length_c3f(vector.c3f(2, 3, 6)), 7)
+        self.assertAlmostEqual(vector.length_v3f(vector.v3f(2, 3, 6)), 7)
 
-    def test_norm_c3f(self):
-        """Tests that norm_c3f properly normalizes a CPU vector."""
+    def test_norm_v3f(self):
+        """Tests that norm_v3f properly normalizes a vector."""
 
         test_utils.all_close(
-            vector.norm_c3f(vector.c3f(1, -1, 2)),
-            vector.c3f(1 / math.sqrt(6), -1 / math.sqrt(6), math.sqrt(2 / 3)),
+            vector.norm_v3f(vector.v3f(1, -1, 2)),
+            vector.v3f(1 / math.sqrt(6), -1 / math.sqrt(6), math.sqrt(2 / 3)),
         )
 
-    def test_empty_g2f(self):
-        """Tests that g2f makes a 2D GPU vector with the expected elements."""
+    def test_d_v2f(self):
+        """Tests that d_v2f makes a 2D vector with the expected elements."""
 
         @cuda.jit
-        def copy_empty_g2f(target):
+        def make_v2f(target, a, b):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g2f_to_c2f(vector.empty_g2f())
+            target[i] = vector.d_v2f(a, b)
 
         cpu_array = numpy.zeros((1, 2), dtype=numpy.float32)
 
-        cutil.launcher(copy_empty_g2f, 1)(cpu_array)
+        cutil.launcher(make_v2f, 1)(cpu_array, 2, 3)
 
-        test_utils.all_close(cpu_array[0], vector.c2f(0, 0))
+        test_utils.all_close(cpu_array[0], vector.v2f(2, 3))
 
-    def test_g2f(self):
-        """Tests that g2f makes a 2D GPU vector with the expected elements."""
+    def test_d_v3f(self):
+        """Tests that d_v3f makes a vector with the expected elements."""
 
         @cuda.jit
-        def copy_g2f(target, source):
+        def make_v3f(target, a, b, c):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g2f_to_c2f(vector.g2f(*source))
+            target[i] = vector.d_v3f(a, b, c)
+
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
+
+        cutil.launcher(make_v3f, 1)(cpu_array, 2, 3, 5)
+
+        test_utils.all_close(cpu_array[0], vector.v3f(2, 3, 5))
+
+    def test_d_v3f_to_v3ui(self):
+        """tests that d_v3f_to_v3ui properly casts a vector."""
+
+        @cuda.jit
+        def cast_to_unsigned(target, a, b, c):
+            i = cutil.line_index()
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = vector.d_v3f_to_v3ui(vector.d_v3f(a, b, c))
+
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.uint8)
+
+        cutil.launcher(cast_to_unsigned, 1)(cpu_array, 2, 3, 5)
+
+        test_utils.all_close(cpu_array[0], (2, 3, 5))
+
+    def test_d_add_v3f(self):
+        """Tests that d_add_v3f properly adds vectors."""
+
+        @cuda.jit
+        def add_v3f(target, a, b, c):
+            i = cutil.line_index()
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = vector.d_add_v3f((a, b, c))
+
+        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
+
+        cutil.launcher(add_v3f, 1)(
+            cpu_array, vector.v3f(1, 2, 3), vector.v3f(4, 5, 6), vector.v3f(7, 8, 9)
+        )
+
+        test_utils.all_close(cpu_array[0], vector.v3f(12, 15, 18))
+
+    def test_d_sub_v2f(self):
+        """Tests that d_sub_v2f properly subtracts one vector from another."""
+
+        @cuda.jit
+        def subtract_v2f(target, a, b):
+            i = cutil.line_index()
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = vector.d_sub_v2f(a, b)
 
         cpu_array = numpy.zeros((1, 2), dtype=numpy.float32)
 
-        cutil.launcher(copy_g2f, 1)(cpu_array, vector.c2f(1, 2))
+        cutil.launcher(subtract_v2f, 1)(cpu_array, vector.v2f(3, 4), vector.v2f(2, 1))
 
-        test_utils.all_close(cpu_array[0], vector.c2f(1, 2))
+        test_utils.all_close(cpu_array[0], vector.v2f(1, 3))
 
-    def test_empty_g3f(self):
-        """Tests that g3f makes an empty 3D GPU vector."""
+    def test_d_sub_v3f(self):
+        """Tests that d_sub_v3f properly subtracts one vector from another."""
 
         @cuda.jit
-        def copy_empty_g3f(target):
+        def subtract_v3f(target, a, b):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g3f_to_c3f(vector.empty_g3f())
+            target[i] = vector.d_sub_v3f(a, b)
 
         cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
-        cutil.launcher(copy_empty_g3f, 1)(cpu_array)
-
-        test_utils.all_close(cpu_array[0], vector.c3f(0, 0, 0))
-
-    def test_g3f(self):
-        """Tests that g3f makes a GPU vector with the expected elements."""
-
-        @cuda.jit
-        def copy_g3f(target, source):
-            i = cutil.line_index()
-            if cutil.outside_shape(i, target.shape):
-                return
-
-            target[i] = vector.g3f_to_c3f(vector.g3f(*source))
-
-        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
-
-        cutil.launcher(copy_g3f, 1)(cpu_array, vector.c3f(1, 2, 3))
-
-        test_utils.all_close(cpu_array[0], vector.c3f(1, 2, 3))
-
-    def test_c3f_to_g3f(self):
-        """Tests that c3f_to_g3f makes a GPU vector with elements from the CPU vector."""
-
-        @cuda.jit
-        def copy_g3f_from_c3f(target, source):
-            i = cutil.line_index()
-            if cutil.outside_shape(i, target.shape):
-                return
-
-            target[i] = vector.g3f_to_c3f(vector.c3f_to_g3f(source))
-
-        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
-
-        cutil.launcher(copy_g3f_from_c3f, 1)(cpu_array, vector.c3f(1, 2, 3))
-
-        test_utils.all_close(cpu_array[0], vector.c3f(1, 2, 3))
-
-    def test_add_g3f(self):
-        """Tests that add_g3f properly adds two GPU vectors."""
-
-        @cuda.jit
-        def add_2_g3f(target, a, b):
-            i = cutil.line_index()
-            if cutil.outside_shape(i, target.shape):
-                return
-
-            target[i] = vector.g3f_to_c3f(vector.add_g3f(vector.g3f(*a), vector.g3f(*b)))
-
-        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
-
-        cutil.launcher(add_2_g3f, 1)(cpu_array, vector.c3f(1, 2, 3), vector.c3f(4, 5, 6))
-
-        test_utils.all_close(cpu_array[0], vector.c3f(5, 7, 9))
-
-    def test_add3_g3f(self):
-        """Tests that add3_g3f properly adds three GPU vectors."""
-
-        @cuda.jit
-        def add_3_g3f(target, a, b, c):
-            i = cutil.line_index()
-            if cutil.outside_shape(i, target.shape):
-                return
-
-            target[i] = vector.g3f_to_c3f(
-                vector.add3_g3f(vector.g3f(*a), vector.g3f(*b), vector.g3f(*c))
-            )
-
-        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
-
-        cutil.launcher(add_3_g3f, 1)(
-            cpu_array, vector.c3f(1, 2, 3), vector.c3f(4, 5, 6), vector.c3f(7, 8, 9)
+        cutil.launcher(subtract_v3f, 1)(
+            cpu_array, vector.v3f(4, 5, 6), vector.v3f(3, 2, 1)
         )
 
-        test_utils.all_close(cpu_array[0], vector.c3f(12, 15, 18))
+        test_utils.all_close(cpu_array[0], vector.v3f(1, 3, 5))
 
-    def test_neg_g3f(self):
-        """Tests that neg_g3f properly negates a GPU vector."""
+    def test_d_smul_v2f(self):
+        """Tests that d_smul_v2f properly multiplies a vector by a scalar."""
 
         @cuda.jit
-        def negate_g3f(target, a):
+        def scale_v2f(target, a, b):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g3f_to_c3f(vector.neg_g3f(vector.g3f(*a)))
+            target[i] = vector.d_smul_v2f(a, b)
 
-        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
+        cpu_array = numpy.zeros((1, 2), dtype=numpy.float32)
 
-        cutil.launcher(negate_g3f, 1)(cpu_array, vector.c3f(1, -2, 3))
+        cutil.launcher(scale_v2f, 1)(cpu_array, vector.v2f(1, 2), 3)
 
-        test_utils.all_close(cpu_array[0], vector.c3f(-1, 2, -3))
+        test_utils.all_close(cpu_array[0], vector.v2f(3, 6))
 
-    def test_sub_g3f(self):
-        """Tests that sub_g3f properly subtracts one GPU vector from another."""
+    def test_d_smul_v3f(self):
+        """Tests that d_smul_v3f properly multiplies a vector by a scalar."""
 
         @cuda.jit
-        def subtract_g3f(target, a, b):
+        def scale_v3f(target, a, b):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g3f_to_c3f(vector.sub_g3f(vector.g3f(*a), vector.g3f(*b)))
+            target[i] = vector.d_smul_v3f(a, b)
 
         cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
-        cutil.launcher(subtract_g3f, 1)(
-            cpu_array, vector.c3f(4, 5, 6), vector.c3f(3, 2, 1)
-        )
+        cutil.launcher(scale_v3f, 1)(cpu_array, vector.v3f(1, 2, 3), 3)
 
-        test_utils.all_close(cpu_array[0], vector.c3f(1, 3, 5))
+        test_utils.all_close(cpu_array[0], vector.v3f(3, 6, 9))
 
-    def test_smul_g3f(self):
-        """Tests that smul_g3f properly multiplies a GPU vector by a scalar."""
-
-        @cuda.jit
-        def scale_g3f(target, a, b):
-            i = cutil.line_index()
-            if cutil.outside_shape(i, target.shape):
-                return
-
-            target[i] = vector.g3f_to_c3f(vector.smul_g3f(vector.g3f(*a), b))
-
-        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
-
-        cutil.launcher(scale_g3f, 1)(cpu_array, vector.c3f(1, 2, 3), 3)
-
-        test_utils.all_close(cpu_array[0], vector.c3f(3, 6, 9))
-
-    def test_vmul_g3f(self):
-        """Tests that vmul_g3f properly produces the Hadamard product of two GPU
-        vectors."""
+    def test_d_vmul_v3f(self):
+        """Tests that d_vmul_v3f properly produces the Hadamard product of two vectors."""
 
         @cuda.jit
         def elementwise_multiply_g3f(target, a, b):
@@ -259,126 +222,120 @@ class VectorTest(testing.CUDATestCase):
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g3f_to_c3f(vector.vmul_g3f(vector.g3f(*a), vector.g3f(*b)))
+            target[i] = vector.d_vmul_v3f(a, b)
 
         cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
         cutil.launcher(elementwise_multiply_g3f, 1)(
-            cpu_array, vector.c3f(1, 2, 3), vector.c3f(1, 2, 3)
+            cpu_array, vector.v3f(1, 2, 3), vector.v3f(1, 2, 3)
         )
 
-        test_utils.all_close(cpu_array[0], vector.c3f(1, 4, 9))
+        test_utils.all_close(cpu_array[0], vector.v3f(1, 4, 9))
 
-    def test_div_g3f(self):
-        """Tests that div_g3f properly divides a GPU vector by a scalar."""
+    def test_d_dot_v2f(self):
+        """Tests that d_dot_v2f properly produces the dot product of two vectors."""
 
         @cuda.jit
-        def divide_g3f(target, a, b):
+        def dot_v2f(target, a, b):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g3f_to_c3f(vector.div_g3f(vector.g3f(*a), b))
-
-        cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
-
-        cutil.launcher(divide_g3f, 1)(cpu_array, vector.c3f(3, 6, 9), 3)
-
-        test_utils.all_close(cpu_array[0], vector.c3f(1, 2, 3))
-
-    def test_dot_g3f(self):
-        """Tests that dot_g3f properly produces the dot product of two GPU vectors."""
-
-        @cuda.jit
-        def dot_multiply_g3f(target, a, b):
-            i = cutil.line_index()
-            if cutil.outside_shape(i, target.shape):
-                return
-
-            target[i] = vector.dot_g3f(vector.g3f(*a), vector.g3f(*b))
+            target[i] = vector.d_dot_v2f(a, b)
 
         cpu_array = numpy.zeros(1, dtype=numpy.float32)
 
-        cutil.launcher(dot_multiply_g3f, 1)(
-            cpu_array, vector.c3f(1, 2, 3), vector.c3f(4, 5, 6)
-        )
+        cutil.launcher(dot_v2f, 1)(cpu_array, vector.v2f(2, 3), vector.v2f(4, 5))
+
+        self.assertAlmostEqual(cpu_array[0], 23)
+
+    def test_d_dot_v3f(self):
+        """Tests that d_dot_v3f properly produces the dot product of two vectors."""
+
+        @cuda.jit
+        def dot_v3f(target, a, b):
+            i = cutil.line_index()
+            if cutil.outside_shape(i, target.shape):
+                return
+
+            target[i] = vector.d_dot_v3f(a, b)
+
+        cpu_array = numpy.zeros(1, dtype=numpy.float32)
+
+        cutil.launcher(dot_v3f, 1)(cpu_array, vector.v3f(1, 2, 3), vector.v3f(4, 5, 6))
 
         self.assertAlmostEqual(cpu_array[0], 32)
 
-    def test_cross_g3f(self):
-        """Tests that cross_g3f properly produces the cross product of two GPU vectors."""
+    def test_d_cross_v3f(self):
+        """Tests that d_cross_v3f properly produces the cross product of two vectors."""
 
         @cuda.jit
-        def cross_multiply_g3f(target, a, b):
+        def cross_v3f(target, a, b):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g3f_to_c3f(
-                vector.cross_g3f(vector.g3f(*a), vector.g3f(*b))
-            )
+            target[i] = vector.d_cross_v3f(a, b)
 
         cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
-        cutil.launcher(cross_multiply_g3f, 1)(
-            cpu_array, vector.c3f(1, 2, 3), vector.c3f(4, 5, 6)
-        )
+        cutil.launcher(cross_v3f, 1)(cpu_array, vector.v3f(1, 2, 3), vector.v3f(4, 5, 6))
 
-        test_utils.all_close(cpu_array[0], vector.c3f(-3, 6, -3))
+        test_utils.all_close(cpu_array[0], vector.v3f(-3, 6, -3))
 
-    def test_squared_length_g3f(self):
-        """Tests that squared_length_g3f properly produces the squared length of a GPU
+    def test_d_squared_lengtv3f(self):
+        """Tests that d_squared_length_v3f properly produces the squared length of a
         vector."""
 
         @cuda.jit
-        def find_g3f_vector_squared_length(target, a):
+        def v3f_squared_length(target, a):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.squared_length_g3f(vector.g3f(*a))
+            target[i] = vector.d_squared_length_v3f(a)
 
         cpu_array = numpy.zeros(1, dtype=numpy.float32)
 
-        cutil.launcher(find_g3f_vector_squared_length, 1)(cpu_array, vector.c3f(1, 2, 3))
+        cutil.launcher(v3f_squared_length, 1)(cpu_array, vector.v3f(1, 2, 3))
 
         self.assertAlmostEqual(cpu_array[0], 14)
 
-    def test_length_g3f(self):
-        """Tests that length_g3f properly produces the length of a GPU vector."""
+    def test_d_length_v3f(self):
+        """Tests that d_length_v3f properly produces the length of a vector."""
 
         @cuda.jit
-        def find_g3f_vector_length(target, a):
+        def v3f_length(target, a):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.length_g3f(vector.g3f(*a))
+            target[i] = vector.d_length_v3f(a)
 
         cpu_array = numpy.zeros(1, dtype=numpy.float32)
 
-        cutil.launcher(find_g3f_vector_length, 1)(cpu_array, vector.c3f(2, 3, 6))
+        cutil.launcher(v3f_length, 1)(cpu_array, vector.v3f(2, 3, 6))
 
         self.assertAlmostEqual(cpu_array[0], 7)
 
-    def test_norm_g3f(self):
-        """Tests that norm_g3f properly normalizes a GPU vector."""
+    def test_d_norm_v3f(self):
+        """Tests that d_norm_v3f properly normalizes a vector."""
 
         @cuda.jit
-        def normalize_g3f(target, a):
+        def v3f_norm(target, a):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g3f_to_c3f(vector.norm_g3f(vector.g3f(*a)))
+            target[i] = vector.d_norm_v3f(a)
 
         cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
-        cutil.launcher(normalize_g3f, 1)(cpu_array, vector.c3f(1, -1, 2))
+        cutil.launcher(v3f_norm, 1)(cpu_array, vector.v3f(1, -1, 2))
 
         test_utils.all_close(
             cpu_array[0],
-            vector.c3f(1 / math.sqrt(6), -1 / math.sqrt(6), math.sqrt(2 / 3)),
+            vector.v3f(1 / math.sqrt(6), -1 / math.sqrt(6), math.sqrt(2 / 3)),
         )
 
 

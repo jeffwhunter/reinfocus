@@ -18,7 +18,7 @@ from reinfocus.graphics import world
 @cuda.jit
 def device_render(
     frame: NDArray,
-    cpu_camera: camera.CpuCamera,
+    cam: camera.Camera,
     samples_per_pixel: int,
     random_states: DeviceNDArray,
     shapes: shape.GpuShapes,
@@ -28,7 +28,7 @@ def device_render(
 
     Args:
         frame: The frame into which the image will be rendered.
-        cpu_camera: The camera with which the image will be rendered.
+        cam: The camera with which the image will be rendered.
         samples_per_pixel: How many rays to fire per pixel.
         random_states: An array of RNG states.
         shapes: The shapes to render."""
@@ -37,34 +37,38 @@ def device_render(
     if cutil.outside_shape(index, frame.shape):
         return
 
-    height, width = frame.shape[:2]
+    h, w = frame.shape[:2]
     y, x = index
 
-    pixel_index = y * width + x
+    pixel_index = y * w + x
 
-    colour = vector.g3f(0, 0, 0)
-
-    gpu_camera = camera.cast_to_gpu_camera(cpu_camera)
+    colour = vector.d_v3f(0, 0, 0)
 
     for _ in range(samples_per_pixel):
-        colour = vector.add_g3f(
-            colour,
-            physics.find_colour(
-                shapes[shape.PARAMETERS],
-                shapes[shape.TYPES],
-                camera.get_ray(
-                    gpu_camera,
-                    (x + random.uniform_float(random_states, pixel_index)) / width,
-                    (y + random.uniform_float(random_states, pixel_index)) / height,
+        colour = vector.d_add_v3f(
+            (
+                colour,
+                physics.find_colour(
+                    shapes[shape.PARAMETERS],
+                    shapes[shape.TYPES],
+                    camera.get_ray(
+                        cam,
+                        numpy.float32(
+                            (x + random.uniform_float(random_states, pixel_index)) / w
+                        ),
+                        numpy.float32(
+                            (y + random.uniform_float(random_states, pixel_index)) / h
+                        ),
+                        random_states,
+                        pixel_index,
+                    ),
                     random_states,
                     pixel_index,
                 ),
-                random_states,
-                pixel_index,
-            ),
+            )
         )
 
-    frame[index] = vector.g3f_to_c3ui(vector.smul_g3f(colour, 255.0 / samples_per_pixel))
+    frame[index] = vector.d_smul_v3f(colour, numpy.float32(255.0 / samples_per_pixel))
 
 
 def make_render_target(frame_shape: tuple[int, int] = (300, 600)) -> DeviceNDArray:
@@ -82,7 +86,7 @@ def make_render_target(frame_shape: tuple[int, int] = (300, 600)) -> DeviceNDArr
 def render(
     frame_shape: tuple[int, int] = (300, 600),
     block_shape: tuple[int, int] = (16, 16),
-    cpu_world: world.World = world.mixed_world(),
+    world_data: world.World = world.mixed_world(),
     samples_per_pixel: int = 100,
     focus_distance: float = 10.0,
 ) -> NDArray:
@@ -92,7 +96,7 @@ def render(
     Args:
         frame_shape: The shape of the image to render.
         block_shape: The shape of the GPU block used to render the image.
-        cpu_world: The world to render.
+        world_data: The world to render.
         samples_per_pixel: How many rays to fire per pixel.
         focus_distance: How far away should the plane of perfect focus be from the view.
 
@@ -103,16 +107,16 @@ def render(
 
     cutil.launcher(device_render, frame_shape, block_shape)(
         frame,
-        camera.cpu_camera(
+        camera.camera(
             camera.CameraOrientation(
-                vector.c3f(0, 0, -10), vector.c3f(0, 0, 0), vector.c3f(0, 1, 0)
+                vector.v3f(0, 0, -10), vector.v3f(0, 0, 0), vector.v3f(0, 1, 0)
             ),
             camera.CameraView(frame_shape[1] / frame_shape[0], 30.0),
             camera.CameraLens(0.1, focus_distance),
         ),
         samples_per_pixel,
         random.make_random_states(frame_shape[0] * frame_shape[1], 0),
-        (cpu_world.device_shape_parameters(), cpu_world.device_shape_types()),
+        (world_data.device_shape_parameters(), world_data.device_shape_types()),
     )
 
     return frame.copy_to_host()

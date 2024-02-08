@@ -3,32 +3,23 @@
 import dataclasses
 import math
 
+import numpy
+
 from numba import cuda
 from numba.cuda.cudadrv import devicearray
 from reinfocus.graphics import random
 from reinfocus.graphics import ray
 from reinfocus.graphics import vector
 
-CpuCamera = tuple[
-    vector.C3F,
-    vector.C3F,
-    vector.C3F,
-    vector.C3F,
-    vector.C3F,
-    vector.C3F,
-    vector.C3F,
-    float,
-]
-
-GpuCamera = tuple[
-    vector.G3F,
-    vector.G3F,
-    vector.G3F,
-    vector.G3F,
-    vector.G3F,
-    vector.G3F,
-    vector.G3F,
-    float,
+Camera = tuple[
+    vector.V3F,
+    vector.V3F,
+    vector.V3F,
+    vector.V3F,
+    vector.V3F,
+    vector.V3F,
+    vector.V3F,
+    numpy.float32,
 ]
 
 LOWER_LEFT = 0
@@ -50,9 +41,9 @@ class CameraOrientation:
         look_from: The position of the camera.
         up: Which direction is up for the camera."""
 
-    look_at: vector.C3F
-    look_from: vector.C3F
-    up: vector.C3F
+    look_at: vector.V3F
+    look_from: vector.V3F
+    up: vector.V3F
 
 
 @dataclasses.dataclass
@@ -79,32 +70,8 @@ class CameraLens:
     focus_dist: float
 
 
-@cuda.jit
-def cast_to_gpu_camera(camera: CpuCamera) -> GpuCamera:
-    """Casts a CpuCamera to a GpuCamera while both are on the GPU.
-
-    Args:
-        camera: The CPU representation of a camera.
-
-    Returns:
-        A GPU representation of that camera."""
-
-    return (
-        vector.c3f_to_g3f(camera[LOWER_LEFT]),
-        vector.c3f_to_g3f(camera[HORIZONTAL]),
-        vector.c3f_to_g3f(camera[VERTICAL]),
-        vector.c3f_to_g3f(camera[ORIGIN]),
-        vector.c3f_to_g3f(camera[CAM_U]),
-        vector.c3f_to_g3f(camera[CAM_V]),
-        vector.c3f_to_g3f(camera[CAM_W]),
-        camera[LENS_RADIUS],
-    )
-
-
-def cpu_camera(
-    orientation: CameraOrientation, view: CameraView, lens: CameraLens
-) -> CpuCamera:
-    """Makes a representation of a camera suitable for transfer to the GPU.
+def camera(orientation: CameraOrientation, view: CameraView, lens: CameraLens) -> Camera:
+    """Makes a Camera with a given viewpoint and perspective.
 
     Args:
         orientation: The camera's orientation.
@@ -112,73 +79,75 @@ def cpu_camera(
         lens: The camera's lens.
 
     Returns:
-        A CPU retresentation of a camera."""
+        A camera."""
 
     half_height = math.tan((view.vfov * math.pi / 180.0) / 2.0)
     half_width = view.aspect * half_height
-    w = vector.norm_c3f(vector.sub_c3f(orientation.look_from, orientation.look_at))
-    u = vector.norm_c3f(vector.cross_c3f(orientation.up, w))
-    v = vector.cross_c3f(w, u)
+    w = vector.norm_v3f(vector.sub_v3f(orientation.look_from, orientation.look_at))
+    u = vector.norm_v3f(vector.cross_v3f(orientation.up, w))
+    v = vector.cross_v3f(w, u)
 
     return (
-        vector.sub_c3f(
+        vector.sub_v3f(
             orientation.look_from,
-            vector.add3_c3f(
-                vector.smul_c3f(u, half_width * lens.focus_dist),
-                vector.smul_c3f(v, half_height * lens.focus_dist),
-                vector.smul_c3f(w, lens.focus_dist),
+            vector.add_v3f(
+                (
+                    vector.smul_v3f(u, half_width * lens.focus_dist),
+                    vector.smul_v3f(v, half_height * lens.focus_dist),
+                    vector.smul_v3f(w, lens.focus_dist),
+                )
             ),
         ),
-        vector.smul_c3f(u, 2.0 * half_width * lens.focus_dist),
-        vector.smul_c3f(v, 2.0 * half_height * lens.focus_dist),
+        vector.smul_v3f(u, 2.0 * half_width * lens.focus_dist),
+        vector.smul_v3f(v, 2.0 * half_height * lens.focus_dist),
         orientation.look_from,
         u,
         v,
         w,
-        lens.aperture / 2.0,
+        numpy.divide(lens.aperture, 2.0),
     )
 
 
 @cuda.jit
 def random_in_unit_disc(
     random_states: devicearray.DeviceNDArray, pixel_index: int
-) -> vector.G2F:
-    """Returns a 2D GPU vector somewhere in the unit disc.
+) -> vector.V2F:
+    """Returns a 2D vector somewhere in the unit disc.
 
     Args:
         random_states: An array of RNG states.
         pixel_index: Which RNG state to use.
 
     Returns:
-        A 2D GPU vector somewhere in the unit disc."""
+        A 2D vector somewhere in the unit disc."""
 
     while True:
-        p = vector.sub_g2f(
-            vector.smul_g2f(
-                vector.g2f(
+        p = vector.d_sub_v2f(
+            vector.d_smul_v2f(
+                vector.d_v2f(
                     random.uniform_float(random_states, pixel_index),
                     random.uniform_float(random_states, pixel_index),
                 ),
-                2.0,
+                numpy.float32(2.0),
             ),
-            vector.g2f(1, 1),
+            vector.d_v2f(1, 1),
         )
-        if vector.dot_g2f(p, p) < 1.0:
+        if numpy.less(vector.d_dot_v2f(p, p), 1.0):
             return p
 
 
 @cuda.jit
 def get_ray(
-    camera: GpuCamera,
-    s: float,
-    t: float,
+    cam: Camera,
+    s: numpy.float32,
+    t: numpy.float32,
     random_states: devicearray.DeviceNDArray,
     pixel_index: int,
-) -> ray.GpuRay:
+) -> ray.Ray:
     """Returns a defocussed ray passing through camera pixel (s, t).
 
     Args:
-        camera: The camera whose pixels the ray will pass through.
+        cam: The camera whose pixels the ray will pass through.
         s: The horizontal coordinate of the pixel the ray will pass through.
         t: The vertical coordinate of the pixel the ray will pass through.
         random_states: An array of RNG states.
@@ -187,22 +156,26 @@ def get_ray(
     Returns:
         A ray shooting out of camera through (s, t)."""
 
-    rd = vector.smul_g2f(
-        random_in_unit_disc(random_states, pixel_index), camera[LENS_RADIUS]
+    rd = vector.d_smul_v2f(
+        random_in_unit_disc(random_states, pixel_index), cam[LENS_RADIUS]
     )
-    offset_origin = vector.add3_g3f(
-        camera[ORIGIN],
-        vector.smul_g3f(camera[CAM_U], rd.x),
-        vector.smul_g3f(camera[CAM_V], rd.y),
+    offset_origin = vector.d_add_v3f(
+        (
+            cam[ORIGIN],
+            vector.d_smul_v3f(cam[CAM_U], rd[0]),
+            vector.d_smul_v3f(cam[CAM_V], rd[1]),
+        )
     )
 
-    return ray.gpu_ray(
+    return ray.ray(
         offset_origin,
-        vector.sub_g3f(
-            vector.add3_g3f(
-                camera[LOWER_LEFT],
-                vector.smul_g3f(camera[HORIZONTAL], s),
-                vector.smul_g3f(camera[VERTICAL], t),
+        vector.d_sub_v3f(
+            vector.d_add_v3f(
+                (
+                    cam[LOWER_LEFT],
+                    vector.d_smul_v3f(cam[HORIZONTAL], s),
+                    vector.d_smul_v3f(cam[VERTICAL], t),
+                )
             ),
             offset_origin,
         ),

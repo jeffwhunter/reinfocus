@@ -18,8 +18,8 @@ FX = 4
 FY = 5
 
 
-def cpu_sphere(
-    centre: vector.C3F, radius: float, texture: vector.C2F = vector.c2f(16, 16)
+def sphere(
+    centre: vector.V3F, radius: float, texture: vector.V2F = vector.v2f(16, 16)
 ) -> shape.CpuShape:
     """Makes a representation of a sphere suitable for transfer to the GPU.
 
@@ -37,9 +37,12 @@ def cpu_sphere(
 
 
 @cuda.jit
-def gpu_hit_sphere(
-    sphere_parameters: shape.GpuShapeParameters, r: ray.GpuRay, t_min: float, t_max: float
-) -> shape.GpuHitResult:
+def hit(
+    sphere_parameters: shape.GpuShapeParameters,
+    r: ray.Ray,
+    t_min: numpy.float32,
+    t_max: numpy.float32,
+) -> hit_record.HitResult:
     """Determines if the ray r hits the sphere defined by sphere_parameters between
         t_min and t_max, returning a hit_record containing the details if it does.
 
@@ -57,54 +60,57 @@ def gpu_hit_sphere(
             second element is a GpuHitRecord with the details of the hit, which
             is empty if there was no hit."""
 
-    sphere_centre = vector.g3f(
+    sphere_centre = vector.d_v3f(
         sphere_parameters[X], sphere_parameters[Y], sphere_parameters[Z]
     )
     sphere_radius = sphere_parameters[R]
 
-    oc = vector.sub_g3f(r[ray.ORIGIN], sphere_centre)
-    a = vector.dot_g3f(r[ray.DIRECTION], r[ray.DIRECTION])
-    b = vector.dot_g3f(oc, r[ray.DIRECTION])
-    c = vector.dot_g3f(oc, oc) - sphere_radius * sphere_radius
+    oc = vector.d_sub_v3f(r[ray.ORIGIN], sphere_centre)
+    a = vector.d_dot_v3f(r[ray.DIRECTION], r[ray.DIRECTION])
+    b = vector.d_dot_v3f(oc, r[ray.DIRECTION])
+    c = vector.d_dot_v3f(oc, oc) - sphere_radius * sphere_radius
 
-    discriminant = b * b - a * c
+    discriminant = b * b - a * c  # type: ignore
 
     if discriminant < 0:
-        return (False, hit_record.gpu_empty_hit_record())
+        return (False, hit_record.empty_hit_record())
 
     sqrtd = math.sqrt(discriminant)
 
-    root = (-b - sqrtd) / a
+    root = (-b - sqrtd) / a  # type: ignore
     if root < t_min or t_max < root:
-        root = (-b + sqrtd) / a
+        root = (-b + sqrtd) / a  # type: ignore
         if root < t_min or t_max < root:
-            return (False, hit_record.gpu_empty_hit_record())
+            return (False, hit_record.empty_hit_record())
 
-    p = ray.gpu_point_at_parameter(r, root)
-    n = vector.div_g3f(vector.sub_g3f(p, sphere_centre), sphere_radius)
+    p = ray.point_at_parameter(r, root)
+    n = vector.d_smul_v3f(
+        vector.d_sub_v3f(p, sphere_centre), numpy.float32(1.0 / sphere_radius)
+    )
     return (
         True,
-        hit_record.gpu_hit_record(
+        hit_record.hit_record(
             p,
             n,
-            root,
-            gpu_sphere_uv(n),
-            vector.g2f(sphere_parameters[FX], sphere_parameters[FY]),
-            shape.SPHERE,
+            numpy.float32(root),
+            uv(n),
+            vector.d_v2f(sphere_parameters[FX], sphere_parameters[FY]),
+            numpy.float32(shape.SPHERE),
         ),
     )
 
 
 @cuda.jit
-def gpu_sphere_uv(point):
+def uv(point):
     """Returns the spherical texture coordinates of any point on the unit sphere.
 
     Args:
-        point: A G3F on the unit sphere.
+        point: A 3D point on the unit sphere.
 
     Returns:
-        A G2F with the texture coordinates of that point."""
+        A 2D point with the texture coordinates of that point."""
 
-    return vector.g2f(
-        (math.atan2(-point.z, point.x) + math.pi) / math.pi, math.acos(-point.y) / math.pi
+    return vector.d_v2f(
+        (math.atan2(-point[2], point[0]) + math.pi) / math.pi,
+        math.acos(-point[1]) / math.pi,
     )

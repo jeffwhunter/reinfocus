@@ -14,12 +14,12 @@ from reinfocus.graphics import world
 FocusInstrument = Callable[[world.World, float], float]
 
 
-def render_and_measure(render_world: world.World, focus_distance: float) -> float:
+def render_and_measure(world_data: world.World, focus_distance: float) -> float:
     """Renders then measures the focus value of world when focused on the plane at
         focus_distance.
 
     Args:
-        render_world: The world to render.
+        world_data: The world to render.
         focus_distance: The distance from the camera of the focus plane.
 
     Returns:
@@ -28,7 +28,7 @@ def render_and_measure(render_world: world.World, focus_distance: float) -> floa
 
     return vision.focus_value(
         render.render(
-            frame_shape=(300, 300), cpu_world=render_world, focus_distance=focus_distance
+            frame_shape=(300, 300), world_data=world_data, focus_distance=focus_distance
         )
     )
 

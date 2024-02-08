@@ -38,22 +38,22 @@ class VisionTest(unittest.TestCase):
         """Tests that in focus images have higher focus_values than out of focus
         images."""
 
-        cpu_world = world.one_rect_world(world.ShapeParameters(distance=10))
+        world_data = world.one_rect_world(world.ShapeParameters(distance=10))
 
         distant_focus = vision.focus_value(
-            render.render(cpu_world=cpu_world, focus_distance=40)
+            render.render(world_data=world_data, focus_distance=40)
         )
         far_focus = vision.focus_value(
-            render.render(cpu_world=cpu_world, focus_distance=20)
+            render.render(world_data=world_data, focus_distance=20)
         )
         in_focus = vision.focus_value(
-            render.render(cpu_world=cpu_world, focus_distance=10)
+            render.render(world_data=world_data, focus_distance=10)
         )
         near_focus = vision.focus_value(
-            render.render(cpu_world=cpu_world, focus_distance=5)
+            render.render(world_data=world_data, focus_distance=5)
         )
         close_focus = vision.focus_value(
-            render.render(cpu_world=cpu_world, focus_distance=1)
+            render.render(world_data=world_data, focus_distance=1)
         )
 
         self.assertGreater(in_focus, near_focus)

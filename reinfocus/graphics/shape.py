@@ -7,10 +7,6 @@ import numpy
 from numba.cuda.cudadrv.devicearray import DeviceNDArray
 from numpy.typing import NDArray
 
-from reinfocus.graphics import hit_record
-
-GpuHitResult = tuple[bool, hit_record.GpuHitRecord]
-
 CpuShapeParameters = NDArray[numpy.float32]
 CpuShapeTypes = NDArray[numpy.int32]
 GpuShapeParameters = DeviceNDArray

@@ -18,8 +18,8 @@ from tests.graphics import numba_test_utils
 class CameraTest(testing.CUDATestCase):
     """TestCases for reinfocus.graphics.camera."""
 
-    def test_cpu_camera(self):
-        """Tests that cpu_camera makes a CPU camera with the expected elements."""
+    def test_camera(self):
+        """Tests that camera makes a camera with the expected elements."""
 
         def flatten(l):
             return tuple(item for sublist in l for item in sublist)
@@ -29,9 +29,11 @@ class CameraTest(testing.CUDATestCase):
 
         test_utils.all_close(
             flatten_camera(
-                camera.cpu_camera(
+                camera.camera(
                     camera.CameraOrientation(
-                        vector.c3f(0, 0, -1), vector.c3f(0, 0, 0), vector.c3f(0, 1, 0)
+                        vector.v3f(0, 0, -1),
+                        vector.v3f(0, 0, 0),
+                        vector.v3f(0, 1, 0),
                     ),
                     camera.CameraView(1.0, 90.0),
                     camera.CameraLens(2.0, 10.0),
@@ -39,20 +41,20 @@ class CameraTest(testing.CUDATestCase):
             ),
             flatten_camera(
                 (
-                    vector.c3f(-10, -10, -10),
-                    vector.c3f(20, 0, 0),
-                    vector.c3f(0, 20, 0),
-                    vector.c3f(0, 0, 0),
-                    vector.c3f(1, 0, 0),
-                    vector.c3f(0, 1, 0),
-                    vector.c3f(0, 0, 1),
+                    vector.v3f(-10, -10, -10),
+                    vector.v3f(20, 0, 0),
+                    vector.v3f(0, 20, 0),
+                    vector.v3f(0, 0, 0),
+                    vector.v3f(1, 0, 0),
+                    vector.v3f(0, 1, 0),
+                    vector.v3f(0, 0, 1),
                     1,
                 )
             ),
         )
 
     def test_random_in_unit_disc(self):
-        """Tests that random_in_unit_disc makes 2D GPU vectors in the unit disc."""
+        """Tests that random_in_unit_disc makes 2D vectors in the unit disc."""
 
         @cuda.jit
         def sample_from_disc(target, random_states):
@@ -60,7 +62,7 @@ class CameraTest(testing.CUDATestCase):
             if cutil.outside_shape(i, target.shape):
                 return
 
-            target[i] = vector.g2f_to_c2f(camera.random_in_unit_disc(random_states, i))
+            target[i] = camera.random_in_unit_disc(random_states, i)
 
         tests = 100
 
@@ -73,17 +75,17 @@ class CameraTest(testing.CUDATestCase):
         self.assertTrue(numpy.all(linalg.norm(cpu_array, axis=-1) < 1.0))
 
     def test_get_ray(self):
-        """Tests that get_ray returns a GPU ray through the expected pixel."""
+        """Tests that get_ray returns a ray through the expected pixel."""
 
         @cuda.jit
-        def get_test_ray(target, cpu_camera, random_states):
+        def get_test_ray(target, cam, random_states):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
             target[i] = numba_test_utils.flatten_ray(
                 camera.get_ray(
-                    camera.cast_to_gpu_camera(cpu_camera), 0.5, 0.5, random_states, i
+                    cam, numpy.float32(0.5), numpy.float32(0.5), random_states, i
                 )
             )
 
@@ -91,9 +93,9 @@ class CameraTest(testing.CUDATestCase):
 
         cutil.launcher(get_test_ray, 1)(
             cpu_array,
-            camera.cpu_camera(
+            camera.camera(
                 camera.CameraOrientation(
-                    vector.c3f(0, 0, -1), vector.c3f(0, 0, 0), vector.c3f(0, 1, 0)
+                    vector.v3f(0, 0, -1), vector.v3f(0, 0, 0), vector.v3f(0, 1, 0)
                 ),
                 camera.CameraView(1.0, 90.0),
                 camera.CameraLens(0.2, 10.0),

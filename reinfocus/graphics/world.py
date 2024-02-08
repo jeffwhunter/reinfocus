@@ -79,13 +79,13 @@ class World:
 
 
 @cuda.jit
-def gpu_hit_world(
+def hit(
     shapes_parameters: DeviceNDArray,
     shapes_types: DeviceNDArray,
-    r: ray.GpuRay,
-    t_min: float,
-    t_max: float,
-) -> shape.GpuHitResult:
+    r: ray.Ray,
+    t_min: numpy.float32,
+    t_max: numpy.float32,
+) -> hit_record.HitResult:
     """Determines if the ray r hits any of the shapes defined by shape_parameters between
         t_min and t_max, according to their types in shapes_types, returning a hit_record
         containing the details if it does.
@@ -104,19 +104,15 @@ def gpu_hit_world(
 
     hit_anything = False
     closest_so_far = t_max
-    record = hit_record.gpu_empty_hit_record()
+    record = hit_record.empty_hit_record()
     for shape_parameters, shape_type in zip(shapes_parameters, shapes_types):
         h = False
-        temp_record = hit_record.gpu_empty_hit_record()
+        temp_record = hit_record.empty_hit_record()
 
         if shape_type == shape.SPHERE:
-            h, temp_record = sphere.gpu_hit_sphere(
-                shape_parameters, r, t_min, closest_so_far
-            )
+            h, temp_record = sphere.hit(shape_parameters, r, t_min, closest_so_far)
         else:
-            h, temp_record = rectangle.gpu_hit_rectangle(
-                shape_parameters, r, t_min, closest_so_far
-            )
+            h, temp_record = rectangle.hit(shape_parameters, r, t_min, closest_so_far)
 
         if h:
             hit_anything = True
@@ -166,10 +162,10 @@ def one_sphere_world(parameters: ShapeParameters = ShapeParameters()) -> World:
         A world with one sphere on the z axis."""
 
     return World(
-        sphere.cpu_sphere(
-            vector.c3f(0, 0, -parameters.distance),
+        sphere.sphere(
+            vector.v3f(0, 0, -parameters.distance),
             get_absolute_size(parameters),
-            parameters.texture_f,
+            vector.v2f(*parameters.texture_f),
         )
     )
 
@@ -190,23 +186,23 @@ def two_sphere_world(
     distance_to_offset = math.tan(math.radians(15))
 
     return World(
-        sphere.cpu_sphere(
-            vector.c3f(
+        sphere.sphere(
+            vector.v3f(
                 -left_parameters.distance * distance_to_offset,
                 0,
                 -left_parameters.distance,
             ),
             get_absolute_size(left_parameters),
-            left_parameters.texture_f,
+            vector.v2f(*left_parameters.texture_f),
         ),
-        sphere.cpu_sphere(
-            vector.c3f(
+        sphere.sphere(
+            vector.v3f(
                 right_parameters.distance * distance_to_offset,
                 0,
                 -right_parameters.distance,
             ),
             get_absolute_size(right_parameters),
-            right_parameters.texture_f,
+            vector.v2f(*right_parameters.texture_f),
         ),
     )
 
@@ -223,11 +219,11 @@ def one_rect_world(parameters: ShapeParameters = ShapeParameters()) -> World:
     size = get_absolute_size(parameters)
 
     return World(
-        rectangle.cpu_rectangle(
-            vector.c2f(-size, size),
-            vector.c2f(-size, size),
+        rectangle.rectangle(
+            vector.v2f(-size, size),
+            vector.v2f(-size, size),
             -parameters.distance,
-            parameters.texture_f,
+            vector.v2f(*parameters.texture_f),
         )
     )
 
@@ -254,17 +250,17 @@ def two_rect_world(
     right_size = get_absolute_size(right_parameters)
 
     return World(
-        rectangle.cpu_rectangle(
-            vector.c2f(-left_offset - left_size, -left_offset + left_size),
-            vector.c2f(-left_size, left_size),
+        rectangle.rectangle(
+            vector.v2f(-left_offset - left_size, -left_offset + left_size),
+            vector.v2f(-left_size, left_size),
             -left_parameters.distance,
-            left_parameters.texture_f,
+            vector.v2f(*left_parameters.texture_f),
         ),
-        rectangle.cpu_rectangle(
-            vector.c2f(right_offset - right_size, right_offset + right_size),
-            vector.c2f(-right_size, right_size),
+        rectangle.rectangle(
+            vector.v2f(right_offset - right_size, right_offset + right_size),
+            vector.v2f(-right_size, right_size),
             -right_parameters.distance,
-            right_parameters.texture_f,
+            vector.v2f(*right_parameters.texture_f),
         ),
     )
 
@@ -292,19 +288,19 @@ def mixed_world(
     right_size = get_absolute_size(right_parameters)
 
     return World(
-        sphere.cpu_sphere(
-            vector.c3f(
+        sphere.sphere(
+            vector.v3f(
                 -left_parameters.distance * distance_to_offset,
                 0,
                 -left_parameters.distance,
             ),
             left_size,
-            left_parameters.texture_f,
+            vector.v2f(*left_parameters.texture_f),
         ),
-        rectangle.cpu_rectangle(
-            vector.c2f(right_offset - right_size, right_offset + right_size),
-            vector.c2f(-right_size, right_size),
+        rectangle.rectangle(
+            vector.v2f(right_offset - right_size, right_offset + right_size),
+            vector.v2f(-right_size, right_size),
             -right_parameters.distance,
-            right_parameters.texture_f,
+            vector.v2f(*right_parameters.texture_f),
         ),
     )
