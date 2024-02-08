@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reinfocus"
+version = "0.0.1"
+authors = [
+    { name="Jeff Hunter", email="jhunter57@gmail.com" },
+]
+description = "Environments where agents can focus cameras on rendered objects."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "gymnasium ~= 0.29.0",
+    "matplotlib ~= 3.8.2",
+    "numba ~= 0.59.0",
+    "numpy ~= 1.26.4",
+    "opencv-python ~= 4.9.0.80",
+]
+
+[project.urls]
+Homepage = "https://github.com/jeffwhunter/reinfocus"
+Issues = "https://github.com/jeffwhunter/reinfocus/issues"
