@@ -10,7 +10,7 @@ Rewarder = Callable[[State, Observation], float]
 
 def distance(span: float, low: float = -1.0, high: float = 0.0) -> Rewarder:
     """Makes a function that returns a reward that scales linearly as the lens moves away
-    from the target. The reward is low when the lens is on target, and high when the lens
+    from the target. The reward is high when the lens is on target, and low when the lens
     is a distance of span from the target.
 
     Args:
@@ -19,8 +19,8 @@ def distance(span: float, low: float = -1.0, high: float = 0.0) -> Rewarder:
         high: The reward when the lens is on the target.
 
     Returns:
-        A function that returns a reward that increases as the lens gets further from the
-        target."""
+        A function that returns a reward that goes from high to low as the lens moves from
+        the target to a distance of span."""
 
     diff = high - low
 

@@ -1,0 +1,22 @@
+ContinuousLeftOrRight-v0:
+  normalize: true
+  n_envs: 8
+  n_timesteps: !!float 2e6
+  policy: 'MlpLstmPolicy'
+  batch_size: 32
+  n_steps: 1024
+  gamma: 0.98
+  learning_rate: 1.5937337905753163e-05
+  ent_coef: 0.014875665009607256
+  clip_range: 0.3
+  n_epochs: 10
+  gae_lambda: 0.95
+  max_grad_norm: 0.7
+  vf_coef: 0.9144413839301136
+  policy_kwargs: "dict(
+                    ortho_init=False,
+                    activation_fn=nn.Tanh,
+                    lstm_hidden_size=64,
+                    enable_critic_lstm=True,
+                    net_arch=dict(pi=[64, 64], vf=[64, 64])
+                  )"

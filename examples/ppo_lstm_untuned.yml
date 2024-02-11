@@ -1,0 +1,5 @@
+ContinuousLeftOrRight-v0:
+  normalize: true
+  n_envs: 8
+  n_timesteps: 4096
+  policy: 'MlpLstmPolicy'
