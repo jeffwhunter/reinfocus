@@ -10,10 +10,10 @@ from reinfocus.graphics import cutil
 from reinfocus.graphics import random
 
 
-class RandomTest(testing.CUDATestCase):
-    """TestCases for reinfocus.graphics.random."""
+class MakeRandomStatesTest(testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.random.make_random_states."""
 
-    def test_make_random_states(self):
+    def test_length(self):
         """Tests that make_random_states makes the correct number of states."""
 
         n_states = 10
@@ -22,7 +22,11 @@ class RandomTest(testing.CUDATestCase):
 
         self.assertEqual(len(states), n_states)
 
-    def test_uniform_float(self):
+
+class UniformFloatTest(testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.random.uniform_float."""
+
+    def test_range(self):
         """Tests that uniform_float samples from [0.0, 1.0)."""
 
         @cuda.jit

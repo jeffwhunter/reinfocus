@@ -3,8 +3,9 @@
 import numpy
 
 from numba import cuda
-from numba.cuda import testing
+from numba.cuda import testing as cuda_testing
 from numba.cuda.testing import unittest
+from numpy import testing as numpy_testing
 
 from reinfocus.graphics import cutil
 from reinfocus.graphics import ray
@@ -13,68 +14,135 @@ from reinfocus.graphics import shape
 from reinfocus.graphics import sphere
 from reinfocus.graphics import vector
 from reinfocus.graphics import world
-from tests import test_utils
 from tests.graphics import numba_test_utils
 
 
-class WorldTest(testing.CUDATestCase):
-    """TestCases for reinfocus.graphics.world."""
+class WorldTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.world.World."""
 
-    def test_different_world_parameters(self):
-        """Tests that World.device_shape_parameters can handle spheres and rectangles."""
+    def test_environment_sizes(self):
+        """Tests that device_data contains the proper environment sizes."""
 
-        w = world.World(
-            sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
-            rectangle.rectangle(
-                vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8)
-            ),
+        testee = world.Worlds(
+            [
+                sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
+                rectangle.rectangle(
+                    vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8)
+                ),
+            ],
+            [
+                rectangle.rectangle(
+                    vector.v2f(-0.5, 0.5),
+                    vector.v2f(-0.5, 0.5),
+                    0.5,
+                    vector.v2f(8, 4),
+                )
+            ],
         )
 
-        test_utils.all_close(
-            w.device_shape_parameters(),
-            numpy.array([[1, 2, 3, 4, 5, 6, 0], [-1, 1, -1, 1, 1, 4, 8]]),
+        numpy_testing.assert_allclose(testee.device_data()[world.MW_ENV_SIZES], [2, 1])
+
+    def test_parameters(self):
+        """Tests that device_data contains the proper shape parameters."""
+
+        testee = world.Worlds(
+            [
+                sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
+                rectangle.rectangle(
+                    vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8)
+                ),
+            ],
+            [
+                rectangle.rectangle(
+                    vector.v2f(-0.5, 0.5),
+                    vector.v2f(-0.5, 0.5),
+                    0.5,
+                    vector.v2f(8, 4),
+                )
+            ],
         )
 
-    def test_sphere_world_parameters(self):
-        """Tests that World.device_shape_parameters can handle spheres."""
-
-        w = world.World(
-            sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
-            sphere.sphere(vector.v3f(7, 8, 9), 10, vector.v2f(11, 12)),
+        numpy_testing.assert_allclose(
+            testee.device_data()[world.MW_PARAMETERS],
+            [
+                [
+                    [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0],
+                    [-1.0, 1.0, -1.0, 1.0, 1.0, 4.0, 8.0],
+                ],
+                [
+                    [-0.5, 0.5, -0.5, 0.5, 0.5, 8.0, 4.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                ],
+            ],
         )
 
-        test_utils.all_close(
-            w.device_shape_parameters(),
-            numpy.array([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]),
+    def test_types(self):
+        """Tests that device_data contains the proper shape types."""
+
+        testee = world.Worlds(
+            [
+                sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
+                rectangle.rectangle(
+                    vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8)
+                ),
+            ],
+            [
+                rectangle.rectangle(
+                    vector.v2f(-0.5, 0.5),
+                    vector.v2f(-0.5, 0.5),
+                    0.5,
+                    vector.v2f(8, 4),
+                )
+            ],
         )
 
-    def test_world_shape_types(self):
-        """Tests that World.device_shape_types can handle spheres and rectangles."""
-
-        w = world.World(
-            sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)),
-            rectangle.rectangle(
-                vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8)
-            ),
+        numpy_testing.assert_allclose(
+            testee.device_data()[world.MW_TYPES],
+            [[shape.SPHERE, shape.RECTANGLE], [shape.RECTANGLE, shape.SPHERE]],
         )
 
-        test_utils.all_close(
-            w.device_shape_types(), numpy.array([shape.SPHERE, shape.RECTANGLE])
-        )
 
-    def test_hit_sphere_world(self):
+class FocusWorldTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.world.FocusWorld."""
+
+    def test_world_parameters(self):
+        """Tests that device_data contains the proper rectangle parameters."""
+
+        testee = world.FocusWorlds(3)
+
+        testee.update_targets([1, 2, 3])
+
+        sizes = testee.device_data()[:, 0]
+
+        numpy_testing.assert_allclose(testee.device_data()[:, 1], [-1, -2, -3])
+        numpy_testing.assert_array_less(0, sizes)
+
+        testee.update_targets([3, 2, 1])
+
+        reversed_sizes = testee.device_data()[:, 0]
+
+        numpy_testing.assert_allclose(testee.device_data()[:, 1], [-3, -2, -1])
+        numpy_testing.assert_array_less(0, reversed_sizes)
+
+        numpy_testing.assert_allclose(sizes, list(reversed(reversed_sizes)))
+
+
+class HitTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.world.hit."""
+
+    def test_sphere_world(self):
         """Tests if hit returns an appropriate hit_record for spheres."""
 
         @cuda.jit
-        def hit_sphere_world(target, shapes_parameters, shapes_types, origin, direction):
+        def hit_sphere_world(target, device_worlds, origin, direction):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
             target[i] = numba_test_utils.flatten_hit_result(
                 world.hit(
-                    shapes_parameters,
-                    shapes_types,
+                    device_worlds[world.MW_PARAMETERS][0],
+                    device_worlds[world.MW_TYPES][0],
                     ray.ray(origin, direction),
                     numpy.float32(0),
                     numpy.float32(100),
@@ -83,35 +151,32 @@ class WorldTest(testing.CUDATestCase):
 
         cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
-        world_data = world.World(sphere.sphere(vector.v3f(0, 0, 0), 1, vector.v2f(4, 8)))
+        testee = world.Worlds([sphere.sphere(vector.v3f(0, 0, 0), 1, vector.v2f(4, 8))])
 
         cutil.launcher(hit_sphere_world, 1)(
             cpu_array,
-            world_data.device_shape_parameters(),
-            world_data.device_shape_types(),
+            testee.device_data(),
             vector.v3f(10, 0, 0),
             vector.v3f(-1, 0, 0),
         )
 
-        test_utils.all_close(
+        numpy_testing.assert_allclose(
             cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, 1, 0.5, 4, 8, shape.SPHERE)
         )
 
-    def test_hit_rectangle_world(self):
+    def test_rectangle_world(self):
         """Tests if hit_world returns an appropriate hit_record for rectangles."""
 
         @cuda.jit
-        def hit_rectangle_world(
-            target, shapes_parameters, shapes_types, origin, direction
-        ):
+        def hit_rectangle_world(target, device_worlds, origin, direction):
             i = cutil.line_index()
             if cutil.outside_shape(i, target.shape):
                 return
 
             target[i] = numba_test_utils.flatten_hit_result(
                 world.hit(
-                    shapes_parameters,
-                    shapes_types,
+                    device_worlds[world.MW_PARAMETERS][0],
+                    device_worlds[world.MW_TYPES][0],
                     ray.ray(origin, direction),
                     numpy.float32(0),
                     numpy.float32(100),
@@ -120,57 +185,27 @@ class WorldTest(testing.CUDATestCase):
 
         cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
-        world_data = world.World(
-            rectangle.rectangle(vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8))
+        testee = world.Worlds(
+            [
+                rectangle.rectangle(
+                    vector.v2f(-1, 1), vector.v2f(-1, 1), 1, vector.v2f(4, 8)
+                )
+            ]
         )
 
         cutil.launcher(hit_rectangle_world, 1)(
             cpu_array,
-            world_data.device_shape_parameters(),
-            world_data.device_shape_types(),
+            testee.device_data(),
             vector.v3f(0, 0, 0),
             vector.v3f(0, 0, 1),
         )
 
-        test_utils.all_close(
+        numpy_testing.assert_allclose(
             cpu_array[0],
-            (1, 0, 0, 1, 0, 0, 1, 1, 0.5, 0.5, 4, 8, numpy.float32(shape.RECTANGLE)),
+            numpy.asarray(
+                (1, 0, 0, 1, 0, 0, 1, 1, 0.5, 0.5, 4, 8, numpy.float32(shape.RECTANGLE))
+            ),
         )
-
-    def test_one_sphere_world(self):
-        """Tests that one_sphere_world creates a world with one sphere."""
-
-        test_utils.all_close(
-            world.one_sphere_world().device_shape_types(), [shape.SPHERE]
-        )
-
-    def test_two_sphere_world(self):
-        """Tests that two_sphere_world creates a world with two spheres."""
-
-        test_utils.all_close(
-            world.two_sphere_world().device_shape_types(), [shape.SPHERE] * 2
-        )
-
-    def test_one_rect_world(self):
-        """Tests that one_rect_world creates a world with one rectangle."""
-
-        test_utils.all_close(
-            world.one_rect_world().device_shape_types(), [shape.RECTANGLE]
-        )
-
-    def test_two_rect_world(self):
-        """Tests that two_rect_world creates a world with two rectangles."""
-
-        test_utils.all_close(
-            world.two_rect_world().device_shape_types(), [shape.RECTANGLE] * 2
-        )
-
-    def test_mixed_world(self):
-        """Tests that mixed_world creates a world with two rectangles."""
-
-        types = world.mixed_world().device_shape_types()
-        self.assertLessEqual(set(types), set([shape.RECTANGLE, shape.SPHERE]))
-        self.assertIs(len(types), 2)
 
 
 if __name__ == "__main__":

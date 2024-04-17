@@ -1,0 +1,7 @@
+# Example of untuned hyperparameters for ppo
+examples.custom_environments.DiscreteSteps-v0:
+  normalize: true
+  n_envs: 8
+  n_timesteps: !!float 1e4
+  policy: 'MlpPolicy'
+  frame_stack: 5

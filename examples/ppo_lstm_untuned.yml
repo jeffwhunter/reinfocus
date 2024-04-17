@@ -1,5 +1,7 @@
-ContinuousLeftOrRight-v0:
+# Example of untuned hyperparameters for ppo_lstm
+examples.custom_environments.DiscreteSteps-v0:
   normalize: true
   n_envs: 8
-  n_timesteps: 4096
+  n_timesteps: !!float 1e4
   policy: 'MlpLstmPolicy'
+  use_sde: true

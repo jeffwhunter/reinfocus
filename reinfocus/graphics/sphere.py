@@ -5,6 +5,7 @@ import math
 import numpy
 
 from numba import cuda
+from numba.cuda.cudadrv.devicearray import DeviceNDArray
 from reinfocus.graphics import hit_record
 from reinfocus.graphics import ray
 from reinfocus.graphics import shape
@@ -38,7 +39,7 @@ def sphere(
 
 @cuda.jit
 def hit(
-    sphere_parameters: shape.GpuShapeParameters,
+    sphere_parameters: DeviceNDArray,
     r: ray.Ray,
     t_min: numpy.float32,
     t_max: numpy.float32,

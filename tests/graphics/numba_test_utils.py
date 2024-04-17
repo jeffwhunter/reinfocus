@@ -7,7 +7,6 @@ from numba import cuda
 from reinfocus.graphics import hit_record
 from reinfocus.graphics import physics
 from reinfocus.graphics import ray
-from reinfocus.graphics import shape
 
 
 @cuda.jit

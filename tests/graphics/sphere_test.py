@@ -3,28 +3,32 @@
 import numpy
 
 from numba import cuda
-from numba.cuda import testing
+from numba.cuda import testing as cuda_testing
 from numba.cuda.testing import unittest
+from numpy import testing as numpy_testing
 
 from reinfocus.graphics import cutil
 from reinfocus.graphics import ray
 from reinfocus.graphics import shape
 from reinfocus.graphics import sphere
 from reinfocus.graphics import vector
-from tests import test_utils
 from tests.graphics import numba_test_utils
 
 
-class SphereTest(testing.CUDATestCase):
-    """TestCases for reinfocus.graphics.sphere."""
+class SphereTest(unittest.TestCase):
+    """Test cases for reinfocus.graphics.sphere.sphere."""
 
     def test_sphere(self):
         """Tests that sphere makes a sphere with the expected elements."""
 
-        test_utils.all_close(
+        numpy_testing.assert_allclose(
             sphere.sphere(vector.v3f(1, 2, 3), 4, vector.v2f(5, 6)).parameters,
             [1, 2, 3, 4, 5, 6],
         )
+
+
+class HitTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.sphere.hit."""
 
     def test_hit(self):
         """Tests if hit returns an appropriate hit_record for a ray hit."""
@@ -53,9 +57,13 @@ class SphereTest(testing.CUDATestCase):
             vector.v3f(-1, 0, 0),
         )
 
-        test_utils.all_close(
+        numpy_testing.assert_allclose(
             cpu_array[0], (1, 1, 0, 0, 1, 0, 0, 9, 1, 0.5, 4, 8, shape.SPHERE)
         )
+
+
+class UVTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.sphere.uv."""
 
     def test_uv(self):
         """Tests if uv returns an appropriate texture coordinate for a point on the unit
@@ -73,7 +81,7 @@ class SphereTest(testing.CUDATestCase):
 
         cutil.launcher(get_texture_coord, 1)(cpu_array, vector.v3f(-1, 0, 0))
 
-        test_utils.all_close(cpu_array[0], (0.0, 0.5))
+        numpy_testing.assert_allclose(cpu_array[0], (0.0, 0.5), atol=1e-7)
 
 
 if __name__ == "__main__":

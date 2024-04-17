@@ -3,20 +3,20 @@
 import numpy
 
 from numba import cuda
-from numba.cuda import testing
+from numba.cuda import testing as cuda_testing
 from numba.cuda.testing import unittest
+from numpy import testing as numpy_testing
 
 from reinfocus.graphics import cutil
 from reinfocus.graphics import hit_record
 from reinfocus.graphics import vector
-from tests import test_utils
 from tests.graphics import numba_test_utils
 
 
-class HitRecordTest(testing.CUDATestCase):
-    """TestCases for reinfocus.graphics.hit_record."""
+class EmptyHitRecordTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.hit_record.empty_hit_record."""
 
-    def test_empty_record(self):
+    def test_empty(self):
         """Tests that empty_record makes an empty hit record."""
 
         @cuda.jit
@@ -32,9 +32,13 @@ class HitRecordTest(testing.CUDATestCase):
 
         cutil.launcher(make_empty_record, 1)(cpu_array)
 
-        test_utils.all_close(cpu_array[0], numpy.zeros(12))
+        numpy_testing.assert_allclose(cpu_array[0], numpy.zeros(12))
 
-    def test_hit_record(self):
+
+class HitRecordTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.hit_record.hit_record."""
+
+    def test_expected(self):
         """Tests that hit_record makes an appropriate hit record."""
 
         @cuda.jit
@@ -76,7 +80,7 @@ class HitRecordTest(testing.CUDATestCase):
             ),
         )
 
-        test_utils.all_close(cpu_array[0], range(12))
+        numpy_testing.assert_allclose(cpu_array[0], range(12))
 
 
 if __name__ == "__main__":

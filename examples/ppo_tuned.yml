@@ -1,0 +1,22 @@
+# Example of potentially tuned hyperparameters for ppo
+examples.custom_environments.DiscreteSteps-v0:
+  normalize: true
+  n_envs: 8
+  n_timesteps: !!float 5e5
+  policy: 'MlpPolicy'
+  frame_stack: 5
+  batch_size: 512,
+  n_steps: 128
+  gamma: 0.99
+  learning_rate: 0.002029966135987824
+  ent_coef: 4.007159634857137e-06
+  clip_range': 0.1
+  n_epochs': 20
+  gae_lambda': 0.92
+  max_grad_norm': 0.6
+  vf_coef': 0.7642480377692575
+  policy_kwargs: "dict(
+                    ortho_init=False,
+                    activation_fn=nn.ReLU,
+                    net_arch=dict(pi=[256, 256], vf=[256, 256])
+                  )"

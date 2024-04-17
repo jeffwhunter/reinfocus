@@ -1,22 +1,31 @@
 """An example of using rl_zoo3 to render a trained agent."""
 
+import argparse
 import pathlib
 import sys
 
 from rl_zoo3 import enjoy
 
-parent = pathlib.Path(__file__).parent
+algos = {"ppo", "ppo_lstm"}
 
-sys.path.append(str(parent))
+parser = argparse.ArgumentParser()
+parser.add_argument("-e", "--env", type=str, required=True)
+parser.add_argument("-a", "--algo", type=str, required=True, choices=algos)
+
+args = parser.parse_args()
+
+examples = pathlib.Path(__file__).parent
+
+sys.path.append(str(examples.parent))
 
 sys.argv = [
     "python",
     "--algo",
-    "ppo_lstm",
+    args.algo,
     "--gym-packages",
-    "custom_environments",
+    "examples.custom_environments",
     "--env",
-    "ContinuousLeftOrRight-v0",
+    f"examples.custom_environments.{args.env}",
     "-f",
     "logs/",
     "--exp-id",

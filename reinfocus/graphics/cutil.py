@@ -7,13 +7,13 @@ import numpy
 
 from numba import cuda
 
-Shape = int | tuple[int, ...]
-
 KernelT = TypeVar("KernelT", bound=Callable[..., None])
-ShapeT = TypeVar("ShapeT", bound=Shape)
+ShapeT = TypeVar("ShapeT", int, tuple[int, ...])
+
+CUDA_MAX_BLOCK_SIZE = 1024
 
 
-def enough_blocks(shape: ShapeT, block_shape: ShapeT) -> Shape:
+def enough_blocks(shape: ShapeT, block_shape: ShapeT) -> ShapeT:
     """Returns the number of blocks necessary to cover shape if each block has the shape
     block_shape.
 
@@ -32,7 +32,7 @@ def enough_blocks(shape: ShapeT, block_shape: ShapeT) -> Shape:
     return int(blocks)
 
 
-def constant_like(n: int, shape: Shape) -> Shape:
+def constant_like(n: int, shape: ShapeT) -> ShapeT:
     """Returns a Shape with the same length as shape, but filled with n.
 
     Args:
@@ -43,9 +43,34 @@ def constant_like(n: int, shape: Shape) -> Shape:
         A new Shape with the same length as shape, but filled with n."""
 
     if isinstance(shape, int):
-        return n
+        return min(n, shape)
 
-    return len(shape) * (n,)
+    return tuple(min(n, s) for s in shape)
+
+
+def limit_block_size(block_size: ShapeT) -> ShapeT:
+    """Reduces a given block size until it's small enough to be allocted by the GPU. If
+    too larger, this will cut the largest element in half until the block is allocable.
+
+    Args:
+        block_size: The block size to potentially reduce.
+
+    Returns:
+        A new block_size with the same shape as block_size, but with potentially smaller
+        elements."""
+
+    if isinstance(block_size, int):
+        return min(CUDA_MAX_BLOCK_SIZE, block_size)
+
+    if numpy.prod(block_size) <= CUDA_MAX_BLOCK_SIZE:
+        return block_size
+
+    block_size_array = numpy.array(block_size)
+
+    while block_size_array.prod() > CUDA_MAX_BLOCK_SIZE:
+        block_size_array[numpy.argmax(block_size_array)] //= 2
+
+    return tuple(block_size_array)
 
 
 def launcher(
@@ -67,16 +92,20 @@ def launcher(
     Returns:
         A callable that invokes kernel on the gpu."""
 
-    actual_block_shape = constant_like(16, shape) if block_shape is None else block_shape
+    threads_per_block = limit_block_size(
+        constant_like(16, shape) if block_shape is None else block_shape
+    )
+
+    blocks_per_grid = enough_blocks(shape, threads_per_block)
 
     return kernel[  # type: ignore
-        enough_blocks(shape, actual_block_shape),
-        actual_block_shape,
+        blocks_per_grid,
+        threads_per_block,
     ]
 
 
 @cuda.jit
-def outside_shape(index: Shape, shape: tuple[int, ...]) -> bool:
+def outside_shape(index: ShapeT, shape: tuple[int, ...]) -> bool:
     """Checks if index is outside shape.
 
     Args:
@@ -118,4 +147,18 @@ def grid_index() -> tuple[int, int]:
     return (
         cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x,  # type: ignore
         cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y,  # type: ignore
+    )
+
+
+@cuda.jit
+def cube_index() -> tuple[int, int, int]:
+    """Returns the index of the current thread in the grid of currently running threads.
+
+    Returns:
+        The cartesian thread indices in the x and y directions."""
+
+    return (
+        cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x,  # type: ignore
+        cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y,  # type: ignore
+        cuda.threadIdx.z + cuda.blockIdx.z * cuda.blockDim.z,  # type: ignore
     )

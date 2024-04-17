@@ -45,6 +45,7 @@ def hit_record(
     uf: vector.V2F,
     m: numpy.float32,
 ) -> HitRecord:
+    # pylint: disable=too-many-arguments
     """Makes a hit record.
 
     Args:

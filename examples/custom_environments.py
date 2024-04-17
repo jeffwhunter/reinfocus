@@ -1,120 +1,137 @@
-"""Examples of custom implementations of FocusEnvironment."""
+"""Examples of custom implementations of Environment and VectorEnvironment."""
 
 import numpy
 
-from gymnasium.envs import registration
+from reinfocus.graphics import world
 
-from reinfocus.environment import dynamics
-from reinfocus.environment import episode_ender
-from reinfocus.environment import focus_environment
-from reinfocus.environment import observation_filter
-from reinfocus.environment import observation_producer
-from reinfocus.environment import observation_rewarder
-from reinfocus.environment import state_initializer
-from reinfocus.environment import visualization
+from reinfocus.environments import environment
+from reinfocus.environments import episode_ender
+from reinfocus.environments import episode_rewarder
+from reinfocus.environments import state_initializer
+from reinfocus.environments import state_observer
+from reinfocus.environments import state_transformer
 
-
-registration.register(
-    id="SimpleDiscreteEnviroment-v0",
-    entry_point="custom_environments:SimpleDiscreteEnviroment",
-    max_episode_steps=200,
-)
+from reinfocus.environments import vector_environment
+from reinfocus.environments import visualization
 
 
-registration.register(
-    id="ContinuousLeftOrRight-v0",
-    entry_point="custom_environments:ContinuousLeftOrRight",
-    max_episode_steps=200,
-)
-
-
-class SimpleDiscreteEnviroment(focus_environment.FocusEnvironment[int]):
+class DiscreteSteps(environment.Environment):
+    # pylint: disable=too-few-public-methods
     """An environment with the following properties:
-    * It's target can start, and it's lens can start and move, anywhere in [5.0, 10.0].
-    * It ends early if the lens is within 0.125 of the target for 10 steps.
-    * It has 11 discrete actions evenly spread in [-0.5, 0.5] (-0.5, -0.4, ..., 0.4, 0.5).
-    * It penalizes each step based on the distance between the lens and target."""
+    * It's state is [target position, focus position] initialized in [5, 10].
+    * It's observations are [focus position, focus value].
+    * It has 11 actions that move the focus position [-.5, -.4, ..., .4, .5] in [5, 10].
+    * It rewards each action with the focus value from the new observation."""
 
     def __init__(self, render_mode: str | None = None):
-        """Creates a SimpleDiscreteEnviroment.
+        """Creates a DiscreteSteps.
 
         Args:
             render_mode: 'rgb_array' or None. If 'rgb_array', a nice visualization will be
                 generated each time render is called. If None, None will be returned by
-                render.
-
-        Returns:
-            A SimpleDiscreteEnviroment."""
+                render."""
 
         ends = (5.0, 10.0)
-        diff = ends[1] - ends[0]
 
-        largest_move = diff * 0.1
-        target_radius = largest_move / 4
+        # Indices of the elements of the state
+        target_position_s_index = 0
+        focus_position_s_index = 1
+
+        # Indices of the elements of the observation
+        focus_value_o_index = 1
+
+        worlds = world.FocusWorlds(1)
 
         super().__init__(
-            focus_environment.FocusEnvironmentDependencies(
-                dynamics_function=dynamics.discrete(
-                    ends, list(numpy.linspace(-largest_move, largest_move, 11))
-                ),
-                ender=episode_ender.OnTargetEpisodeEnder(target_radius),
-                initializer=state_initializer.uniform(ends[0], ends[1], 2),
-                obs_filter=observation_filter.ObservationFilter(-1.0, 1.0, 3, {0}),
-                obs_producer=observation_producer.from_ends(ends),
-                rewarder=observation_rewarder.distance(diff),
-                visualizer=visualization.FocusHistoryVisualizer(
-                    ends, target_radius=target_radius
-                ),
+            ender=episode_ender.EndlessEpisodeEnder(1),
+            initializer=state_initializer.RangedInitializer([[ends]] * 2),
+            observer=state_observer.NormalizedObserver(
+                [
+                    state_observer.IndexedElementObserver(
+                        1, focus_position_s_index, *ends
+                    ),
+                    state_observer.FocusObserver(
+                        1,
+                        target_position_s_index,
+                        focus_position_s_index,
+                        ends,
+                        worlds,
+                    ),
+                ]
+            ),
+            rewarder=episode_rewarder.ObservationElementRewarder(focus_value_o_index),
+            transformer=state_transformer.DiscreteMoveTransformer(
+                1, focus_position_s_index, ends, numpy.linspace(-0.5, 0.5, 11)
+            ),
+            visualizer=visualization.FocusHistoryVisualizer(
+                1,
+                target_position_s_index,
+                focus_position_s_index,
+                focus_value_o_index,
+                worlds,
+                ends,
             ),
             render_mode=render_mode,
         )
 
 
-class ContinuousLeftOrRight(focus_environment.FocusEnvironment[float]):
-    """An environment with the following properties:
-    * It's target can start anywhere in [5.125, 6.25] or [8.75, 9.875].
-    * It's lens can start anywhere in [6.5, 8.5] and move anywhere in [5.0, 10.0]
-    * It ends early if the lens is within 0.125 of the target for 10 steps.
-    * It takes continuous steps in [-0.5, 0.5].
-    * It earns a reward of -1 every step it's not on target."""
+class VectorDiscreteSteps(vector_environment.VectorEnvironment):
+    # pylint: disable=too-few-public-methods
+    """A vectorized environment with the following properties:
+    * It's state is [target position, focus position] initialized in [5, 10].
+    * It's observations are [focus position, focus value].
+    * It has 11 actions that move the focus position [-.5, -.4, ..., .4, .5] in [5, 10].
+    * It rewards each action with the focus value from the new observation."""
 
-    def __init__(self, render_mode: str | None = None):
-        """Creates a ContinuousLeftOrRight.
+    def __init__(self, num_envs: int = 1, render_mode: str | None = None):
+        """Creates a VectorDiscreteSteps.
 
         Args:
+            num_envs: The number of single environments this environment contains.
             render_mode: 'rgb_array' or None. If 'rgb_array', a nice visualization will be
                 generated each time render is called. If None, None will be returned by
-                render.
-
-        Returns:
-            A ContinuousLeftOrRight."""
+                render."""
 
         ends = (5.0, 10.0)
-        diff = ends[1] - ends[0]
-        quarter = diff / 4
 
-        largest_move = diff * 0.1
-        target_radius = largest_move / 4
+        # Indices of the elements of the state
+        target_position_s_index = 0
+        focus_position_s_index = 1
+
+        # Indices of the elements of the observation
+        focus_value_o_index = 1
+
+        worlds = world.FocusWorlds(num_envs)
 
         super().__init__(
-            focus_environment.FocusEnvironmentDependencies(
-                dynamics_function=dynamics.continuous(ends, largest_move),
-                ender=episode_ender.OnTargetEpisodeEnder(0.5),
-                initializer=state_initializer.ranged(
-                    [
-                        [
-                            (ends[0] + target_radius, ends[0] + quarter),
-                            (ends[1] - quarter, ends[1] - target_radius),
-                        ],
-                        [(ends[0] + 3 * largest_move, ends[1] - 3 * largest_move)],
-                    ]
-                ),
-                obs_filter=observation_filter.ObservationFilter(-1.0, 1.0, 3, {0}),
-                obs_producer=observation_producer.from_ends(ends),
-                rewarder=observation_rewarder.on_target(target_radius, -1, 0),
-                visualizer=visualization.FocusHistoryVisualizer(
-                    ends, target_radius=target_radius
-                ),
+            ender=episode_ender.EndlessEpisodeEnder(num_envs),
+            initializer=state_initializer.RangedInitializer([[ends]] * 2),
+            observer=state_observer.NormalizedObserver(
+                [
+                    state_observer.IndexedElementObserver(
+                        num_envs, focus_position_s_index, *ends
+                    ),
+                    state_observer.FocusObserver(
+                        num_envs,
+                        target_position_s_index,
+                        focus_position_s_index,
+                        ends,
+                        worlds,
+                    ),
+                ]
             ),
+            rewarder=episode_rewarder.ObservationElementRewarder(focus_value_o_index),
+            transformer=state_transformer.DiscreteMoveTransformer(
+                num_envs, focus_position_s_index, ends, numpy.linspace(-0.5, 0.5, 11)
+            ),
+            visualizer=visualization.FocusHistoryVisualizer(
+                num_envs,
+                target_position_s_index,
+                focus_position_s_index,
+                focus_value_o_index,
+                worlds,
+                ends,
+            ),
+            num_envs=num_envs,
             render_mode=render_mode,
         )

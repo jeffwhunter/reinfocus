@@ -1,81 +1,136 @@
 """Methods relating to representing the world in a ray tracer."""
 
-import math
-
-from typing import NamedTuple
+from collections.abc import Collection
 
 import numpy
 
 from numba import cuda
 from numba.cuda.cudadrv.devicearray import DeviceNDArray
+
 from reinfocus.graphics import hit_record
 from reinfocus.graphics import ray
 from reinfocus.graphics import rectangle
 from reinfocus.graphics import shape
+from reinfocus.graphics import shape_factory
 from reinfocus.graphics import sphere
-from reinfocus.graphics import vector
+
+GpuWorld = tuple[DeviceNDArray, DeviceNDArray, DeviceNDArray]
+
+# GpuWorld indices
+MW_PARAMETERS = 0
+MW_TYPES = 1
+MW_ENV_SIZES = 2
 
 
-class World:
-    """Represents the world of a ray tracer in a way easy to transfer to the GPU."""
+class Worlds:
+    """A collection of sets of shapes that can be conveniently transfered to the GPU."""
 
-    def __init__(self, *shapes: shape.CpuShape):
-        """Constructor for the World.
-
-        Args:
-            shapes: The shapes this world will hold."""
-
-        self._device_shape_parameters = self._make_device_shape_parameters(shapes)
-        self._device_shape_types = self._make_device_shape_types(shapes)
-
-    def _make_device_shape_parameters(
-        self, shapes: tuple[shape.CpuShape, ...]
-    ) -> DeviceNDArray:
-        """Makes a device array containing the parameters of each shape in this world.
+    def __init__(self, *env_shapes: Collection[shape.CpuShape]):
+        """Creates a Worlds.
 
         Args:
-            shapes: The shapes whose parameters will be sent to the device.
+            env_shapes: A collection of collections of shapes, each element specifying the
+                shapes in each environment."""
 
-        Returns:
-            A device array containing the parameters of each shape in this world."""
-
-        parameters = numpy.zeros(
-            shape=(len(shapes), max(len(s.parameters) for s in shapes))
+        environment_sizes = numpy.array(
+            [len(shapes) for shapes in env_shapes], dtype=numpy.int32
         )
 
-        for i, s in enumerate(shapes):
-            parameters[i, : len(s.parameters)] = s.parameters
+        self._d_environment_sizes = cuda.to_device(environment_sizes)
 
-        return cuda.to_device(parameters)
+        self._num_envs = len(env_shapes)
+        most_shapes = max(environment_sizes)
 
-    def device_shape_parameters(self) -> DeviceNDArray:
+        parameters = numpy.zeros(
+            (
+                self._num_envs,
+                most_shapes,
+                max(max(len(s.parameters) for s in shapes) for shapes in env_shapes),
+            ),
+            dtype=numpy.float32,
+        )
+
+        for env_i, shapes in enumerate(env_shapes):
+            for shape_i, s in enumerate(shapes):
+                parameters[env_i, shape_i, : len(s.parameters)] = s.parameters
+
+        self._d_shape_params = cuda.to_device(parameters)
+
+        shape_types = numpy.zeros((self._num_envs, most_shapes), dtype=numpy.int32)
+
+        for env_i, shapes in enumerate(env_shapes):
+            shape_types[env_i, : len(shapes)] = [s.shape_type for s in shapes]
+
+        self._d_shape_types = cuda.to_device(shape_types)
+
+    def __len__(self) -> int:
+        """How many worlds are contained in this collection of worlds.
+
+        Returns:
+            The number of worlds contained in this collection."""
+
+        return self._num_envs
+
+    def device_data(self) -> GpuWorld:
+        """Returns a tuple containing all the properties of these worlds.
+
+        Returns:
+            A tuple containing all the properties of these worlds."""
+
+        return (self._d_shape_params, self._d_shape_types, self._d_environment_sizes)
+
+
+class FocusWorlds:
+    """A collection of sets of shapes that can be conveniently transfered to the GPU.
+    Reduces the amount of GPU data needed by assuming all environments only contain one
+    z-axis aligned square each."""
+
+    def __init__(self, num_envs: int):
+        """Creates a FocusWorlds.
+
+        Args:
+            num_envs: How many worlds this collection should hold."""
+
+        self._targets = numpy.full(num_envs, numpy.nan, dtype=numpy.float32)
+        self._d_parameters = None
+
+    def device_data(self) -> DeviceNDArray:
         """Returns a device array containing the parameters of each shape in this world.
 
         Returns:
             A device array containing the parameters of each shape in this world."""
 
-        return self._device_shape_parameters
+        return self._d_parameters
 
-    def _make_device_shape_types(
-        self, shapes: tuple[shape.CpuShape, ...]
-    ) -> DeviceNDArray:
-        """Makes a device array containing the type of each shape in this world.
+    def update_targets(self, new_targets: Collection[float], r_size: float = 20):
+        """Updates the position of the various targets in each world.
 
         Args:
-            shapes: The shapes whose types will be sent to the device.
+            new_targets: How far along the negative z-axis each target should be
+                positioned.
+            r_size: How many degrees of field of view each target should occupy."""
 
-        Returns:
-            A device array containing the type of each shape in this world."""
+        new_targets = numpy.asarray(new_targets)
 
-        return cuda.to_device(numpy.array([s.type for s in shapes]))
+        if all(self._targets == new_targets):
+            return
 
-    def device_shape_types(self) -> DeviceNDArray:
-        """Returns a device array containing the type of each shape in this world.
+        self._targets = new_targets
 
-        Returns:
-            A device array containing the type of each shape in this world."""
-
-        return self._device_shape_types
+        self._d_parameters = cuda.to_device(
+            numpy.array(
+                [
+                    [
+                        shape_factory.get_absolute_size(
+                            shape_factory.ShapeParameters(target, r_size=r_size)
+                        ),
+                        -target,
+                    ]
+                    for target in new_targets
+                ],
+                dtype=numpy.float32,
+            )
+        )
 
 
 @cuda.jit
@@ -120,187 +175,3 @@ def hit(
             record = temp_record
 
     return hit_anything, record
-
-
-class ShapeParameters(NamedTuple):
-    """Defines all the necessary information for a shape in one of these worlds.
-
-    Args:
-        distance: How far away from the origin the shape is.
-        size: How large the shape is. If zero r_size will be used.
-        r_size: How many degrees of FOV this object should take up when size is zero.
-        texture_f: How often the checkerboard of this object changes in x and y."""
-
-    distance: float = 10.0
-    size: float = 0.0
-    r_size: float = 20.0
-    texture_f: tuple[int, int] = (16, 16)
-
-
-def get_absolute_size(parameters: ShapeParameters) -> float:
-    """Returns the actual size of a shape defined with parameters.
-
-    Args:
-        parameters: The parameters defining the shape.
-
-    Returns:
-        The actual size of some shape defined by parameters."""
-
-    if parameters.size != 0.0:
-        return parameters.size
-
-    return parameters.distance * math.tan(math.radians(parameters.r_size / 2))
-
-
-def one_sphere_world(parameters: ShapeParameters = ShapeParameters()) -> World:
-    """Makes a world with one sphere on the z axis.
-
-    Args:
-        parameters: The parameters for the sphere.
-
-    Returns:
-        A world with one sphere on the z axis."""
-
-    return World(
-        sphere.sphere(
-            vector.v3f(0, 0, -parameters.distance),
-            get_absolute_size(parameters),
-            vector.v2f(*parameters.texture_f),
-        )
-    )
-
-
-def two_sphere_world(
-    left_parameters: ShapeParameters = ShapeParameters(20.0),
-    right_parameters: ShapeParameters = ShapeParameters(5.0),
-) -> World:
-    """Makes a world with spheres at different distances on the left and right.
-
-    Args:
-        left_parameters: The parameters for the left sphere.
-        right_parameters: The parameters for the right sphere.
-
-    Returns:
-        A world with spheres at different distances on the left and right."""
-
-    distance_to_offset = math.tan(math.radians(15))
-
-    return World(
-        sphere.sphere(
-            vector.v3f(
-                -left_parameters.distance * distance_to_offset,
-                0,
-                -left_parameters.distance,
-            ),
-            get_absolute_size(left_parameters),
-            vector.v2f(*left_parameters.texture_f),
-        ),
-        sphere.sphere(
-            vector.v3f(
-                right_parameters.distance * distance_to_offset,
-                0,
-                -right_parameters.distance,
-            ),
-            get_absolute_size(right_parameters),
-            vector.v2f(*right_parameters.texture_f),
-        ),
-    )
-
-
-def one_rect_world(parameters: ShapeParameters = ShapeParameters()) -> World:
-    """Makes a world with one rectangle on the z axis.
-
-    Args:
-        parameters: The parameters for the rectangle.
-
-    Returns:
-        A world with one rectangle on the z axis."""
-
-    size = get_absolute_size(parameters)
-
-    return World(
-        rectangle.rectangle(
-            vector.v2f(-size, size),
-            vector.v2f(-size, size),
-            -parameters.distance,
-            vector.v2f(*parameters.texture_f),
-        )
-    )
-
-
-def two_rect_world(
-    left_parameters: ShapeParameters = ShapeParameters(20.0),
-    right_parameters: ShapeParameters = ShapeParameters(5.0),
-) -> World:
-    """Makes a world with rectangles at different distances on the left and right.
-
-    Args:
-        left_parameters: The parameters for the left rectangle.
-        right_parameters: The parameters for the right rectangle.
-
-    Returns:
-        A world with rectangles at different distances on the left and right."""
-
-    distance_to_offset = math.tan(math.radians(15))
-
-    left_offset = left_parameters.distance * distance_to_offset
-    left_size = get_absolute_size(left_parameters)
-
-    right_offset = right_parameters.distance * distance_to_offset
-    right_size = get_absolute_size(right_parameters)
-
-    return World(
-        rectangle.rectangle(
-            vector.v2f(-left_offset - left_size, -left_offset + left_size),
-            vector.v2f(-left_size, left_size),
-            -left_parameters.distance,
-            vector.v2f(*left_parameters.texture_f),
-        ),
-        rectangle.rectangle(
-            vector.v2f(right_offset - right_size, right_offset + right_size),
-            vector.v2f(-right_size, right_size),
-            -right_parameters.distance,
-            vector.v2f(*right_parameters.texture_f),
-        ),
-    )
-
-
-def mixed_world(
-    left_parameters: ShapeParameters = ShapeParameters(5.0),
-    right_parameters: ShapeParameters = ShapeParameters(),
-) -> World:
-    """Makes a world with a sphere on the left at a different distance from the rectangle
-        on the right.
-
-    Args:
-        left_parameters: The parameters for the left sphere.
-        right_parameters: The parameters for the right sphere.
-
-    Returns:
-        A world with a sphere on the left at a different distance from the rectangle on
-            the right."""
-
-    distance_to_offset = math.tan(math.radians(15))
-
-    left_size = get_absolute_size(left_parameters)
-
-    right_offset = right_parameters.distance * distance_to_offset
-    right_size = get_absolute_size(right_parameters)
-
-    return World(
-        sphere.sphere(
-            vector.v3f(
-                -left_parameters.distance * distance_to_offset,
-                0,
-                -left_parameters.distance,
-            ),
-            left_size,
-            vector.v2f(*left_parameters.texture_f),
-        ),
-        rectangle.rectangle(
-            vector.v2f(right_offset - right_size, right_offset + right_size),
-            vector.v2f(-right_size, right_size),
-            -right_parameters.distance,
-            vector.v2f(*right_parameters.texture_f),
-        ),
-    )

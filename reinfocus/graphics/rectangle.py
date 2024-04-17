@@ -3,11 +3,13 @@
 import numpy
 
 from numba import cuda
+from numba.cuda.cudadrv.devicearray import DeviceNDArray
 from reinfocus.graphics import hit_record
 from reinfocus.graphics import ray
 from reinfocus.graphics import shape
 from reinfocus.graphics import vector
 
+# Indices for hit's rectangular parameters
 X_MIN = 0
 X_MAX = 1
 Y_MIN = 2
@@ -15,6 +17,10 @@ Y_MAX = 3
 Z_POS = 4
 FX = 5
 FY = 6
+
+# Indices for fast_hit's rectangular parameters
+FH_RADIUS = 0
+FH_ZPOS = 1
 
 
 def rectangle(
@@ -42,7 +48,7 @@ def rectangle(
 
 @cuda.jit
 def hit(
-    rectangle_parameters: shape.GpuShapeParameters,
+    rectangle_parameters: DeviceNDArray,
     r: ray.Ray,
     t_min: numpy.float32,
     t_max: numpy.float32,
@@ -88,6 +94,55 @@ def hit(
             numpy.float32(t),
             uv(p[0:2], x_min, x_max, y_min, y_max),
             vector.d_v2f(rectangle_parameters[FX], rectangle_parameters[FY]),
+            numpy.float32(shape.RECTANGLE),
+        ),
+    )
+
+
+@cuda.jit
+def fast_hit(
+    parameters: DeviceNDArray,
+    r: ray.Ray,
+    t_min: numpy.float32,
+    t_max: numpy.float32,
+) -> hit_record.HitResult:
+    """Determines if the ray r hits the z-aligned rectangle defined by parameters between
+    t_min and t_max, returning a hit_record contraining the details if it does.
+
+    Args:
+        parameters: The half-side-length and z position of a z-axis aligned rectangle.
+        r: The ray potentially hitting the defined z-aligned rectangle.
+        t_min: The minimum of the interval on r in which we look for hits with the defined
+            z-aligned rectangle.
+        t_max: The maximum of the interval on r in which we look for hits with the defined
+            z-aligned rectangle.
+
+    Returns:
+        A GpuHitResult where the first element is True if a hit happened, while the
+            second element is a GpuHitRecord with the details of the hit, which
+            is empty if there was no hit."""
+
+    radius = parameters[FH_RADIUS]
+    z_pos = parameters[FH_ZPOS]
+
+    t = (z_pos - r[ray.ORIGIN][2]) / r[ray.DIRECTION][2]
+
+    if t < t_min or t > t_max:
+        return (False, hit_record.empty_hit_record())
+
+    p = ray.point_at_parameter(r, t)
+
+    if p[0] < -radius or p[0] > radius or p[1] < -radius or p[1] > radius:
+        return (False, hit_record.empty_hit_record())
+
+    return (
+        True,
+        hit_record.hit_record(
+            p,
+            vector.d_v3f(0, 0, 1),
+            numpy.float32(t),
+            uv(p[0:2], -radius, radius, -radius, radius),
+            vector.d_v2f(16.0, 16.0),
             numpy.float32(shape.RECTANGLE),
         ),
     )

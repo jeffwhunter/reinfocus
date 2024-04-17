@@ -3,18 +3,18 @@
 import numpy
 
 from numba import cuda
-from numba.cuda import testing
+from numba.cuda import testing as cuda_testing
 from numba.cuda.testing import unittest
+from numpy import testing as numpy_testing
 
 from reinfocus.graphics import cutil
 from reinfocus.graphics import ray
 from reinfocus.graphics import vector
-from tests import test_utils
 from tests.graphics import numba_test_utils
 
 
-class RayTest(testing.CUDATestCase):
-    """TestCases for reinfocus.graphics.ray."""
+class RayTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.ray.ray."""
 
     def test_ray(self):
         """Tests that ray constructs a ray with the expected origin and direction."""
@@ -31,7 +31,13 @@ class RayTest(testing.CUDATestCase):
 
         cutil.launcher(copy_ray, 1)(cpu_array, vector.v3f(1, 2, 3), vector.v3f(4, 5, 6))
 
-        test_utils.all_close(cpu_array[0], vector.v3f(1, 2, 3) + vector.v3f(4, 5, 6))
+        numpy_testing.assert_allclose(
+            cpu_array[0], vector.v3f(1, 2, 3) + vector.v3f(4, 5, 6)
+        )
+
+
+class PointAtParameterTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.ray.point_at_parameter."""
 
     def test_point_at_parameter(self):
         """Tests that point_at_parameter correctly finds the point t distance along
@@ -51,7 +57,7 @@ class RayTest(testing.CUDATestCase):
             cpu_array, vector.v3f(1, 2, 3), vector.v3f(4, 5, 6), 2
         )
 
-        test_utils.all_close(cpu_array[0], vector.v3f(9, 12, 15))
+        numpy_testing.assert_allclose(cpu_array[0], vector.v3f(9, 12, 15))
 
 
 if __name__ == "__main__":

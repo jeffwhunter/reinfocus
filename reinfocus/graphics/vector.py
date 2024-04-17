@@ -5,6 +5,7 @@ import math
 import numpy
 
 from numba import cuda
+from numba.cuda.cudadrv.devicearray import DeviceNDArray
 from numpy import linalg
 
 V2F = tuple[numpy.float32, numpy.float32]
@@ -66,6 +67,23 @@ def d_v3f(x: float, y: float, z: float) -> V3F:
         The 3D float vector."""
 
     return (numpy.float32(x), numpy.float32(y), numpy.float32(z))
+
+
+@cuda.jit
+def d_array_to_v3f(coordinates: DeviceNDArray) -> V3F:
+    """Makes a 3D float vector on the device.
+
+    Args:
+        coordinates: An array containing the coordinates of the vector.
+
+    Returns:
+        The 3D float vector."""
+
+    return (
+        numpy.float32(coordinates[0]),
+        numpy.float32(coordinates[1]),
+        numpy.float32(coordinates[2]),
+    )
 
 
 @cuda.jit
