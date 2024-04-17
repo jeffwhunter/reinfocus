@@ -10,11 +10,11 @@ examples.custom_environments.DiscreteSteps-v0:
   gamma: 0.99
   learning_rate: 0.002029966135987824
   ent_coef: 4.007159634857137e-06
-  clip_range': 0.1
-  n_epochs': 20
-  gae_lambda': 0.92
-  max_grad_norm': 0.6
-  vf_coef': 0.7642480377692575
+  clip_range: 0.1
+  n_epochs: 20
+  gae_lambda: 0.92
+  max_grad_norm: 0.6
+  vf_coef: 0.7642480377692575
   policy_kwargs: "dict(
                     ortho_init=False,
                     activation_fn=nn.ReLU,
