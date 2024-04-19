@@ -43,9 +43,9 @@ The rest of the examples need a few extra dependencies; to install them use
 `pip install git+https://github.com/jeffwhunter/reinfocus[examples]`.
 
 Some of the examples are [`jupyter`](https://jupyter.org/) files ending in `.ipynb`. They
-can be opened by running `jupyter notebook` from the `examples` directory and opening
-them. If you're not familiar with jupyter files, just click the 'fast forward' icon at the
-top to run the file.
+can be opened by running `jupyter notebook` from the `examples` directory and double
+clicking them in the UI that opens. If you're not familiar with jupyter files, just click
+the 'fast forward' icon at the top to run the file.
 
 To train an agent with [PPO](https://en.wikipedia.org/wiki/Proximal_policy_optimization)
 and watch it's performance in the discrete example environment, use:
