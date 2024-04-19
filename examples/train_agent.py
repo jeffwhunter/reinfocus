@@ -25,7 +25,7 @@ sys.argv = [
     "--gym-packages",
     "examples.custom_environments",
     "--env",
-    f"examples.custom_environments.{args.env}",
+    args.env,
     "--n-eval-envs",
     "8",
     "--conf-file",
@@ -34,7 +34,7 @@ sys.argv = [
     "20",
     "-P",
     "--tensorboard-log",
-    "tensoboard-log/",
+    "tensorboard-log/",
 ]
 
 train.train()

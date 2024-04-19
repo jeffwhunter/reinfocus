@@ -1,5 +1,5 @@
 # Example of untuned hyperparameters for ppo
-examples.custom_environments.DiscreteSteps-v0:
+DiscreteSteps-v0:
   normalize: true
   n_envs: 8
   n_timesteps: !!float 1e4

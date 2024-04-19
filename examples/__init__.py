@@ -3,7 +3,7 @@
 from gymnasium.envs import registration
 
 registration.register(
-    id="examples.custom_environments.DiscreteSteps-v0",
+    id="DiscreteSteps-v0",
     entry_point="examples.custom_environments:DiscreteSteps",
     max_episode_steps=100,
 )

@@ -11,6 +11,7 @@ algos = {"ppo", "ppo_lstm"}
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--env", type=str, required=True)
 parser.add_argument("-a", "--algo", type=str, required=True, choices=algos)
+parser.add_argument("-i", "--exp-id", type=int, default=0)
 
 args = parser.parse_args()
 
@@ -25,11 +26,11 @@ sys.argv = [
     "--gym-packages",
     "examples.custom_environments",
     "--env",
-    f"examples.custom_environments.{args.env}",
+    args.env,
     "-f",
     "logs/",
     "--exp-id",
-    "0",
+    args.exp_id,
 ]
 
 enjoy.enjoy()
