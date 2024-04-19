@@ -142,7 +142,7 @@ def fast_hit(
             vector.d_v3f(0, 0, 1),
             numpy.float32(t),
             uv(p[0:2], -radius, radius, -radius, radius),
-            vector.d_v2f(16.0, 16.0),
+            vector.d_v2f(32.0, 32.0),
             numpy.float32(shape.RECTANGLE),
         ),
     )
