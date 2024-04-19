@@ -17,9 +17,27 @@ samplers = {
 }
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--env", type=str, required=True)
-parser.add_argument("-a", "--algo", type=str, required=True, choices=samplers.keys())
-parser.add_argument("-c", "--continuous", action="store_true")
+parser.add_argument(
+    "-e",
+    "--env",
+    help="The environment in which the agents will act",
+    type=str,
+    required=True,
+)
+parser.add_argument(
+    "-a",
+    "--algo",
+    help="The algorithms that will train the agents",
+    type=str,
+    required=True,
+    choices=samplers.keys(),
+)
+parser.add_argument(
+    "-c",
+    "--continuous",
+    help="Include hyperparameters for continuous action spaces",
+    action="store_true",
+)
 
 args = parser.parse_args()
 

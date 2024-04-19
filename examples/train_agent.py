@@ -9,8 +9,21 @@ from rl_zoo3 import train
 algos = {"ppo", "ppo_lstm"}
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--env", type=str, required=True)
-parser.add_argument("-a", "--algo", type=str, required=True, choices=algos)
+parser.add_argument(
+    "-e",
+    "--env",
+    help="The environment in which the agents will act",
+    type=str,
+    required=True,
+)
+parser.add_argument(
+    "-a",
+    "--algo",
+    help="The algorithms that will train the agents",
+    type=str,
+    required=True,
+    choices=algos,
+)
 
 args = parser.parse_args()
 
