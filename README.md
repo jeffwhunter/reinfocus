@@ -1,5 +1,12 @@
-reinfocus: Reinforcement Camera Focus
-=========================================================
+<h2 align="center">reinfocus</h2>
+
+<p align="center">
+    <a href="https://github.com/psf/black">
+        <img
+            alt="Code style: black"
+            src="https://img.shields.io/badge/code%20style-black-000000.svg">
+    </a>
+</p>
 
 `reinfocus` is a python package that makes it easy to create reinforcement learning
 environments that use ray tracing to simulate camera focus.
@@ -40,14 +47,11 @@ and watch it's performance in the discrete example environment, use:
  * `python examples\train_agent.py -e DiscreteSteps-v0 -a ppo`
  * `python examples\watch_agent.py -e DiscreteSteps-v0 -a ppo`
 
-To optimize hyperparameters for the same agent and environment, use
-`python examples\optimize_hyperparameters.py -e DiscreteSteps-v0 -a ppo`, but this will
-take the better part of a day. The hyperparameters the script generates are not nicely
-formatted for `.yml` files, so use
-`python examples\translate_hyperparameters.py "<paste hyperparameters>"` to do that. If
-you look at the `example\*_tuned.yml` files, you can see they are the combination of a set
-of default parameters from `example\*_untuned.yml` and the output of
-`translate_hyperparameters.py`.
+To optimize hyperparameters for the same agent and environment (over roughly a day), use:
+ * `python examples\optimize_hyperparameters.py -e DiscreteSteps-v0 -a ppo`
+
+To format the generated hyperparameters for `.yml` files, use:
+ * `python examples\translate_hyperparameters.py "<paste hyperparameters>"`
 
 Special Thanks
 ------------------
