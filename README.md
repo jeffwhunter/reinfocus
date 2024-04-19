@@ -1,16 +1,53 @@
-reinfocus: Reinforcement Learning Camera Focus
+reinfocus: Reinforcement Camera Focus
 =========================================================
 
-`reinfocus` is a python package that trains a reinforcement learner to focus a camera in a
-ray traced environment.
+`reinfocus` is a python package that makes it easy to create reinforcement learning
+environments that use ray tracing to simulate camera focus.
 
-
-Quickstart
+Installation
 ------------------
-Requires `python==3.11`:
-```
-pip install git+https://github.com/jeffwhunter/reinfocus
-```
+To install the base library, use
+`pip install git+https://github.com/jeffwhunter/reinfocus`.
+
+For GPU support, install
+[the lastest NVIDIA graphics drivers](https://www.nvidia.com/Download/index.aspx). The
+next step installs `cudatoolkit` and depends on what type of python installation you use:
+ * [anaconda](https://www.anaconda.com/) or
+ [variants](https://docs.anaconda.com/free/miniconda/) (recommended): use
+ `conda install cudatoolkit`
+ * [plain python](https://www.python.org/downloads/release/python-3110/) (untested):
+ install [`cudatoolkit`](https://developer.nvidia.com/cuda-downloads), then set
+ [`CUDA_HOME`](
+    https://numba.readthedocs.io/en/stable/cuda/overview.html#cudatoolkit-lookup)
+
+Only supports Python 3.11 currently.
+
+Examples
+------------------
+`custom_environments.py` is an example of how you would use `reinfocus` to create various
+types of environments that simulate camera focus in different ways.
+
+The rest of the examples need a few extra dependencies; to install them use
+`pip install git+https://github.com/jeffwhunter/reinfocus[examples]`.
+
+Some of the examples are [`jupyter`](https://jupyter.org/) files ending in `.ipynb`. They
+can be opened by running `jupyter notebook` from the `examples` directory and opening
+them. If you're not familiar with jupyter files, just click the 'fast forward' icon at the
+top to run the file.
+
+To train an agent with [PPO](https://en.wikipedia.org/wiki/Proximal_policy_optimization)
+and watch it's performance in the discrete example environment, use:
+ * `python examples\train_agent.py -e DiscreteSteps-v0 -a ppo`
+ * `python examples\watch_agent.py -e DiscreteSteps-v0 -a ppo`
+
+To optimize hyperparameters for the same agent and environment, use
+`python examples\optimize_hyperparameters.py -e DiscreteSteps-v0 -a ppo`, but this will
+take the better part of a day. The hyperparameters the script generates are not nicely
+formatted for `.yml` files, so use
+`python examples\translate_hyperparameters.py "<paste hyperparameters>"` to do that. If
+you look at the `example\*_tuned.yml` files, you can see they are the combination of a set
+of default parameters from `example\*_untuned.yml` and the output of
+`translate_hyperparameters.py`.
 
 Special Thanks
 ------------------
