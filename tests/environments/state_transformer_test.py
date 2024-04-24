@@ -10,7 +10,7 @@ from reinfocus.environments import state_transformer
 
 
 class ContinuousJumpTransformerTest(unittest.TestCase):
-    """TestCase for reinfocus.environments.state_transformer.ContinuousJumpTransformer."""
+    """Test cases for reinfocus.environments.state_transformer.ContinuousJumpTransformer."""
 
     def test_transform(self):
         """Tests that ContinuousJumpTransformer properly jumps elements of the state."""
@@ -33,7 +33,7 @@ class ContinuousJumpTransformerTest(unittest.TestCase):
 
 
 class ContinuousMoveTransformerTest(unittest.TestCase):
-    """TestCase for reinfocus.environments.state_transformer.ContinuousMoveTransformer."""
+    """Test cases for reinfocus.environments.state_transformer.ContinuousMoveTransformer."""
 
     def test_transform(self):
         """Tests that ContinuousMoveTransformer properly moves elements of the state."""
@@ -71,7 +71,7 @@ class ContinuousMoveTransformerTest(unittest.TestCase):
 
 
 class DiscreteJumpTransformerTest(unittest.TestCase):
-    """TestCase for reinfocus.environments.state_transformer.DiscreteJumpTransformer."""
+    """Test cases for reinfocus.environments.state_transformer.DiscreteJumpTransformer."""
 
     def test_transform(self):
         """Tests that DiscreteJumpTransformer properly jumps elements of the state."""
@@ -98,7 +98,7 @@ class DiscreteJumpTransformerTest(unittest.TestCase):
 
 
 class DiscreteMoveTransformerTest(unittest.TestCase):
-    """TestCase for reinfocus.environments.state_transformer.DiscreteMoveTransformer."""
+    """Test cases for reinfocus.environments.state_transformer.DiscreteMoveTransformer."""
 
     def test_transform(self):
         """Tests that DiscreteMoveTransformer properly moves elements of the state."""

@@ -1,6 +1,5 @@
 """Classes and functions related to human targeted visualization."""
 
-from collections.abc import Collection
 from typing import Generic, Protocol
 
 import cv2
@@ -11,6 +10,7 @@ from matplotlib import colors
 from matplotlib import pyplot
 from numpy.typing import NDArray
 
+from reinfocus import histories
 from reinfocus.graphics import render
 from reinfocus.graphics import world
 from reinfocus.environments import episode_ender
@@ -37,65 +37,6 @@ def fading_colours(cmap: colors.Colormap, max_n: int, n: int, p: int = 2):
     colours = cmap(samples)
     colours[:, -1] = samples
     return colours
-
-
-class Histories:
-    """A collection of ring-buffer-like objects than can be individually reset."""
-
-    def __init__(self, num_histories: int, max_n: int):
-        """Creates a Histories.
-
-        Args:
-            num_histories: The number of ring-buffer-like histories to initialize.
-            max_n: The maximum length of each history."""
-
-        self._data = numpy.full((num_histories, max_n), numpy.nan, dtype=numpy.float32)
-
-    def get_history(self, index: int) -> NDArray[numpy.float32]:
-        """Gets all non-nan values in the specified ring-buffer-like history object.
-
-        Args:
-            index: The specific history to retreive.
-
-        Returns:
-            A numpy array containing all the non-nan values from the history specified by
-            index."""
-
-        return self._data[index, numpy.where(~numpy.isnan(self._data[index]))].flatten()
-
-    def most_recent_events(self) -> NDArray[numpy.float32]:
-        """Gets the most recent event from each history.
-
-        Returns:
-            The most recent event from each history."""
-
-        return self._data[:, -1]
-
-    def append_events(self, events: Collection[float]):
-        """Appends a numpy array of events to histories, one event per history.
-
-        Args:
-            events: A numpy array of events to append to each history.
-
-        Returns:
-            A new history created by dropping the first event from the current history,
-            and appending the new one at the end."""
-
-        events = numpy.asarray(events)
-
-        self._data = numpy.hstack(
-            [self._data[:, 1:], events.reshape(self._data.shape[0], 1)]
-        )
-
-    def reset(self, dones: Collection[bool]):
-        """Resets some specified histories.
-
-        Args:
-            dones: A numpy array of bools specifying which histories to reset."""
-
-        dones = numpy.asarray(dones)
-
-        self._data[dones] = numpy.full((dones.sum(), self._data.shape[1]), numpy.nan)
 
 
 class IVisualizer(Protocol, Generic[ObservationT_contra, StateT_contra]):
@@ -177,8 +118,8 @@ class FocusHistoryVisualizer(IVisualizer):
 
         self._current_moves = numpy.zeros(num_envs, dtype=numpy.int32)
         self._targets = numpy.zeros(num_envs, dtype=numpy.float32)
-        self._move_histories = Histories(num_envs, history_length)
-        self._focus_histories = Histories(num_envs, history_length)
+        self._move_histories = histories.Histories(num_envs, history_length)
+        self._focus_histories = histories.Histories(num_envs, history_length)
 
     def step(self, states: NDArray[numpy.float32], observations: NDArray[numpy.float32]):
         """Update the visualizer with a batch of states and observations. Should only be
