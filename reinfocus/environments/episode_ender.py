@@ -278,19 +278,20 @@ class StoppedEpisodeEnder(IEpisodeEnder):
         Returns:
             A string that describes the progress of some environment towards it's end."""
 
-        for i in range(self._early_end_steps):
-            segment = self._moves.data[index, self._early_end_steps - i - 1 :]
+        moves = self._moves.data[index]
 
-            segment_nans = numpy.isnan(segment)
+        top = bottom = moves[-1]
 
-            if numpy.all(segment_nans):
-                return self._status_message(0)
+        for i, move in enumerate(moves[self._early_end_steps - 1 :: -1]):
+            if numpy.isnan(move):
+                return self._status_message(i)
 
-            if (
-                numpy.any(segment_nans)
-                or abs(numpy.nanmax(segment) - numpy.nanmin(segment))
-                > self._early_end_span
-            ):
+            if move < bottom:
+                bottom = move
+            elif move > top:
+                top = move
+
+            if top - bottom > self._early_end_span:
                 return self._status_message(i)
 
         return self._status_message(self._early_end_steps)
