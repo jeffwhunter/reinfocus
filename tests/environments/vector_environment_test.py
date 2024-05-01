@@ -229,6 +229,73 @@ class VectorEnvironmentTest(unittest.TestCase):
 
         testing.assert_allclose(testee.step(numpy.empty(0))[0], numpy.array([5, 8]))
 
+    def test_reset_ender(self):
+        """Tests that reset resets the episode ender."""
+
+        ender = make_ender()
+
+        testee = make_testee(ender=ender)
+
+        testee.reset()
+
+        ender.reset.assert_called_once()
+
+    def test_reset_individual_ender(self):
+        """Tests that individual environments of the episode ender are reset during step
+        after the episode ender reports the end of an episode."""
+
+        targets = numpy.array([True, False])
+
+        ender = make_ender(is_terminated=targets)
+
+        testee = make_testee(
+            ender=ender,
+            initializer=make_initializer(numpy.array([[-4], [8]]), numpy.array([[5]])),
+            num_envs=2,
+        )
+
+        testee.reset()
+
+        ender.reset.assert_called_once()
+
+        testee.step(numpy.empty(0))
+
+        testing.assert_allclose(ender.reset.call_args.args[0], targets)
+
+    def test_reset_observer(self):
+        """Tests that reset resets the state observer."""
+
+        observer = make_observer()
+
+        testee = make_testee(observer=observer)
+
+        testee.reset()
+
+        observer.reset.assert_called_once()
+
+    def test_reset_individual_observer(self):
+        """Tests that individual environments of the state observer are reset during step
+        after the episode ender reports the end of an episode."""
+
+        targets = numpy.array([True, False])
+
+        observer = make_observer()
+
+        testee = make_testee(
+            ender=make_ender(is_terminated=targets),
+            initializer=make_initializer(numpy.array([[-4], [8]]), numpy.array([[5]])),
+            observer=observer,
+            num_envs=2,
+        )
+
+        testee.reset()
+
+        observer.reset.assert_called_once()
+
+        testee.step(numpy.empty(0))
+
+        testing.assert_allclose(observer.reset.call_args.args[0], targets)
+
     def test_no_render(self):
         """Tests that the environment doesn't render anything if it's render_mode isn't
         set."""

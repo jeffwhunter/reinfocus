@@ -82,6 +82,7 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
         self._state = self._initializer.initialize(1)
 
         self._ender.reset()
+        self._observer.reset()
 
         observations = self._observer.observe(self._state)
 

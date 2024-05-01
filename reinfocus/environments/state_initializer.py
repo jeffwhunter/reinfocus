@@ -47,6 +47,7 @@ class RangedInitializer(IStateInitializer):
                 from randomly each initialization. The example described in the class
                 header would be specified with [[(-1, 1)], [(-1, -0.5), (0.5, 1)]]."""
 
+        self._generator = random.Generator(random.PCG64DXSM())
         self._ranges = ranges
 
     def initialize(self, num_envs: int) -> NDArray[numpy.float32]:
@@ -60,7 +61,10 @@ class RangedInitializer(IStateInitializer):
 
         return numpy.array(
             [
-                [random.uniform(*r[random.choice(len(r))]) for r in self._ranges]
+                [
+                    self._generator.uniform(*self._generator.choice(r))
+                    for r in self._ranges
+                ]
                 for _ in range(num_envs)
             ],
             dtype=numpy.float32,

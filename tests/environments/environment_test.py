@@ -184,6 +184,28 @@ class EnvironmentTest(unittest.TestCase):
 
         testing.assert_allclose(testee.step(0)[2:4], [False, True])
 
+    def test_reset_ender(self):
+        """Tests that reset resets the episode ender."""
+
+        ender = make_ender()
+
+        testee = make_testee(ender=ender)
+
+        testee.reset()
+
+        ender.reset.assert_called_once()
+
+    def test_reset_observer(self):
+        """Tests that reset resets the state observer."""
+
+        observer = make_observer()
+
+        testee = make_testee(observer=observer)
+
+        testee.reset()
+
+        observer.reset.assert_called_once()
+
     def test_no_render(self):
         """Tests that render returns None when render_mode is None."""
 

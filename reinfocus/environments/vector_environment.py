@@ -91,11 +91,12 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
         self._state = self._initializer.initialize(self.num_envs)
 
         self._ender.reset()
-        self._visualizer.reset()
+        self._observer.reset()
 
         observation = self._observer.observe(self._state)
 
         if self.render_mode == "rgb_array":
+            self._visualizer.reset()
             self._visualizer.step(self._state, observation)
 
         return observation, {}
@@ -132,6 +133,10 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
         if any(done):
             self._state[done] = self._initializer.initialize(done.sum())
             self._ender.reset(done)
+            self._observer.reset(done)
+
+            if self.render_mode == "rgb_array":
+                self._visualizer.reset(done)
 
         observation = self._observer.observe(self._state)
 

@@ -196,12 +196,10 @@ class FocusHistoryVisualizer(IVisualizer):
         axes.set_xlim(*self._limits)
         axes.set_ylim(-1.0, 1.0)
 
-        x_label = f"lens position {self._current_moves[env_index]}"
+        x_label = f"focus position {self._current_moves[env_index]}\n"
 
         if self._ender is not None:
-            status = self._ender.status(env_index)
-            if status != "":
-                x_label += f", {status}"
+            x_label += self._ender.status(env_index)
 
         axes.set_xlabel(x_label)
         axes.set_ylabel("focus value")
@@ -226,7 +224,13 @@ class FocusHistoryVisualizer(IVisualizer):
         for i, move_and_focus in enumerate(zip(move_history, focus_history)):
             colour = fading_blues[i]
 
-            pyplot.plot(*move_and_focus, color=colour, zorder=i, marker=".")
+            pyplot.plot(
+                *move_and_focus,
+                color=colour,
+                zorder=i,
+                marker=".",
+                label="focus" if i == n_focus_history - 1 else "",
+            )
 
             if old_move_and_focus is not None:
                 axes.annotate(
@@ -246,7 +250,7 @@ class FocusHistoryVisualizer(IVisualizer):
 
             old_move_and_focus = move_and_focus
 
-        figure.legend()
+        figure.legend(loc="lower right")
 
         figure.tight_layout()
 

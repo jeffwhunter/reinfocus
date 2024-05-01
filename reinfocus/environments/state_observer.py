@@ -4,19 +4,18 @@ import abc
 import functools
 
 from collections.abc import Sequence
-from typing import Generic, Protocol
+from typing import Generic, Protocol, SupportsFloat
 
 import numpy
 
 from gymnasium import spaces
+from gymnasium.vector import utils
 from numpy.typing import NDArray
 
 from reinfocus import vision
 
 from reinfocus.environments.types import (
-    ObservationT,
     ObservationT_co,
-    StateT,
     StateT_contra,
 )
 from reinfocus.graphics import render
@@ -41,116 +40,182 @@ class IStateObserver(Protocol, Generic[ObservationT_co, StateT_contra]):
 
         ...
 
+    def reset(self, dones: NDArray[numpy.bool_] | None = None):
+        """Informs the state observer that some episodes have restarted.
 
-class ScalarObserver(IStateObserver, abc.ABC, Generic[ObservationT, StateT]):
+        Args:
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        ...
+
+
+class BaseObserver(IStateObserver, abc.ABC):
     # pylint: disable=too-few-public-methods, unnecessary-ellipsis
-    """A state observer that produces scalar observations within some range."""
+    """A state observer that produces observations within some range."""
 
-    def __init__(self, num_envs: int, min_obs: float, max_obs: float):
-        self.single_observation_space = spaces.Box(min_obs, max_obs, dtype=numpy.float32)
-        self.observation_space = spaces.Box(
-            min_obs, max_obs, (num_envs,), dtype=numpy.float32
-        )
-        """Creates a ScalarObserver.
+    def __init__(
+        self,
+        num_envs: int,
+        min_obs: SupportsFloat | NDArray[numpy.float32],
+        max_obs: SupportsFloat | NDArray[numpy.float32],
+    ):
+        """Creates a BaseObserver.
 
         Args:
             num_envs: The number of environments this observer will observe.
             min_obs: The minimum observation possible.
             max_obs: The maximum observation possible."""
 
+        self.single_observation_space = spaces.Box(min_obs, max_obs, dtype=numpy.float32)
+        self.observation_space = utils.batch_space(
+            self.single_observation_space, num_envs
+        )  # type: ignore
+
     @abc.abstractmethod
-    def observe(self, state: StateT) -> NDArray[ObservationT]:
+    def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
         """Returns a batch of observations of state.
 
         Args:
             state: The state of some batch of POMDPs.
 
         Returns:
-            A batch of scalar observations, one per state."""
+            A batch of observations, one per state."""
+
+        ...
+
+    def reset(self, dones: NDArray[numpy.bool_] | None = None):
+        """Informs the base episode ender that some episodes have restarted.
+
+        Args:
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
 
         ...
 
 
-class NormalizedObserver(IStateObserver, Generic[ObservationT, StateT]):
-    # pylint: disable=too-few-public-methods
-    """A state observer that appends then normalizes the output of some scalar observers
-    to [-1, 1]."""
+class WrapperObserver(BaseObserver):
+    """A state observer that produces observations from other observers."""
 
-    def __init__(self, observers: Sequence[ScalarObserver]):
-        """Creates a NormalizedObserver.
+    def __init__(
+        self,
+        observers: Sequence[BaseObserver],
+        min_obs: SupportsFloat | NDArray[numpy.float32],
+        max_obs: SupportsFloat | NDArray[numpy.float32],
+    ):
+        """Creates a WrapperObserver.
 
         Args:
-            observers: A sequence of scalar observers whose output will form the output of
-                this observer, appened in the same order they're passed in here.
-        """
+            observers: The other observers from which the observations of this observer
+                will be produced.
+            min_obs: The minimum observation possible.
+            max_obs: The maximum observation possible."""
 
-        num_envs = set(observer.observation_space.shape[0] for observer in observers)
+        observers_num_envs = set(
+            observer.observation_space.shape[0] for observer in observers
+        )
         assert (
-            len(num_envs) == 1
+            len(observers_num_envs) == 1
         ), "Appended observers must have the same number of environments"
 
+        super().__init__(observers_num_envs.pop(), min_obs, max_obs)
+
         self._observers = observers
-        n_observers = len(observers)
 
-        observer_spans = numpy.array(
-            [
-                [
-                    observer.single_observation_space.low,
-                    observer.single_observation_space.high,
-                ]
-                for observer in self._observers
-            ]
-        ).reshape((n_observers, 2))
+    def reset(self, dones: NDArray[numpy.bool_] | None = None):
+        """Informs the episode ender that some episodes have restarted. Also resets all
+        the wrapped observers.
 
-        self._mid = numpy.average(observer_spans, axis=1)
-        self._scale = numpy.diff(observer_spans / 2).reshape(n_observers)
+        Args:
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
 
-        self.single_observation_space = spaces.Box(
-            -1, 1, (n_observers,), dtype=numpy.float32
-        )
-        self.observation_space = spaces.Box(
-            -1, 1, (num_envs.pop(), n_observers), dtype=numpy.float32
-        )
+        for observer in self._observers:
+            observer.reset(dones)
 
-    def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
-        """Produces a batch of appended and normalized observations from a number of child
-        observers.
+    def wrapped_observations(
+        self, state: NDArray[numpy.float32]
+    ) -> NDArray[numpy.float32]:
+        """Returns the stacked observations of state from all the wrapped observers.
 
         Args:
             state: The state of some batch of POMDPs.
 
         Returns:
-            A batch of observations normalized to [-1, 1], one per state, where each
-            pre-normalized observation is formed from appending the out of this observer's
-            children."""
+            Observations from the wrapped observers, stacked along the second dimension,
+            in the order the wrapped observers were passed into the constructor."""
 
-        raw_observation = numpy.array(
-            [observer.observe(state) for observer in self._observers]
-        ).T
-        return numpy.clip(
-            (raw_observation - self._mid) / self._scale, -1, 1, dtype=numpy.float32
+        return numpy.hstack(
+            [observer.observe(state) for observer in self._observers], dtype=numpy.float32
         )
 
 
-class IndexedElementObserver(ScalarObserver):
+class DifferenceObserver(WrapperObserver):
     # pylint: disable=too-few-public-methods
-    """A scalar state observer that simply returns some element of the state directly as
-    it's observation."""
+    """A state observer whose observations are the temporal differences in the
+    observations from some other observers."""
 
-    def __init__(self, num_envs: int, element_index: int, min_obs: float, max_obs: float):
-        """Creates an IndexedElementObserver.
+    def __init__(
+        self,
+        observers: BaseObserver | Sequence[BaseObserver],
+        include_original: bool = False,
+        max_change: SupportsFloat | NDArray[numpy.float32] | None = None,
+    ):
+        """Creates a DifferenceObserver.
 
         Args:
-            num_envs: The number of environments this observer will observe.
-            element_index: The index of the state element to return as an observation.
-            min_obs: The minimum observation possible.
-            max_obs: The maximum observation possible."""
+            observers: The wrapped observers, whose temporal differences in observation
+                will be appended and returned as an observation.
+            include_original: Whether or not to include the wrapped observer's
+                observations in the observation alongside the diff.
+            max_change: The maximum amount of difference possible. If None, will be
+                calculated from the wrapped observation space."""
 
-        super().__init__(num_envs, min_obs, max_obs)
-        self._element_index = element_index
+        if not isinstance(observers, Sequence):
+            observers = [observers]
+
+        n_observations = sum(
+            observer.single_observation_space.shape[0] for observer in observers
+        )
+
+        wrapped_highs = numpy.hstack(
+            [observer.single_observation_space.high for observer in observers],
+            dtype=numpy.float32,
+        )
+        wrapped_lows = numpy.hstack(
+            [observer.single_observation_space.low for observer in observers],
+            dtype=numpy.float32,
+        )
+
+        if max_change is None:
+            diff = wrapped_highs - wrapped_lows
+        elif isinstance(max_change, numpy.ndarray):
+            not_nan = numpy.isfinite(max_change)
+
+            diff = wrapped_highs - wrapped_lows
+            diff[not_nan] = max_change[not_nan]
+        else:
+            diff = numpy.full(n_observations, max_change, dtype=numpy.float32)
+
+        if include_original:
+            low = numpy.append(wrapped_lows, -diff)
+            high = numpy.append(wrapped_highs, diff)
+        else:
+            low = -diff
+            high = diff
+
+        super().__init__(observers, low, high)
+
+        self._include_original = include_original
+
+        self._old_wrapped_observations = None
 
     def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
-        """Produces a batch of observations copied directly from elements of the state.
+        """Produces a batch of observations which are the temporal differences of, and
+        optionally include, the observations from the wrapped observer.
 
         Args:
             state: The state of some batch of POMDPs.
@@ -158,7 +223,36 @@ class IndexedElementObserver(ScalarObserver):
         Returns:
             A batch of observations copied directly from some element of the state, one
             per state."""
-        return state[:, self._element_index]
+
+        wrapped_observations = self.wrapped_observations(state)
+
+        if self._old_wrapped_observations is None:
+            observations = numpy.zeros(wrapped_observations.shape, dtype=numpy.float32)
+        else:
+            observations = wrapped_observations - self._old_wrapped_observations
+
+        if self._include_original:
+            observations = numpy.hstack(
+                [wrapped_observations, observations],
+                dtype=numpy.float32,
+            )
+
+        self._old_wrapped_observations = wrapped_observations
+
+        return observations
+
+    def reset(self, dones: NDArray[numpy.bool_] | None = None):
+        """Informs the episode ender that some episodes have restarted. Also resets all
+        the wrapped observers.
+
+        Args:
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        self._old_wrapped_observations = None
+
+        super().reset(dones)
 
 
 @functools.cache
@@ -186,7 +280,7 @@ def cached_focus_extrema(ends: tuple[float, float], frame_shape: tuple[int, int]
     focus_values = vision.focus_values(
         render.fast_render(
             worlds,
-            numpy.append(tuple(reversed(ends)), max_targets),
+            numpy.append(ends[::-1], max_targets),
             frame_shape=frame_shape,
         )
     )
@@ -194,7 +288,7 @@ def cached_focus_extrema(ends: tuple[float, float], frame_shape: tuple[int, int]
     return min(focus_values[0:2]), max(focus_values[2:13])
 
 
-class FocusObserver(ScalarObserver):
+class FocusObserver(BaseObserver):
     # pylint: disable=too-few-public-methods
     """A scalar state observer that calculates the focus value of a simple rendered scene,
     where the state has the location of a target and focus plane within that scene."""
@@ -244,12 +338,111 @@ class FocusObserver(ScalarObserver):
 
         self._worlds.update_targets(state[:, self._target_index])
 
-        return numpy.asarray(
+        return numpy.reshape(
             vision.focus_values(
                 render.fast_render(
                     self._worlds,
                     state[:, self._focus_plane_index],
                     FocusObserver._frame_shape,
                 )
-            )
+            ),
+            self.observation_space.shape,
+        )
+
+
+class IndexedElementObserver(BaseObserver):
+    # pylint: disable=too-few-public-methods
+    """A scalar state observer that simply returns some element of the state directly as
+    it's observation."""
+
+    def __init__(self, num_envs: int, element_index: int, min_obs: float, max_obs: float):
+        """Creates an IndexedElementObserver.
+
+        Args:
+            num_envs: The number of environments this observer will observe.
+            element_index: The index of the state element to return as an observation.
+            min_obs: The minimum observation possible.
+            max_obs: The maximum observation possible."""
+
+        super().__init__(num_envs, min_obs, max_obs)
+        self._element_index = element_index
+
+    def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+        """Produces a batch of observations copied directly from elements of the state.
+
+        Args:
+            state: The state of some batch of POMDPs.
+
+        Returns:
+            A batch of observations copied directly from some element of the state, one
+            per state."""
+
+        return state[:, self._element_index].reshape(self.observation_space.shape)
+
+
+class NormalizedObserver(WrapperObserver):
+    # pylint: disable=too-few-public-methods
+    """A state observer that appends then normalizes the output of some scalar observers
+    to [-1, 1]."""
+
+    def __init__(self, observers: BaseObserver | Sequence[BaseObserver]):
+        """Creates a NormalizedObserver.
+
+        Args:
+            observers: A sequence of scalar observers whose output will form the output of
+                this observer, appened in the same order they're passed in here.
+        """
+
+        if not isinstance(observers, Sequence):
+            observers = [observers]
+
+        n_observations = sum(
+            observer.single_observation_space.shape[0] for observer in observers
+        )
+
+        super().__init__(
+            observers,
+            numpy.ones(n_observations, dtype=numpy.float32) * -1,
+            numpy.ones(n_observations, dtype=numpy.float32),
+        )
+
+        observer_spans = numpy.vstack(
+            [
+                numpy.hstack(
+                    [observer.single_observation_space.low for observer in observers],
+                    dtype=numpy.float32,
+                ),
+                numpy.hstack(
+                    [observer.single_observation_space.high for observer in observers],
+                    dtype=numpy.float32,
+                ),
+            ],
+            dtype=numpy.float32,
+        )
+
+        self._mid = numpy.average(observer_spans, axis=0)
+
+        div_spans = observer_spans / 2
+
+        diff_div = numpy.diff(div_spans, axis=0)
+
+        self._scale = diff_div.reshape(n_observations)
+
+    def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+        """Produces a batch of appended and normalized observations from a number of child
+        observers.
+
+        Args:
+            state: The state of some batch of POMDPs.
+
+        Returns:
+            A batch of observations normalized to [-1, 1], one per state, where each
+            pre-normalized observation is formed from appending the observations of this
+            observer's children."""
+
+        return numpy.clip(
+            (self.wrapped_observations(state) - self._mid) / self._scale,
+            -1,
+            1,
+            dtype=numpy.float32,
         )
