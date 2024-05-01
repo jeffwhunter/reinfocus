@@ -38,6 +38,59 @@ class IRewarder(Protocol, Generic[ActionT_contra, ObservationT_contra, StateT_co
         ...
 
 
+class DeltaRewarder(IRewarder, Generic[ActionT]):
+    # pylint: disable=too-few-public-methods
+    """A rewarder that produces a reward proportional to a change in state."""
+
+    def __init__(
+        self,
+        check_index: int,
+        scale: float,
+        reward: float = -1.0,
+    ):
+        """Creates a DeltaRewarder.
+
+        Args:
+            check_index: The index of the state element of interest.
+            threshold: The distance the state has to move to earn reward.
+            reward: The potentially emitted reward."""
+
+        self._check_index = check_index
+        self._scale = scale
+        self._reward = reward
+
+        self._old_states = None
+
+    def reward(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+        actions: NDArray[ActionT],
+    ) -> NDArray[numpy.float32]:
+        """Produces a batch of rewards, where the rewards will be emitted if some state
+        element changes more than some threshold.
+
+        Args:
+            states: The states that resulted from taking actions.
+            observations: The observations seen during states.
+            actions: The actions that lead to states and observations.
+
+        Returns:
+            A numpy array of potentially emitted rewards."""
+
+        if self._old_states is not None:
+            diff = states[:, self._check_index] - self._old_states
+            abs_diff = abs(diff)
+            scale_diff = abs_diff / self._scale
+            reward = scale_diff * self._reward
+        else:
+            reward = numpy.zeros(states.shape[0], dtype=numpy.float32)
+
+        self._old_states = states[:, self._check_index]
+
+        return reward
+
+
 class DistanceRewarder(IRewarder, Generic[ActionT]):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces a reward proportional to the distance between two specific
@@ -89,13 +142,13 @@ class DistanceRewarder(IRewarder, Generic[ActionT]):
         ) * (self._high - self._low) + self._low
 
 
-class ObservationElementRewarder(IRewarder, Generic[ActionT]):
+class ObservationRewarder(IRewarder, Generic[ActionT]):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces rewards by copying them from a specific element of the
     observation."""
 
     def __init__(self, reward_observation_index: int):
-        """Creates an ObservationElementRewarder.
+        """Creates an ObservationRewarder.
 
         Args:
             reward_observation_index: The index of the observation element to return as a
@@ -176,3 +229,43 @@ class OnTargetRewarder(IRewarder, Generic[ActionT]):
         ] = self._on
 
         return rewards
+
+
+class SumRewarder(IRewarder, Generic[ActionT]):
+    # pylint: disable=too-few-public-methods
+    """A rewarder that returns the sum of other rewarder's rewards as it's own reward."""
+
+    def __init__(self, *rewarders: IRewarder):
+        """Creates a MovementRewarder.
+
+        Args:
+            check_index: The index of the state element of interest.
+            threshold: How much the state element must change before reward is emitted.
+            reward: The potentially emitted reward."""
+
+        self._rewarders = rewarders
+
+    def reward(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+        actions: NDArray[ActionT],
+    ) -> NDArray[numpy.float32]:
+        """Produces a batch of rewards, where the rewards will be the sum of rewards
+        produced by other rewarders.
+
+        Args:
+            states: The states that resulted from taking actions.
+            observations: The observations seen during states.
+            actions: The actions that lead to states and observations.
+
+        Returns:
+            A numpy array of the summed rewards"""
+
+        return numpy.sum(
+            [
+                rewarder.reward(states, observations, actions)
+                for rewarder in self._rewarders
+            ],
+            axis=0,
+        )
