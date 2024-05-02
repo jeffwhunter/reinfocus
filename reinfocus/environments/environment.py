@@ -24,7 +24,7 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
 
     def __init__(
         self,
-        ender: episode_ender.IEpisodeEnder[StateT],
+        ender: episode_ender.IEnder[StateT],
         initializer: state_initializer.IStateInitializer[StateT],
         observer: state_observer.IStateObserver[ObservationT, StateT],
         rewarder: episode_rewarder.IRewarder[ActionT, ObservationT, StateT],
@@ -82,8 +82,9 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
         self._state = self._initializer.initialize(1)
 
         self._ender.reset()
-        self._observer.reset()
+        self._ender.step(self._state)
 
+        self._observer.reset()
         observations = self._observer.observe(self._state)
 
         if self.render_mode == "rgb_array":

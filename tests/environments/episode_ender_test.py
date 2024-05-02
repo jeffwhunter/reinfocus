@@ -9,15 +9,98 @@ from numpy import testing
 from reinfocus.environments import episode_ender
 
 
-class EndlessEpisodeEnderTest(unittest.TestCase):
-    """Test cases for reinfocus.environments.episode_ender.EndlessEpisodeEnder."""
+class DivergingEnderTest(unittest.TestCase):
+    """Test cases for reinfocus.environments.episode_ender.DivergingEnder."""
+
+    def test_is_terminated(self):
+        """Tests that is_terminated is always False (ie: the MDP has no end state)."""
+
+        num_envs = 3
+
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0)
+
+        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+        testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
+
+        testing.assert_allclose(testee.is_terminated(), [False] * num_envs)
+
+    def test_is_truncated_diverge(self):
+        """Tests that is_truncated correctly ends the episode when state elements
+        diverge for long enough."""
+
+        num_envs = 3
+
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 2)
+
+        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+
+        testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
+        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
+
+        testee.step(numpy.array([[-1, -0.6], [0, -0.6], [1.5, 0.5]]))
+        testing.assert_allclose(testee.is_truncated(), [False, True, True])
+
+        testee.step(numpy.array([[-1, -0.5], [0, -0.6], [1.5, 0.5]]))
+        testing.assert_allclose(testee.is_truncated(), [True] * num_envs)
+
+    def test_reset(self):
+        """Tests that truncation responds appropriately after a reset."""
+
+        num_envs = 3
+
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 2)
+
+        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+
+        testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
+        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
+
+        testee.reset(numpy.array([False, False, True]))
+
+        testee.step(numpy.array([[-1, -0.6], [0, -0.6], [1.5, 0.5]]))
+        testing.assert_allclose(testee.is_truncated(), [False, True, False])
+
+        testee.step(numpy.array([[-1, -0.5], [0, -0.6], [1.5, 0.5]]))
+        testing.assert_allclose(testee.is_truncated(), [True, True, False])
+
+    def test_status(self):
+        """Tests status returns a string that shows how close the episode is to ending."""
+
+        num_envs = 3
+
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 2)
+
+        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+
+        testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
+        self.assertEqual(
+            [testee.status(i) for i in range(num_envs)], ["diverging 1 / 2"] * num_envs
+        )
+
+        testee.reset(numpy.array([False, False, True]))
+
+        testee.step(numpy.array([[-1, -0.6], [0, -0.6], [1.5, 0.5]]))
+        self.assertEqual(
+            [testee.status(i) for i in range(num_envs)],
+            ["diverging 1 / 2", "diverging 2 / 2", ""],
+        )
+
+        testee.step(numpy.array([[-1, -0.5], [0, -0.6], [1.5, 0.5]]))
+        self.assertEqual(
+            [testee.status(i) for i in range(num_envs)],
+            ["diverging 2 / 2", "diverging 2 / 2", ""],
+        )
+
+
+class EndlessEnderTest(unittest.TestCase):
+    """Test cases for reinfocus.environments.episode_ender.EndlessEnder."""
 
     def test_never_ends(self):
         """Tests that is_terminated and is_truncated are always False."""
 
         num_envs = 5
 
-        testee = episode_ender.EndlessEpisodeEnder(num_envs)
+        testee = episode_ender.EndlessEnder(num_envs)
 
         testee.step(numpy.zeros(num_envs, dtype=numpy.float32))
 
@@ -25,15 +108,15 @@ class EndlessEpisodeEnderTest(unittest.TestCase):
         testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
 
 
-class OnTargetEpisodeEnderTest(unittest.TestCase):
-    """Test cases for reinfocus.environments.episode_ender.OnTargetEpisodeEnder."""
+class OnTargetEnderTest(unittest.TestCase):
+    """Test cases for reinfocus.environments.episode_ender.OnTargetEnder."""
 
     def test_is_terminated(self):
         """Tests that is_terminated is always False (ie: the MDP has no end state)."""
 
         num_envs = 3
 
-        testee = episode_ender.OnTargetEpisodeEnder(num_envs, (0, 1), 1, 1)
+        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 1, 1)
 
         testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
@@ -44,7 +127,7 @@ class OnTargetEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 3
 
-        testee = episode_ender.OnTargetEpisodeEnder(num_envs, (0, 1), 2, 2)
+        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 2)
 
         testee.step(numpy.array([[0, 2], [0, 1], [0, 1]]))
 
@@ -57,7 +140,7 @@ class OnTargetEpisodeEnderTest(unittest.TestCase):
     def test_check_indices(self):
         """Tests that truncation does not depend on the check indices."""
 
-        testee = episode_ender.OnTargetEpisodeEnder(2, (3, 7), 2, 1)
+        testee = episode_ender.OnTargetEnder(2, (3, 7), 2, 1)
 
         testee.step(numpy.array([[0, 0, 0, 1, 0, 0, 0, 3], [0, 0, 0, 1, 0, 0, 0, 2]]))
 
@@ -68,7 +151,7 @@ class OnTargetEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 2
 
-        testee = episode_ender.OnTargetEpisodeEnder(num_envs, (0, 1), 2, 2)
+        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 2)
 
         testee.step(numpy.array([[0, 1], [0, 1]]))
 
@@ -85,7 +168,7 @@ class OnTargetEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 2
 
-        testee = episode_ender.OnTargetEpisodeEnder(num_envs, (0, 1), 2, 2)
+        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 2)
 
         testee.step(numpy.array([[0, 1], [0, 1]]))
 
@@ -106,7 +189,7 @@ class OnTargetEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 3
 
-        testee = episode_ender.OnTargetEpisodeEnder(num_envs, (0, 1), 2, 2)
+        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 2)
 
         self.assertEqual([testee.status(i) for i in range(num_envs)], [""] * num_envs)
 
@@ -124,15 +207,15 @@ class OnTargetEpisodeEnderTest(unittest.TestCase):
         )
 
 
-class StoppedEpisodeEnderTest(unittest.TestCase):
-    """Test cases for reinfocus.environments.episode_ender.StoppedEpisodeEnder."""
+class StoppedEnderTest(unittest.TestCase):
+    """Test cases for reinfocus.environments.episode_ender.StoppedEnder."""
 
     def test_is_terminated(self):
         """Tests that is_terminated is always False (ie: the MDP has no end state)."""
 
         num_envs = 3
 
-        testee = episode_ender.StoppedEpisodeEnder(num_envs, 1, 0.5, 0)
+        testee = episode_ender.StoppedEnder(num_envs, 1, 0.5, 0)
 
         testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
@@ -143,7 +226,7 @@ class StoppedEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 4
 
-        testee = episode_ender.StoppedEpisodeEnder(num_envs, 0, 0.5, 1)
+        testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 1)
 
         testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
@@ -158,7 +241,7 @@ class StoppedEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 4
 
-        testee = episode_ender.StoppedEpisodeEnder(num_envs, 1, 0.5, 1)
+        testee = episode_ender.StoppedEnder(num_envs, 1, 0.5, 1)
 
         testee.step(numpy.array([[0, 1], [0, 2], [0, 3], [0, 4]]))
 
@@ -173,7 +256,7 @@ class StoppedEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 4
 
-        testee = episode_ender.StoppedEpisodeEnder(num_envs, 0, 0.5, 2)
+        testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 2)
 
         testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
@@ -193,7 +276,7 @@ class StoppedEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 4
 
-        testee = episode_ender.StoppedEpisodeEnder(num_envs, 0, 0.5, 2)
+        testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 2)
 
         testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
@@ -212,7 +295,7 @@ class StoppedEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 4
 
-        testee = episode_ender.StoppedEpisodeEnder(num_envs, 0, 0.5, 2)
+        testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 2)
 
         testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
@@ -233,7 +316,7 @@ class StoppedEpisodeEnderTest(unittest.TestCase):
 
         num_envs = 4
 
-        testee = episode_ender.StoppedEpisodeEnder(num_envs, 0, 0.5, 2)
+        testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 2)
 
         self.assertEqual([testee.status(i) for i in range(num_envs)], [""] * num_envs)
 

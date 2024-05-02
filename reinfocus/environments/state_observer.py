@@ -211,7 +211,11 @@ class DifferenceObserver(WrapperObserver):
 
         self._include_original = include_original
 
-        self._old_wrapped_observations = None
+        self._old_wrapped_observations = numpy.full(
+            (self.observation_space.shape[0], n_observations),
+            numpy.nan,
+            dtype=numpy.float32,
+        )
 
     def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
         """Produces a batch of observations which are the temporal differences of, and
@@ -226,10 +230,12 @@ class DifferenceObserver(WrapperObserver):
 
         wrapped_observations = self.wrapped_observations(state)
 
-        if self._old_wrapped_observations is None:
-            observations = numpy.zeros(wrapped_observations.shape, dtype=numpy.float32)
-        else:
-            observations = wrapped_observations - self._old_wrapped_observations
+        not_nan = numpy.isfinite(self._old_wrapped_observations)
+
+        observations = numpy.zeros(wrapped_observations.shape, dtype=numpy.float32)
+        observations[not_nan] = (
+            wrapped_observations[not_nan] - self._old_wrapped_observations[not_nan]
+        )
 
         if self._include_original:
             observations = numpy.hstack(
@@ -250,7 +256,7 @@ class DifferenceObserver(WrapperObserver):
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        self._old_wrapped_observations = None
+        self._old_wrapped_observations[dones] = numpy.nan
 
         super().reset(dones)
 

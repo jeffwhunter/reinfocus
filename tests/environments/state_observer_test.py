@@ -341,10 +341,10 @@ class DifferenceObserverTest(unittest.TestCase):
             testee.observe(numpy.reshape([0, 1], state_shape)), [[0], [0]]
         )
 
-        testee.reset()
+        testee.reset(numpy.array([False, True]))
 
         testing.assert_allclose(
-            testee.observe(numpy.reshape([0, 2], state_shape)), [[0], [0]]
+            testee.observe(numpy.reshape([2, 3], state_shape)), [[2], [0]]
         )
 
     def test_multidimensional_observation(self):

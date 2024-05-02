@@ -87,7 +87,7 @@ class FocusHistoryVisualizer(IVisualizer):
         focus_value_index: int,
         worlds: world.FocusWorlds,
         limits: tuple[float, float],
-        ender: episode_ender.IEpisodeEnder[NDArray[numpy.float32]] | None = None,
+        ender: episode_ender.IEnder[NDArray[numpy.float32]] | None = None,
         history_length: int = 10,
         target_radius: float | None = None,
     ):
