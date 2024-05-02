@@ -236,7 +236,7 @@ class SumRewarder(IRewarder, Generic[ActionT]):
     """A rewarder that returns the sum of other rewarder's rewards as it's own reward."""
 
     def __init__(self, *rewarders: IRewarder):
-        """Creates a MovementRewarder.
+        """Creates a SumRewarder.
 
         Args:
             check_index: The index of the state element of interest.
