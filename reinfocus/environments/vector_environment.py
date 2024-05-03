@@ -90,17 +90,15 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
 
         self._state = self._initializer.initialize(self.num_envs)
 
-        self._ender.reset()
-        self._ender.step(self._state)
+        self._ender.reset(self._state)
 
-        self._observer.reset()
-        observation = self._observer.observe(self._state)
+        observations = self._observer.reset(self._state, None)
 
         if self.render_mode == "rgb_array":
             self._visualizer.reset()
-            self._visualizer.step(self._state, observation)
+            self._visualizer.step(self._state, observations)
 
-        return observation, {}
+        return observations, {}
 
     def step(self, actions: NDArray[ActionT]) -> tuple[
         NDArray[ObservationT],
@@ -126,27 +124,33 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
 
         self._ender.step(self._state)
 
+        observations = self._observer.observe(self._state)
+
+        rewards = self._rewarder.reward(actions, self._state, observations)
+
         terminated = self._ender.is_terminated()
         truncated = self._ender.is_truncated()
 
         done = terminated | truncated
 
         if any(done):
-            self._state[done] = self._initializer.initialize(done.sum())
-            self._ender.reset(done)
-            self._observer.reset(done)
+            new_state = self._initializer.initialize(done.sum())
+
+            self._state[done] = new_state
+
+            self._ender.reset(new_state, done)
+
+            observations[done] = self._observer.reset(new_state, done)
 
             if self.render_mode == "rgb_array":
                 self._visualizer.reset(done)
 
-        observation = self._observer.observe(self._state)
-
         if self.render_mode == "rgb_array":
-            self._visualizer.step(self._state, observation)
+            self._visualizer.step(self._state, observations)
 
         return (
-            observation,
-            self._rewarder.reward(self._state, observation, actions),
+            observations,
+            rewards,
             terminated,
             truncated,
             {},

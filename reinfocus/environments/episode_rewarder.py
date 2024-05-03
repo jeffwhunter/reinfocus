@@ -14,7 +14,9 @@ from reinfocus.environments.types import (
 )
 
 
-class IEpisodeRewarder(Protocol, Generic[ActionT_contra, ObservationT_contra, StateT_contra]):
+class IEpisodeRewarder(
+    Protocol, Generic[ActionT_contra, ObservationT_contra, StateT_contra]
+):
     # pylint: disable=too-few-public-methods, unnecessary-ellipsis
     """The base that episode rewarders must follow."""
 

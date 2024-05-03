@@ -51,7 +51,8 @@ def make_observer() -> mock.Mock:
         A mocked state observer."""
 
     state_observer = mock.Mock()
-    state_observer.observe.side_effect = lambda state: [state]
+    state_observer.observe.side_effect = lambda state: state
+    state_observer.reset.side_effect = lambda state: state
     return state_observer
 
 
@@ -136,23 +137,23 @@ class EnvironmentTest(unittest.TestCase):
         """Tests that the environment correctly initializes states with its
         initializer."""
 
-        target = numpy.array([-4, 8])
+        target = numpy.array([[-4, 8]])
 
         testing.assert_allclose(
-            make_testee(initializer=make_initializer(target)).reset()[0], target
+            make_testee(initializer=make_initializer(target)).reset()[0], target[0]
         )
 
     def test_transforms(self):
         """Tests that the environment correctly transforms states with it's
         transformer."""
 
-        target = numpy.array([-4, 8])
+        target = numpy.array([[-4, 8]])
 
         testee = make_testee(initializer=make_initializer(target))
 
         testee.reset()
 
-        testing.assert_allclose(testee.step(0)[0], target)
+        testing.assert_allclose(testee.step(0)[0], target[0])
 
     def test_reward(self):
         """Tests that the environment correctly rewards episodes with it's rewarder."""
@@ -161,7 +162,7 @@ class EnvironmentTest(unittest.TestCase):
         rewarder.reward.side_effect = lambda a, s, o: s[0] + o[0][1] + a
 
         testee = make_testee(
-            initializer=make_initializer(numpy.array([-4, 8])), rewarder=rewarder
+            initializer=make_initializer(numpy.array([[-4, 8]])), rewarder=rewarder
         )
 
         testee.reset()

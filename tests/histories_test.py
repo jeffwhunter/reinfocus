@@ -38,6 +38,23 @@ class HistoriesTest(unittest.TestCase):
         testing.assert_allclose(testee.get_history(0), [2, 3, 4])
         testing.assert_allclose(testee.get_history(1), [3, 2, 1])
 
+    def test_partial_append_events(self):
+        """Tests that partially appended events can be retrieved."""
+
+        max_n = 3
+        num_histories = 2
+
+        testee = histories.Histories(num_histories, max_n)
+
+        testee.append_events([1, 4])
+        testee.append_events([2, 3])
+        testee.append_events([3], numpy.array([True, False]))
+        testee.append_events([2], numpy.array([False, True]))
+        testee.append_events([4, 1])
+
+        testing.assert_allclose(testee.get_history(0), [2, 3, 4])
+        testing.assert_allclose(testee.get_history(1), [3, 2, 1])
+
     def test_most_recent_events(self):
         """Tests that the most recent events can be retrieved."""
 

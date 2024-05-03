@@ -17,6 +17,7 @@ def _simple_colormap():
 
 
 class FadingColoursTest(unittest.TestCase):
+    """Test cases for reinfocus.episode_visualizer.fading_colours."""
 
     def test_fade(self):
         """Tests that fading_colours makes a cool fade!"""

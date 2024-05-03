@@ -66,6 +66,7 @@ def make_observer(
 
     observer = mock.Mock()
     observer.observe.side_effect = lambda state: state
+    observer.reset.side_effect = lambda state, _: state
     observer.observation_space = observation_space
     observer.single_observation_space = single_observation_space
     return observer
@@ -161,7 +162,7 @@ class VectorEnvironmentTest(unittest.TestCase):
         """Tests that the environment correctly initializes states with its
         initializer."""
 
-        target = numpy.array([-4, 8])
+        target = numpy.array([[-4], [8]])
 
         testing.assert_allclose(
             make_testee(initializer=make_initializer(target)).reset()[0], target
@@ -171,7 +172,7 @@ class VectorEnvironmentTest(unittest.TestCase):
         """Tests that the environment correctly transforms states with it's
         transformer."""
 
-        target = numpy.array([-4, 8])
+        target = numpy.array([[-4], [8]])
 
         testee = make_testee(
             initializer=make_initializer(target),
@@ -186,15 +187,15 @@ class VectorEnvironmentTest(unittest.TestCase):
         """Tests that the environment correctly rewards episodes with it's rewarder."""
 
         rewarder = mock.Mock()
-        rewarder.reward.side_effect = lambda s, o, a: s[0] + o[1] + a[0]
+        rewarder.reward.side_effect = lambda s, o, a: s[:, 0] + o[:, 0] + a[:, 0]
 
         testee = make_testee(
-            initializer=make_initializer(numpy.array([-4, 8])), rewarder=rewarder
+            initializer=make_initializer(numpy.array([[-4], [8]])), rewarder=rewarder
         )
 
         testee.reset()
 
-        self.assertEqual(testee.step(numpy.array([3]))[1], 7)
+        testing.assert_allclose(testee.step(numpy.array([[3], [5]]))[1], [-5, 21])
 
     def test_terminated_and_truncated(self):
         """Tests that the environment correctly reports termination and truncation from
@@ -205,7 +206,7 @@ class VectorEnvironmentTest(unittest.TestCase):
                 is_terminated=numpy.array([True, False]),
                 is_truncated=numpy.array([False, True]),
             ),
-            initializer=make_initializer(numpy.array([-4, 8])),
+            initializer=make_initializer(numpy.array([[-4], [8]])),
         )
 
         testee.reset()
@@ -216,18 +217,18 @@ class VectorEnvironmentTest(unittest.TestCase):
         testing.assert_allclose(is_truncated, (False, True))
 
     def test_done_are_reset(self):
-        """Tests that the environment resets individual episodes that the episode ender
-        has reported are finished."""
+        """Tests that the environment reinitializes individual episodes that the episode
+        ender has reported are finished."""
 
         ender = make_ender(is_terminated=numpy.array([True, False]))
 
-        initializer = make_initializer(numpy.array([-4, 8]), numpy.array([5]))
+        initializer = make_initializer(numpy.array([[-4], [8]]), numpy.array([[5]]))
 
         testee = make_testee(ender=ender, initializer=initializer)
 
         testee.reset()
 
-        testing.assert_allclose(testee.step(numpy.empty(0))[0], numpy.array([5, 8]))
+        testing.assert_allclose(testee.step(numpy.empty(0))[0], numpy.array([[5], [8]]))
 
     def test_reset_ender(self):
         """Tests that reset resets the episode ender."""
@@ -244,13 +245,14 @@ class VectorEnvironmentTest(unittest.TestCase):
         """Tests that individual environments of the episode ender are reset during step
         after the episode ender reports the end of an episode."""
 
-        targets = numpy.array([True, False])
+        state_targets = numpy.array([[5]])
+        done_targets = numpy.array([True, False])
 
-        ender = make_ender(is_terminated=targets)
+        ender = make_ender(is_terminated=done_targets)
 
         testee = make_testee(
             ender=ender,
-            initializer=make_initializer(numpy.array([[-4], [8]]), numpy.array([[5]])),
+            initializer=make_initializer(numpy.array([[-4], [8]]), state_targets),
             num_envs=2,
         )
 
@@ -260,7 +262,8 @@ class VectorEnvironmentTest(unittest.TestCase):
 
         testee.step(numpy.empty(0))
 
-        testing.assert_allclose(ender.reset.call_args.args[0], targets)
+        testing.assert_allclose(ender.reset.call_args.args[0], state_targets)
+        testing.assert_allclose(ender.reset.call_args.args[1], done_targets)
 
     def test_reset_observer(self):
         """Tests that reset resets the state observer."""
@@ -277,13 +280,14 @@ class VectorEnvironmentTest(unittest.TestCase):
         """Tests that individual environments of the state observer are reset during step
         after the episode ender reports the end of an episode."""
 
-        targets = numpy.array([True, False])
+        state_targets = numpy.array([[5]])
+        done_targets = numpy.array([True, False])
 
         observer = make_observer()
 
         testee = make_testee(
-            ender=make_ender(is_terminated=targets),
-            initializer=make_initializer(numpy.array([[-4], [8]]), numpy.array([[5]])),
+            ender=make_ender(is_terminated=done_targets),
+            initializer=make_initializer(numpy.array([[-4], [8]]), state_targets),
             observer=observer,
             num_envs=2,
         )
@@ -294,7 +298,8 @@ class VectorEnvironmentTest(unittest.TestCase):
 
         testee.step(numpy.empty(0))
 
-        testing.assert_allclose(observer.reset.call_args.args[0], targets)
+        testing.assert_allclose(observer.reset.call_args.args[0], state_targets)
+        testing.assert_allclose(observer.reset.call_args.args[1], done_targets)
 
     def test_no_render(self):
         """Tests that the environment doesn't render anything if it's render_mode isn't

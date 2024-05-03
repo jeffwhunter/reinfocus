@@ -39,20 +39,27 @@ class Histories:
 
         return self.data[:, -1]
 
-    def append_events(self, events: Collection[float]):
+    def append_events(
+        self, events: Collection[float], indices: NDArray[numpy.bool_] | None = None
+    ):
         """Appends a numpy array of events to histories, one event per history.
 
         Args:
             events: A numpy array of events to append to each history.
+            indices: None, or a numpy array of one boolean per environment, where elements
+                are true if that environment should have an event appended.
 
         Returns:
             A new history created by dropping the first event from the current history,
             and appending the new one at the end."""
 
+        if indices is None:
+            indices = numpy.full(self.data.shape[0], True)
+
         events = numpy.asarray(events)
 
-        self.data = numpy.hstack(
-            [self.data[:, 1:], events.reshape(self.data.shape[0], 1)],
+        self.data[indices] = numpy.hstack(
+            [self.data[indices, 1:], events.reshape(len(events), 1)],
             dtype=numpy.float32,
         )
 

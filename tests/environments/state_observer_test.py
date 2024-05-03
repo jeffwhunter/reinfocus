@@ -38,6 +38,7 @@ def make_observer(
     observer.single_observation_space = space
     observer.observation_space = utils.batch_space(space, num_envs)
     observer.observe.side_effect = observe
+    observer.reset.side_effect = lambda state, _: observe(state)
     return observer
 
 
@@ -49,7 +50,7 @@ class BaseObserverTest(unittest.TestCase):
 
         class _ScalarObserver(state_observer.BaseObserver):
             # pylint: disable=too-few-public-methods
-            def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+            def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
                 """A dummy function needed to implement BaseObserver."""
 
                 raise NotImplementedError
@@ -80,7 +81,7 @@ class BaseObserverTest(unittest.TestCase):
 
         class _ArrayObserver(state_observer.BaseObserver):
             # pylint: disable=too-few-public-methods
-            def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+            def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
                 """A dummy function needed to implement BaseObserver."""
 
                 raise NotImplementedError
@@ -112,7 +113,7 @@ class WrapperObserverTest(unittest.TestCase):
 
     class _WrapperObserver(state_observer.WrapperObserver):
         # pylint: disable=too-few-public-methods
-        def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+        def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
             """A dummy function needed to implement WrapperObserver."""
 
             raise NotImplementedError
@@ -178,7 +179,9 @@ class WrapperObserverTest(unittest.TestCase):
 
         observers = [make_observer() for _ in range(3)]
 
-        WrapperObserverTest._WrapperObserver(observers, 0, 1).reset()
+        WrapperObserverTest._WrapperObserver(observers, 0, 1).reset(
+            numpy.zeros((1, 1), dtype=numpy.float32)
+        )
 
         for observer in observers:
             observer.reset.assert_called_once()
@@ -295,7 +298,7 @@ class DeltaObserverTest(unittest.TestCase):
         testee = state_observer.DeltaObserver(observer)
 
         testing.assert_allclose(
-            testee.observe(numpy.reshape([0, 1, 2], state_shape)), [[0], [0], [0]]
+            testee.reset(numpy.reshape([0, 1, 2], state_shape)), [[0], [0], [0]]
         )
         testing.assert_allclose(
             testee.observe(numpy.reshape([0, 2, 4], state_shape)), [[0], [1], [2]]
@@ -317,7 +320,7 @@ class DeltaObserverTest(unittest.TestCase):
         testee = state_observer.DeltaObserver(observer, include_original=True)
 
         testing.assert_allclose(
-            testee.observe(numpy.reshape([0, 1, 2], state_shape)),
+            testee.reset(numpy.reshape([0, 1, 2], state_shape)),
             [[0, 0, 0, 0], [-1, 1, 0, 0], [-2, 2, 0, 0]],
         )
         testing.assert_allclose(
@@ -337,13 +340,15 @@ class DeltaObserverTest(unittest.TestCase):
         testee = state_observer.DeltaObserver(observer)
 
         testing.assert_allclose(
-            testee.observe(numpy.reshape([0, 1], state_shape)), [[0], [0]]
+            testee.reset(numpy.reshape([0, 1], state_shape)), [[0], [0]]
         )
 
-        testee.reset(numpy.array([False, True]))
+        testing.assert_allclose(
+            testee.reset(numpy.array([[3]]), numpy.array([False, True])), [[0]]
+        )
 
         testing.assert_allclose(
-            testee.observe(numpy.reshape([2, 3], state_shape)), [[2], [0]]
+            testee.observe(numpy.reshape([2, 4], state_shape)), [[2], [1]]
         )
 
     def test_multidimensional_observation(self):
@@ -361,7 +366,7 @@ class DeltaObserverTest(unittest.TestCase):
         testee = state_observer.DeltaObserver(observers)
 
         testing.assert_allclose(
-            testee.observe(numpy.reshape([0, 1, 2, 3], state_shape)),
+            testee.reset(numpy.reshape([0, 1, 2, 3], state_shape)),
             [[0, 0], [0, 0], [0, 0], [0, 0]],
         )
 
@@ -494,6 +499,21 @@ class NormalizedObserverTest(unittest.TestCase):
 
         testing.assert_allclose(
             testee.observe(numpy.array([[0], [1], [2], [3], [4]])),
+            [[-1.0, -1.0], [0.0, -1.0], [1.0, -(1 / 3)], [1.0, (1 / 3)], [1.0, 1.0]],
+        )
+
+    def test_reset(self):
+        """Tests that NormalizedObserver correctly normalizes observations from reset."""
+
+        testee = state_observer.NormalizedObserver(
+            [
+                make_observer(space=spaces.Box(0, 2)),
+                make_observer(space=spaces.Box(1, 4)),
+            ]
+        )
+
+        testing.assert_allclose(
+            testee.reset(numpy.array([[0], [1], [2], [3], [4]])),
             [[-1.0, -1.0], [0.0, -1.0], [1.0, -(1 / 3)], [1.0, (1 / 3)], [1.0, 1.0]],
         )
 

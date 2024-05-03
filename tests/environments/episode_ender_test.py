@@ -17,11 +17,11 @@ class DivergingEnderTest(unittest.TestCase):
 
         num_envs = 3
 
-        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 0)
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 1)
 
-        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+        testee.reset(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+
         testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
-
         testing.assert_allclose(testee.is_terminated(), [False] * num_envs)
 
     def test_is_truncated_diverge(self):
@@ -32,7 +32,7 @@ class DivergingEnderTest(unittest.TestCase):
 
         testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 2)
 
-        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+        testee.reset(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
         testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
         testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
@@ -44,14 +44,14 @@ class DivergingEnderTest(unittest.TestCase):
         testing.assert_allclose(testee.is_truncated(), [True] * num_envs)
 
     def test_is_truncated_threshold(self):
-        """Tests that is_truncated only ends the episode when state elements diverge 
+        """Tests that is_truncated only ends the episode when state elements diverge
         farther than the threshold."""
 
         num_envs = 3
 
         testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0.25, 2)
 
-        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+        testee.reset(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
         testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
         testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
@@ -69,18 +69,18 @@ class DivergingEnderTest(unittest.TestCase):
 
         testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 2)
 
-        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+        testee.reset(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
         testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
         testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
 
-        testee.reset(numpy.array([False, False, True]))
+        testee.reset(numpy.array([[1.5, 1]]), numpy.array([False, False, True]))
 
         testee.step(numpy.array([[-1, -0.6], [0, -0.6], [1.5, 0.5]]))
         testing.assert_allclose(testee.is_truncated(), [False, True, False])
 
-        testee.step(numpy.array([[-1, -0.5], [0, -0.6], [1.5, 0.5]]))
-        testing.assert_allclose(testee.is_truncated(), [True, True, False])
+        testee.step(numpy.array([[-1, -0.5], [0, -0.6], [2, 0.5]]))
+        testing.assert_allclose(testee.is_truncated(), [True, True, True])
 
     def test_status(self):
         """Tests status returns a string that shows how close the episode is to ending."""
@@ -89,14 +89,14 @@ class DivergingEnderTest(unittest.TestCase):
 
         testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 2)
 
-        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+        testee.reset(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
         testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
         self.assertEqual(
             [testee.status(i) for i in range(num_envs)], ["diverging 1 / 2"] * num_envs
         )
 
-        testee.reset(numpy.array([False, False, True]))
+        testee.reset(numpy.array([[1.5, 0.5]]), numpy.array([False, False, True]))
 
         testee.step(numpy.array([[-1, -0.6], [0, -0.6], [1.5, 0.5]]))
         self.assertEqual(
@@ -137,8 +137,9 @@ class OnTargetEnderTest(unittest.TestCase):
 
         testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 1, 1)
 
-        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+        testee.reset(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
+        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
         testing.assert_allclose(testee.is_terminated(), [False] * num_envs)
 
     def test_is_truncated_on_target(self):
@@ -146,14 +147,11 @@ class OnTargetEnderTest(unittest.TestCase):
 
         num_envs = 3
 
-        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 2)
+        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 1)
 
-        testee.step(numpy.array([[0, 2], [0, 1], [0, 1]]))
-
-        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
+        testee.reset(numpy.array([[0, 2], [0, 1], [0, 1]]))
 
         testee.step(numpy.array([[0, 2], [0, 2], [0, 1]]))
-
         testing.assert_allclose(testee.is_truncated(), [False, False, True])
 
     def test_check_indices(self):
@@ -161,54 +159,36 @@ class OnTargetEnderTest(unittest.TestCase):
 
         testee = episode_ender.OnTargetEnder(2, (3, 7), 2, 1)
 
+        testee.reset(numpy.array([[0, 0, 0, 1, 0, 0, 0, 3], [0, 0, 0, 1, 0, 0, 0, 2]]))
+
         testee.step(numpy.array([[0, 0, 0, 1, 0, 0, 0, 3], [0, 0, 0, 1, 0, 0, 0, 2]]))
-
         testing.assert_allclose(testee.is_truncated(), [False, True])
 
-    def test_truncation_partial_reset_on_target(self):
-        """Thats that a partial reset properly resets is_truncated when on target."""
+    def test_reset(self):
+        """Tests that truncation responds appropriately after a reset."""
 
         num_envs = 2
 
         testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 2)
 
-        testee.step(numpy.array([[0, 1], [0, 1]]))
+        testee.reset(numpy.array([[0, 1], [0, 1]]))
 
+        testee.step(numpy.array([[0, 1], [0, 1]]))
         testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
 
-        testee.reset(numpy.array([True, False]))
+        testee.reset(numpy.array([[0, 1]]), numpy.array([True, False]))
 
         testee.step(numpy.array([[0, 1], [0, 1]]))
-
         testing.assert_allclose(testee.is_truncated(), [False, True])
-
-    def test_truncation_reset_on_target(self):
-        """Thats that a full reset properly resets is_truncated when on target."""
-
-        num_envs = 2
-
-        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 2)
-
-        testee.step(numpy.array([[0, 1], [0, 1]]))
-
-        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
-
-        testee.reset()
-
-        testee.step(numpy.array([[0, 1], [0, 1]]))
-
-        testing.assert_allclose(testee.is_truncated(), [False, False])
-
-        testee.step(numpy.array([[0, 1], [0, 2]]))
-
-        testing.assert_allclose(testee.is_truncated(), [True, False])
 
     def test_status_properly_reports(self):
         """Tests status returns a string that shows how close the episode is to ending."""
 
         num_envs = 3
 
-        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 2, 2)
+        testee = episode_ender.OnTargetEnder(num_envs, (0, 1), 1.5, 2)
+
+        testee.reset(numpy.array([[0, 2], [0, 1], [0, 1]]))
 
         self.assertEqual([testee.status(i) for i in range(num_envs)], [""] * num_envs)
 
@@ -234,10 +214,11 @@ class StoppedEnderTest(unittest.TestCase):
 
         num_envs = 3
 
-        testee = episode_ender.StoppedEnder(num_envs, 1, 0.5, 0)
+        testee = episode_ender.StoppedEnder(num_envs, 1, 0.5, 1)
+
+        testee.reset(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
         testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
-
         testing.assert_allclose(testee.is_terminated(), [False] * num_envs)
 
     def test_is_truncated_stopped(self):
@@ -247,12 +228,9 @@ class StoppedEnderTest(unittest.TestCase):
 
         testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 1)
 
-        testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
-
-        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
+        testee.reset(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
         testee.step(numpy.array([[0.6, 0], [1.4, 0], [3.6, 0], [4.4, 0]]))
-
         testing.assert_allclose(testee.is_truncated(), [True, False, False, True])
 
     def test_check_index(self):
@@ -262,12 +240,9 @@ class StoppedEnderTest(unittest.TestCase):
 
         testee = episode_ender.StoppedEnder(num_envs, 1, 0.5, 1)
 
-        testee.step(numpy.array([[0, 1], [0, 2], [0, 3], [0, 4]]))
-
-        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
+        testee.reset(numpy.array([[0, 1], [0, 2], [0, 3], [0, 4]]))
 
         testee.step(numpy.array([[0, 0.4], [0, 1.6], [0, 3.4], [0, 4.6]]))
-
         testing.assert_allclose(testee.is_truncated(), [False, True, True, False])
 
     def test_early_end_steps(self):
@@ -277,16 +252,12 @@ class StoppedEnderTest(unittest.TestCase):
 
         testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 2)
 
-        testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
+        testee.reset(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
+        testee.step(numpy.array([[0.6, 0], [1.4, 0], [3.6, 0], [4.4, 0]]))
         testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
 
         testee.step(numpy.array([[0.6, 0], [1.4, 0], [3.6, 0], [4.4, 0]]))
-
-        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
-
-        testee.step(numpy.array([[0.6, 0], [1.4, 0], [3.6, 0], [4.4, 0]]))
-
         testing.assert_allclose(testee.is_truncated(), [True, False, False, True])
 
     def test_slow_move(self):
@@ -297,16 +268,12 @@ class StoppedEnderTest(unittest.TestCase):
 
         testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 2)
 
-        testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
-
-        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
+        testee.reset(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
         testee.step(numpy.array([[0.7, 0], [2.3, 0], [2.8, 0], [4.2, 0]]))
-
         testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
 
         testee.step(numpy.array([[0.4, 0], [2.6, 0], [2.6, 0], [4.4, 0]]))
-
         testing.assert_allclose(testee.is_truncated(), [False, False, True, True])
 
     def test_reset(self):
@@ -316,19 +283,20 @@ class StoppedEnderTest(unittest.TestCase):
 
         testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 2)
 
-        testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
+        testee.reset(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
+        testee.step(numpy.array([[0.6, 0], [1.6, 0], [3.4, 0], [4.4, 0]]))
         testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
 
-        testee.step(numpy.array([[0.6, 0], [1.4, 0], [3.6, 0], [4.4, 0]]))
+        testee.reset(
+            numpy.array([[0.6, 0], [5.4, 0]]), numpy.array([True, False, True, False])
+        )
 
-        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
+        testee.step(numpy.array([[0.6, 0], [1.6, 0], [5.4, 0], [4.4, 0]]))
+        testing.assert_allclose(testee.is_truncated(), [False, True, False, True])
 
-        testee.reset(numpy.array([True, False, True, False]))
-
-        testee.step(numpy.array([[0.6, 0], [1.4, 0], [3.6, 0], [4.4, 0]]))
-
-        testing.assert_allclose(testee.is_truncated(), [False, False, False, True])
+        testee.step(numpy.array([[0.6, 0], [1.6, 0], [5.4, 0], [4.4, 0]]))
+        testing.assert_allclose(testee.is_truncated(), [True] * num_envs)
 
     def test_status_properly_reports(self):
         """Tests status returns a string that shows how close the episode is to ending."""
@@ -337,9 +305,7 @@ class StoppedEnderTest(unittest.TestCase):
 
         testee = episode_ender.StoppedEnder(num_envs, 0, 0.5, 2)
 
-        self.assertEqual([testee.status(i) for i in range(num_envs)], [""] * num_envs)
-
-        testee.step(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
+        testee.reset(numpy.array([[1, 0], [2, 0], [3, 0], [4, 0]]))
 
         self.assertEqual([testee.status(i) for i in range(num_envs)], [""] * num_envs)
 
