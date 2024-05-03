@@ -153,10 +153,9 @@ class WrapperObserver(BaseObserver):
         )
 
 
-class DifferenceObserver(WrapperObserver):
+class DeltaObserver(WrapperObserver):
     # pylint: disable=too-few-public-methods
-    """A state observer whose observations are the temporal differences in the
-    observations from some other observers."""
+    """An observer that observers changes in the observations of other observers."""
 
     def __init__(
         self,
@@ -164,15 +163,17 @@ class DifferenceObserver(WrapperObserver):
         include_original: bool = False,
         max_change: SupportsFloat | NDArray[numpy.float32] | None = None,
     ):
-        """Creates a DifferenceObserver.
+        """Creates a DeltaObserver.
 
         Args:
-            observers: The wrapped observers, whose temporal differences in observation
-                will be appended and returned as an observation.
-            include_original: Whether or not to include the wrapped observer's
-                observations in the observation alongside the diff.
-            max_change: The maximum amount of difference possible. If None, will be
-                calculated from the wrapped observation space."""
+            observers: The wrapped observers, whose observations the DeltaObserver will
+                observe changes in.
+            include_original: Whether or not to include the wrapped observers'
+                observations in the observation alongside the change.
+            max_change: The maximum amount of change possible. If None, will be
+                calculated from the wrapped observation space. If multidimensional,
+                numpy.nan entries will be calculated from the wrapped observation
+                space."""
 
         if not isinstance(observers, Sequence):
             observers = [observers]
@@ -218,8 +219,8 @@ class DifferenceObserver(WrapperObserver):
         )
 
     def observe(self, state: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
-        """Produces a batch of observations which are the temporal differences of, and
-        optionally include, the observations from the wrapped observer.
+        """Produces a batch of observations which are the changes in, and optionally
+        include, the observations from the wrapped observers.
 
         Args:
             state: The state of some batch of POMDPs.

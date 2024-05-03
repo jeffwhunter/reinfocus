@@ -39,9 +39,9 @@ def fading_colours(cmap: colors.Colormap, max_n: int, n: int, p: int = 2):
     return colours
 
 
-class IVisualizer(Protocol, Generic[ObservationT_contra, StateT_contra]):
+class IEpisodeVisualizer(Protocol, Generic[ObservationT_contra, StateT_contra]):
     # pylint: disable=too-few-public-methods, unnecessary-ellipsis
-    """The base that visualizers must follow."""
+    """The base that episode visualizers must follow."""
 
     def step(self, states: StateT_contra, observations: NDArray[ObservationT_contra]):
         """Update the visualizer with a batch of states and observations. Should only be
@@ -72,7 +72,7 @@ class IVisualizer(Protocol, Generic[ObservationT_contra, StateT_contra]):
         ...
 
 
-class FocusHistoryVisualizer(IVisualizer):
+class HistoryVisualizer(IEpisodeVisualizer):
     # pylint: disable=too-many-instance-attributes
     """Produces images of a batch of agents' performance in a number of focus
     environments. Renderings of the environments are on the left, while plots of the
@@ -87,12 +87,12 @@ class FocusHistoryVisualizer(IVisualizer):
         focus_value_index: int,
         worlds: world.FocusWorlds,
         limits: tuple[float, float],
-        ender: episode_ender.IEnder[NDArray[numpy.float32]] | None = None,
+        ender: episode_ender.IEpisodeEnder[NDArray[numpy.float32]] | None = None,
         history_length: int = 10,
         target_radius: float | None = None,
     ):
         # pylint: disable=too-many-arguments
-        """Creates a FocusHistoryVisualizer.
+        """Creates a HistoryVisualizer.
 
         Args:
             num_envs: The number of environments to visualize.

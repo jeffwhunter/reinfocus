@@ -17,7 +17,7 @@ class DivergingEnderTest(unittest.TestCase):
 
         num_envs = 3
 
-        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0)
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 0)
 
         testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
         testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
@@ -30,7 +30,7 @@ class DivergingEnderTest(unittest.TestCase):
 
         num_envs = 3
 
-        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 2)
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 2)
 
         testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
@@ -43,12 +43,31 @@ class DivergingEnderTest(unittest.TestCase):
         testee.step(numpy.array([[-1, -0.5], [0, -0.6], [1.5, 0.5]]))
         testing.assert_allclose(testee.is_truncated(), [True] * num_envs)
 
+    def test_is_truncated_threshold(self):
+        """Tests that is_truncated only ends the episode when state elements diverge 
+        farther than the threshold."""
+
+        num_envs = 3
+
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0.25, 2)
+
+        testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
+
+        testee.step(numpy.array([[-1, -0.5], [0, -0.5], [1.5, 1]]))
+        testing.assert_allclose(testee.is_truncated(), [False] * num_envs)
+
+        testee.step(numpy.array([[-1, -0.6], [0, -0.6], [1.5, 0.5]]))
+        testing.assert_allclose(testee.is_truncated(), [False, False, True])
+
+        testee.step(numpy.array([[-1, -0.5], [0, -0.9], [1.5, 0.5]]))
+        testing.assert_allclose(testee.is_truncated(), [False, True, True])
+
     def test_reset(self):
         """Tests that truncation responds appropriately after a reset."""
 
         num_envs = 3
 
-        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 2)
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 2)
 
         testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 
@@ -68,7 +87,7 @@ class DivergingEnderTest(unittest.TestCase):
 
         num_envs = 3
 
-        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 2)
+        testee = episode_ender.DivergingEnder(num_envs, (0, 1), 0, 2)
 
         testee.step(numpy.array([[-1, -1], [0, 0], [1, 1]]))
 

@@ -184,8 +184,8 @@ class WrapperObserverTest(unittest.TestCase):
             observer.reset.assert_called_once()
 
 
-class DifferenceObserverTest(unittest.TestCase):
-    """Test cases for reinfocus.environments.state_observer.DifferenceObserver."""
+class DeltaObserverTest(unittest.TestCase):
+    """Test cases for reinfocus.environments.state_observer.DeltaObserver."""
 
     def test_spaces(self):
         """Tests that the observation space has an appropriately sized low and high."""
@@ -197,7 +197,7 @@ class DifferenceObserverTest(unittest.TestCase):
 
         target_diff = original_high - original_low
 
-        observation_space = state_observer.DifferenceObserver(
+        observation_space = state_observer.DeltaObserver(
             make_observer(num_envs, spaces.Box(original_low, original_high))
         ).observation_space
 
@@ -218,7 +218,7 @@ class DifferenceObserverTest(unittest.TestCase):
 
         target_diff = 1
 
-        observation_space = state_observer.DifferenceObserver(
+        observation_space = state_observer.DeltaObserver(
             make_observer(num_envs, spaces.Box(2, 5)), max_change=target_diff
         ).observation_space
 
@@ -237,7 +237,7 @@ class DifferenceObserverTest(unittest.TestCase):
 
         num_envs = 4
 
-        observation_space = state_observer.DifferenceObserver(
+        observation_space = state_observer.DeltaObserver(
             [
                 make_observer(num_envs, spaces.Box(2, 5)),
                 make_observer(
@@ -267,7 +267,7 @@ class DifferenceObserverTest(unittest.TestCase):
 
         target_diff = original_high - original_low
 
-        observation_space = state_observer.DifferenceObserver(
+        observation_space = state_observer.DeltaObserver(
             make_observer(num_envs, spaces.Box(original_low, original_high)),
             include_original=True,
         ).observation_space
@@ -284,15 +284,15 @@ class DifferenceObserverTest(unittest.TestCase):
         )
 
     def test_observation(self):
-        """Tests that DifferenceObserver correctly returns observations that are the
-        temporal difference in observations of some wrapped observer."""
+        """Tests that DeltaObserver correctly returns observations that are the change in
+        observations of some wrapped observer."""
 
         num_envs = 3
         state_shape = (num_envs, 1)
 
         observer = make_observer(num_envs=num_envs)
 
-        testee = state_observer.DifferenceObserver(observer)
+        testee = state_observer.DeltaObserver(observer)
 
         testing.assert_allclose(
             testee.observe(numpy.reshape([0, 1, 2], state_shape)), [[0], [0], [0]]
@@ -302,9 +302,8 @@ class DifferenceObserverTest(unittest.TestCase):
         )
 
     def test_observation_with_original(self):
-        """Tests that DifferenceObserver correctly returns observations that are appended
-        combinations of observations and their temporal differences of some wrapped
-        observer."""
+        """Tests that DeltaObserver correctly returns observations from some wrapped
+        observer appened to changes in those observations over time."""
 
         num_envs = 3
         state_shape = (num_envs, 1)
@@ -315,7 +314,7 @@ class DifferenceObserverTest(unittest.TestCase):
             observe=lambda state: numpy.hstack([-state, state]),
         )
 
-        testee = state_observer.DifferenceObserver(observer, include_original=True)
+        testee = state_observer.DeltaObserver(observer, include_original=True)
 
         testing.assert_allclose(
             testee.observe(numpy.reshape([0, 1, 2], state_shape)),
@@ -327,7 +326,7 @@ class DifferenceObserverTest(unittest.TestCase):
         )
 
     def test_observation_with_reset(self):
-        """Tests that DifferenceObserver correctly observes no change immediately after
+        """Tests that DeltaObserver correctly observes no change immediately after
         being reset."""
 
         num_envs = 2
@@ -335,7 +334,7 @@ class DifferenceObserverTest(unittest.TestCase):
 
         observer = make_observer(num_envs=num_envs)
 
-        testee = state_observer.DifferenceObserver(observer)
+        testee = state_observer.DeltaObserver(observer)
 
         testing.assert_allclose(
             testee.observe(numpy.reshape([0, 1], state_shape)), [[0], [0]]
@@ -348,7 +347,7 @@ class DifferenceObserverTest(unittest.TestCase):
         )
 
     def test_multidimensional_observation(self):
-        """Tests that DifferenceObserver correctly observes the difference in multiple
+        """Tests that DeltaObserver correctly observes the changes in multiple
         observers."""
 
         num_envs = 4
@@ -359,7 +358,7 @@ class DifferenceObserverTest(unittest.TestCase):
             make_observer(num_envs=num_envs, observe=lambda state: -state),
         ]
 
-        testee = state_observer.DifferenceObserver(observers)
+        testee = state_observer.DeltaObserver(observers)
 
         testing.assert_allclose(
             testee.observe(numpy.reshape([0, 1, 2, 3], state_shape)),

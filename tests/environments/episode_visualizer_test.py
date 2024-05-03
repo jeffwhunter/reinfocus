@@ -1,4 +1,4 @@
-"""Contains tests for reinfocus.environments.visualization."""
+"""Contains tests for reinfocus.episode_visualizer."""
 
 import unittest
 
@@ -7,7 +7,7 @@ import numpy
 from matplotlib import colors
 from numpy import testing
 
-from reinfocus.environments import visualization
+from reinfocus.environments import episode_visualizer
 
 
 def _simple_colormap():
@@ -17,7 +17,6 @@ def _simple_colormap():
 
 
 class FadingColoursTest(unittest.TestCase):
-    """Test cases for reinfocus.environments.visualization.fading_colours."""
 
     def test_fade(self):
         """Tests that fading_colours makes a cool fade!"""
@@ -25,7 +24,7 @@ class FadingColoursTest(unittest.TestCase):
         colour_dimension = 4
 
         testing.assert_allclose(
-            visualization.fading_colours(_simple_colormap(), 5, 3, p=1),
+            episode_visualizer.fading_colours(_simple_colormap(), 5, 3, p=1),
             [
                 (0.6,) * colour_dimension,
                 (0.8,) * colour_dimension,
@@ -38,8 +37,8 @@ class FadingColoursTest(unittest.TestCase):
 
         black_to_white = _simple_colormap()
 
-        lower = visualization.fading_colours(black_to_white, 5, 5, p=2)
-        higher = visualization.fading_colours(black_to_white, 5, 5, p=1)
+        lower = episode_visualizer.fading_colours(black_to_white, 5, 5, p=2)
+        higher = episode_visualizer.fading_colours(black_to_white, 5, 5, p=1)
 
         testing.assert_allclose(lower[-1], higher[-1])
         testing.assert_array_less(lower[:-1], higher[:-1])
@@ -48,7 +47,7 @@ class FadingColoursTest(unittest.TestCase):
         """Tests that when p is larger than one, the fade increases by more each step."""
 
         colour_differences = numpy.diff(
-            visualization.fading_colours(_simple_colormap(), 5, 5, p=3), axis=0
+            episode_visualizer.fading_colours(_simple_colormap(), 5, 5, p=3), axis=0
         )
 
         self.assertTrue(numpy.all(colour_differences[1:] > colour_differences[:-1]))

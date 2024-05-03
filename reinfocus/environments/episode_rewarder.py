@@ -14,23 +14,23 @@ from reinfocus.environments.types import (
 )
 
 
-class IRewarder(Protocol, Generic[ActionT_contra, ObservationT_contra, StateT_contra]):
+class IEpisodeRewarder(Protocol, Generic[ActionT_contra, ObservationT_contra, StateT_contra]):
     # pylint: disable=too-few-public-methods, unnecessary-ellipsis
     """The base that episode rewarders must follow."""
 
     def reward(
         self,
+        actions: NDArray[ActionT_contra],
         states: StateT_contra,
         observations: NDArray[ObservationT_contra],
-        actions: NDArray[ActionT_contra],
     ) -> NDArray[numpy.float32]:
         """Produces a batch of rewards, earned from takings actions, which lead to
         new_states, which produced new_observations.
 
         Args:
+            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
-            actions: The actions that lead to states and observations.
 
         Returns:
             A numpy array of rewards, one per environment."""
@@ -38,7 +38,7 @@ class IRewarder(Protocol, Generic[ActionT_contra, ObservationT_contra, StateT_co
         ...
 
 
-class DeltaRewarder(IRewarder, Generic[ActionT]):
+class DeltaRewarder(IEpisodeRewarder, Generic[ActionT]):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces a reward proportional to a change in state."""
 
@@ -63,17 +63,17 @@ class DeltaRewarder(IRewarder, Generic[ActionT]):
 
     def reward(
         self,
+        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        actions: NDArray[ActionT],
     ) -> NDArray[numpy.float32]:
         """Produces a batch of rewards, where the rewards will be emitted if some state
         element changes more than some threshold.
 
         Args:
+            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
-            actions: The actions that lead to states and observations.
 
         Returns:
             A numpy array of potentially emitted rewards."""
@@ -91,7 +91,7 @@ class DeltaRewarder(IRewarder, Generic[ActionT]):
         return reward
 
 
-class DistanceRewarder(IRewarder, Generic[ActionT]):
+class DistanceRewarder(IEpisodeRewarder, Generic[ActionT]):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces a reward proportional to the distance between two specific
     elements of the state."""
@@ -119,17 +119,17 @@ class DistanceRewarder(IRewarder, Generic[ActionT]):
 
     def reward(
         self,
+        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        actions: NDArray[ActionT],
     ) -> NDArray[numpy.float32]:
         """Produces a batch of rewards, where the rewards will be proportional to the
         distance between two specific elements of the state.
 
         Args:
+            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
-            actions: The actions that lead to states and observations.
 
         Returns:
             A numpy array of rewards which are proportional to the distance between two
@@ -142,7 +142,7 @@ class DistanceRewarder(IRewarder, Generic[ActionT]):
         ) * (self._high - self._low) + self._low
 
 
-class ObservationRewarder(IRewarder, Generic[ActionT]):
+class ObservationRewarder(IEpisodeRewarder, Generic[ActionT]):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces rewards by copying them from a specific element of the
     observation."""
@@ -158,17 +158,17 @@ class ObservationRewarder(IRewarder, Generic[ActionT]):
 
     def reward(
         self,
+        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        actions: NDArray[ActionT],
     ) -> NDArray[numpy.float32]:
         """Produces a batch of rewards, where the rewards are copied from some element of
         the observations.
 
         Args:
+            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
-            actions: The actions that lead to states and observations.
 
         Returns:
             A numpy array of rewards copied from observations."""
@@ -176,7 +176,7 @@ class ObservationRewarder(IRewarder, Generic[ActionT]):
         return observations[:, self._reward_observation_index]
 
 
-class OnTargetRewarder(IRewarder, Generic[ActionT]):
+class OnTargetRewarder(IEpisodeRewarder, Generic[ActionT]):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces two different rewards, produced when two elements of the
     state are and aren't close enough."""
@@ -205,17 +205,17 @@ class OnTargetRewarder(IRewarder, Generic[ActionT]):
 
     def reward(
         self,
+        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        actions: NDArray[ActionT],
     ) -> NDArray[numpy.float32]:
         """Produces a batch of rewards, where the rewards will take one value if two
         elements of the state are close enough, and another value otherwise.
 
         Args:
+            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
-            actions: The actions that lead to states and observations.
 
         Returns:
             A numpy array of rewards which take on of two values depending on if two
@@ -231,11 +231,11 @@ class OnTargetRewarder(IRewarder, Generic[ActionT]):
         return rewards
 
 
-class SumRewarder(IRewarder, Generic[ActionT]):
+class SumRewarder(IEpisodeRewarder, Generic[ActionT]):
     # pylint: disable=too-few-public-methods
     """A rewarder that returns the sum of other rewarder's rewards as it's own reward."""
 
-    def __init__(self, *rewarders: IRewarder):
+    def __init__(self, *rewarders: IEpisodeRewarder):
         """Creates a SumRewarder.
 
         Args:
@@ -247,24 +247,24 @@ class SumRewarder(IRewarder, Generic[ActionT]):
 
     def reward(
         self,
+        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        actions: NDArray[ActionT],
     ) -> NDArray[numpy.float32]:
         """Produces a batch of rewards, where the rewards will be the sum of rewards
         produced by other rewarders.
 
         Args:
+            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
-            actions: The actions that lead to states and observations.
 
         Returns:
             A numpy array of the summed rewards"""
 
         return numpy.sum(
             [
-                rewarder.reward(states, observations, actions)
+                rewarder.reward(actions, states, observations)
                 for rewarder in self._rewarders
             ],
             axis=0,

@@ -10,7 +10,7 @@ from reinfocus import histories
 from reinfocus.environments.types import StateT_contra
 
 
-class IEnder(Protocol, Generic[StateT_contra]):
+class IEpisodeEnder(Protocol, Generic[StateT_contra]):
     # pylint: disable=unnecessary-ellipsis
     """The base that episode enders must follow."""
 
@@ -67,16 +67,17 @@ class IEnder(Protocol, Generic[StateT_contra]):
         ...
 
 
-class DivergingEnder(IEnder):
+class DivergingEnder(IEpisodeEnder):
     # pylint: disable=unnecessary-ellipsis
     """An episode ender that handles states in the form of numpy arrays. Will truncate an
-    episode if two elements of the state spend enough non-consecutive steps moving away
-    from each other."""
+    episode if two elements of the state spend enough non-consecutive steps away from each
+    other that are larger than some threshold."""
 
     def __init__(
         self,
         num_envs: int,
         check_indices: tuple[int, int],
+        threshold: float,
         early_end_steps: int = 10,
     ):
         """Creates a DivergingEnder.
@@ -90,6 +91,7 @@ class DivergingEnder(IEnder):
 
         self._num_envs = num_envs
         self._check_indices = check_indices
+        self._threshold = threshold
         self._early_end_steps = early_end_steps
         self._diverging_steps = numpy.zeros(num_envs, dtype=numpy.int32)
         self._last_diff = numpy.full(num_envs, numpy.inf, dtype=numpy.float32)
@@ -103,7 +105,7 @@ class DivergingEnder(IEnder):
 
         diff = abs(states[:, self._check_indices[0]] - states[:, self._check_indices[1]])
 
-        diverging = diff > self._last_diff
+        diverging = diff > self._last_diff + self._threshold
 
         self._diverging_steps[diverging] += 1
 
@@ -162,7 +164,7 @@ class DivergingEnder(IEnder):
         )
 
 
-class EndlessEnder(IEnder):
+class EndlessEnder(IEpisodeEnder):
     # pylint: disable=unnecessary-ellipsis
     """An episode ender that handles any state and will never truncate or terminate."""
 
@@ -222,7 +224,7 @@ class EndlessEnder(IEnder):
         return ""
 
 
-class OnTargetEnder(IEnder):
+class OnTargetEnder(IEpisodeEnder):
     """An episode ender that handles states in the form of numpy arrays. Will truncate an
     episode if two elements come within some distance for some number of timesteps."""
 
@@ -313,7 +315,7 @@ class OnTargetEnder(IEnder):
         return f"on target {on_step} / {self._early_end_steps}" if on_step > 0 else ""
 
 
-class StoppedEnder(IEnder):
+class StoppedEnder(IEpisodeEnder):
     """An episode ender that handles states in the form of numpy arrays. Will truncate an
     episode if some element of the state hasn't moved more than some threshold over some
     amount of prior steps. That is, the episode will end if some element of the state has

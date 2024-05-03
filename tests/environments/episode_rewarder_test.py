@@ -23,8 +23,8 @@ class DeltaRewarderTest(unittest.TestCase):
 
         testing.assert_allclose(
             testee.reward(
-                numpy.array([[4, 1], [3, 2], [2, 3], [1, 4]]),
                 numpy.array([]),
+                numpy.array([[4, 1], [3, 2], [2, 3], [1, 4]]),
                 numpy.array([]),
             ),
             [0, 0, 0, 0],
@@ -32,8 +32,8 @@ class DeltaRewarderTest(unittest.TestCase):
 
         testing.assert_allclose(
             testee.reward(
-                numpy.array([[4, 1], [3, 4], [2, 1], [1, 5]]),
                 numpy.array([]),
+                numpy.array([[4, 1], [3, 4], [2, 1], [1, 5]]),
                 numpy.array([]),
             ),
             [0, -1, -1, -0.5],
@@ -41,8 +41,8 @@ class DeltaRewarderTest(unittest.TestCase):
 
         testing.assert_allclose(
             testee.reward(
-                numpy.array([[4, 0.6], [3, 1], [2, 4], [1, 3.5]]),
                 numpy.array([]),
+                numpy.array([[4, 0.6], [3, 1], [2, 4], [1, 3.5]]),
                 numpy.array([]),
             ),
             [-0.2, -1.5, -1.5, -0.75],
@@ -58,8 +58,8 @@ class DistanceRewarderTest(unittest.TestCase):
 
         testing.assert_allclose(
             episode_rewarder.DistanceRewarder((0, 1), 1, -3, 7).reward(
-                numpy.array([[0, 0], [0, 1], [1, 0], [1, 1], [1, 0.5], [0.5, 0]]),
                 numpy.array([]),
+                numpy.array([[0, 0], [0, 1], [1, 0], [1, 1], [1, 0.5], [0.5, 0]]),
                 numpy.array([]),
             ),
             [7, -3, -3, 7, 2, 2],
@@ -78,8 +78,8 @@ class ObservationRewarderTest(unittest.TestCase):
         testing.assert_allclose(
             episode_rewarder.ObservationRewarder(0).reward(
                 numpy.array([]),
-                observations,
                 numpy.array([]),
+                observations,
             ),
             [4, 3, 2, 1],
         )
@@ -87,8 +87,8 @@ class ObservationRewarderTest(unittest.TestCase):
         testing.assert_allclose(
             episode_rewarder.ObservationRewarder(1).reward(
                 numpy.array([]),
-                observations,
                 numpy.array([]),
+                observations,
             ),
             [1, 2, 3, 4],
         )
@@ -103,8 +103,8 @@ class OnTargetRewarderTest(unittest.TestCase):
 
         testing.assert_allclose(
             episode_rewarder.OnTargetRewarder((0, 1), 0.1, -3, 7).reward(
-                numpy.array([[0.5, 0.65], [0.5, 0.55], [0.5, 0.45], [0.5, 0.35]]),
                 numpy.array([]),
+                numpy.array([[0.5, 0.65], [0.5, 0.55], [0.5, 0.45], [0.5, 0.35]]),
                 numpy.array([]),
             ),
             [-3, 7, 7, -3],

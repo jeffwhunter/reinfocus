@@ -9,10 +9,10 @@ from numpy.typing import NDArray
 
 from reinfocus.environments import episode_ender
 from reinfocus.environments import episode_rewarder
+from reinfocus.environments import episode_visualizer
 from reinfocus.environments import state_observer
 from reinfocus.environments import state_initializer
 from reinfocus.environments import state_transformer
-from reinfocus.environments import visualization
 from reinfocus.environments.types import ActionT, ObservationT, StateT
 
 
@@ -24,12 +24,12 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
 
     def __init__(
         self,
-        ender: episode_ender.IEnder[StateT],
+        ender: episode_ender.IEpisodeEnder[StateT],
         initializer: state_initializer.IStateInitializer[StateT],
         observer: state_observer.IStateObserver[ObservationT, StateT],
-        rewarder: episode_rewarder.IRewarder[ActionT, ObservationT, StateT],
+        rewarder: episode_rewarder.IEpisodeRewarder[ActionT, ObservationT, StateT],
         transformer: state_transformer.IStateTransformer[ActionT, StateT],
-        visualizer: visualization.IVisualizer[ObservationT, StateT],
+        visualizer: episode_visualizer.IEpisodeVisualizer[ObservationT, StateT],
         render_mode: str | None = None,
     ):
         # pylint: disable=too-many-arguments
@@ -122,7 +122,7 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
 
         return (
             observations[0],
-            self._rewarder.reward(self._state, observations, actions)[0],
+            self._rewarder.reward(actions, self._state, observations)[0],
             self._ender.is_terminated()[0],
             self._ender.is_truncated()[0],
             {},
