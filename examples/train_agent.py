@@ -48,6 +48,8 @@ sys.argv = [
     "-P",
     "--tensorboard-log",
     "tensorboard-log/",
+    "--device",
+    "cuda",
 ]
 
 train.train()

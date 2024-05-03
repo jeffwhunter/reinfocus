@@ -3,6 +3,7 @@
 import argparse
 import pathlib
 import sys
+import yaml
 
 from typing import Any
 
@@ -32,18 +33,17 @@ parser.add_argument(
     required=True,
     choices=samplers.keys(),
 )
-parser.add_argument(
-    "-c",
-    "--continuous",
-    help="Include hyperparameters for continuous action spaces",
-    action="store_true",
-)
 
 args = parser.parse_args()
 
 examples = pathlib.Path(__file__).parent
 
 sys.path.append(str(examples.parent))
+
+CONFIG_FILENAME = str(examples / f"{args.algo}_untuned.yml")
+
+with open(CONFIG_FILENAME, encoding="utf-8") as config_file:
+    continuous = yaml.safe_load(config_file)[args.env].get("use_sde", False)
 
 sys.argv = [
     "python",
@@ -59,11 +59,13 @@ sys.argv = [
     "--n-evaluations",
     "4",
     "--conf-file",
-    str(examples / f"{args.algo}_untuned.yml"),
+    CONFIG_FILENAME,
     "--num-threads",
     "20",
     "--n-jobs",
     "20",
+    "--device",
+    "cuda",
 ]
 
 
@@ -89,7 +91,7 @@ def sample_continuous_params(
     return hyperparams
 
 
-if args.continuous:
+if continuous:
     hyperparams_opt.HYPERPARAMS_SAMPLER[args.algo] = sample_continuous_params
 
 train.train()

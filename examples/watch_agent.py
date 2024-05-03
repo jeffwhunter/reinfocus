@@ -46,6 +46,9 @@ sys.argv = [
     "logs/",
     "--exp-id",
     args.exp_id,
+    "--deterministic",
+    "--device",
+    "cuda",
 ]
 
 enjoy.enjoy()

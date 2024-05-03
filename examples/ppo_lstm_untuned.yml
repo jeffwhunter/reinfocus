@@ -1,6 +1,16 @@
 # Example of untuned hyperparameters for ppo_lstm
+
 DiscreteSteps-v0:
   normalize: true
   n_envs: 8
-  n_timesteps: !!float 1e4
+  n_timesteps: !!float 5e4
   policy: 'MlpLstmPolicy'
+  frame_stack: 5
+
+ContinuousJumps-v0:
+  normalize: true
+  n_envs: 8
+  n_timesteps: !!float 5e4
+  policy: 'MlpLstmPolicy'
+  frame_stack: 5
+  use_sde: True
