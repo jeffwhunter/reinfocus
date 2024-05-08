@@ -274,6 +274,7 @@ class ContinuousJumps(environment.Environment):
                 1,
                 focus_position_s_index,
                 ends,
+                target_radius / 2.0,
             ),
             visualizer=episode_visualizer.HistoryVisualizer(
                 1,

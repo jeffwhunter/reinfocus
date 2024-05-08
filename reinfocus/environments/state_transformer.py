@@ -12,11 +12,7 @@ from gymnasium import spaces
 from gymnasium.vector import utils
 from numpy.typing import NDArray
 
-from reinfocus.environments.types import (
-    ActionT,
-    ActionT_contra,
-    StateT,
-)
+from reinfocus.environments.types import ActionT, ActionT_contra, StateT
 
 
 class IStateTransformer(Generic[ActionT_contra, StateT], Protocol):
@@ -73,18 +69,27 @@ class ContinuousJumpTransformer(StateTransformer):
     state to positions within the state space proportional to the actions' positions
     within the action space."""
 
-    def __init__(self, num_envs: int, move_index: int, limits: tuple[float, float]):
+    def __init__(
+        self,
+        num_envs: int,
+        move_index: int,
+        limits: tuple[float, float],
+        stop_threshold: float = 0.1,
+    ):
         """Creates a ContinuousJumpTransformer.
 
         Args:
             num_envs: The number of states this state transformer will transform.
             move_index: The index of the state element to move.
-            limits: The lower and upper bounds that elements of the state may move to."""
+            limits: The lower and upper bounds that elements of the state may move to.
+            stop_threshold: Actions that result in moves under this magnitude are
+                stopped."""
 
         super().__init__(num_envs, spaces.Box(-1, 1, dtype=numpy.float32))
 
         self._limits = limits
         self._move_index = move_index
+        self._stop_threshold = abs(stop_threshold)
 
     def transform(
         self, states: NDArray[numpy.float32], actions: NDArray[numpy.float32]
@@ -102,11 +107,13 @@ class ContinuousJumpTransformer(StateTransformer):
 
         new_states = states.copy()
 
-        unit_actions = (actions.flatten() + 1) / 2.0
+        actions = (actions.flatten() + 1) / 2.0
 
-        new_states[:, self._move_index] = (
-            unit_actions * (self._limits[1] - self._limits[0]) + self._limits[0]
-        )
+        moved_states = actions * (self._limits[1] - self._limits[0]) + self._limits[0]
+
+        moved = abs(new_states[:, self._move_index] - moved_states) > self._stop_threshold
+
+        new_states[moved, self._move_index] = moved_states[moved]
 
         return new_states
 
@@ -117,21 +124,30 @@ class ContinuousMoveTransformer(StateTransformer):
     state some distance proportional to the action."""
 
     def __init__(
-        self, num_envs: int, move_index: int, limits: tuple[float, float], speed: float
+        self,
+        num_envs: int,
+        move_index: int,
+        limits: tuple[float, float],
+        speed: float,
+        stop_threshold: float = 0.1,
     ):
+        # pylint: disable=too-many-arguments
         """Creates a ContinuousMoveTransformer.
 
         Args:
             num_envs: The number of states this state transformer will transform.
             move_index: The index of the state element to move.
             limits: The lower and upper bounds that elements of the state may move to.
-            speed: How far an action of -1 or 1 will move the state."""
+            speed: How far an action of -1 or 1 will move the state.
+            stop_threshold: Actions that result in moves under this magnitude are
+                stopped."""
 
         super().__init__(num_envs, spaces.Box(-1, 1, dtype=numpy.float32))
 
         self._limits = limits
         self._move_index = move_index
         self._speed = speed
+        self._stop_threshold = abs(stop_threshold)
 
     def transform(
         self, states: NDArray[numpy.float32], actions: NDArray[numpy.float32]
@@ -148,9 +164,9 @@ class ContinuousMoveTransformer(StateTransformer):
 
         new_states = states.copy()
 
-        new_states[:, self._move_index] += (
-            numpy.clip(actions.flatten(), -1, 1) * self._speed
-        )
+        actions = numpy.clip(actions.flatten(), -1, 1) * self._speed
+
+        new_states[:, self._move_index] += (abs(actions) > self._stop_threshold) * actions
         new_states = numpy.clip(new_states, *self._limits)
 
         return new_states

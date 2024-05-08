@@ -42,6 +42,8 @@ def make_initializer(*initial_states: IState) -> mock.Mock:
 
     Returns:
         A mocked state initializer."""
+    
+    assert len(initial_states) > 0
 
     initializer = mock.Mock()
     if len(initial_states) > 1:

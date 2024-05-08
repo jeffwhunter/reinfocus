@@ -14,12 +14,8 @@ from numpy.typing import NDArray
 
 from reinfocus import vision
 
-from reinfocus.environments.types import (
-    ObservationT_co,
-    StateT_contra,
-)
+from reinfocus.environments.types import ObservationT_co, StateT_contra
 from reinfocus.graphics import render
-from reinfocus.graphics import world
 
 
 class IStateObserver(Protocol, Generic[ObservationT_co, StateT_contra]):
