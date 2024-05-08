@@ -6,7 +6,6 @@ import numpy
 
 from reinfocus import vision
 from reinfocus.graphics import render
-from reinfocus.graphics import world
 
 
 class FocusValueTest(unittest.TestCase):
@@ -44,10 +43,11 @@ class FocusValuesTest(unittest.TestCase):
 
         num_envs = 5
 
-        worlds = world.FocusWorlds(num_envs)
-        worlds.update_targets([10] * num_envs)
+        renderer = render.FastRenderer()
+        renderer.update_targets([10] * num_envs)
+        renderer.update_focus_planes([40, 20, 10, 5, 1])
 
-        focus_values = vision.focus_values(render.fast_render(worlds, [40, 20, 10, 5, 1]))
+        focus_values = vision.focus_values(renderer.render(300))
 
         self.assertGreater(focus_values[2], focus_values[3])
         self.assertGreater(focus_values[3], focus_values[4])

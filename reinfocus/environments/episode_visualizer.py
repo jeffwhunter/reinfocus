@@ -85,7 +85,7 @@ class HistoryVisualizer(IEpisodeVisualizer):
         target_index: int,
         focus_plane_index: int,
         focus_value_index: int,
-        worlds: world.FocusWorlds,
+        renderer: render.FastRenderer,
         limits: tuple[float, float],
         ender: episode_ender.IEpisodeEnder[NDArray[numpy.float32]] | None = None,
         history_length: int = 10,
@@ -114,7 +114,7 @@ class HistoryVisualizer(IEpisodeVisualizer):
         self._history_length = history_length
         self._target_radius = target_radius
         self._ender = ender
-        self._worlds = worlds
+        self._renderer = renderer
 
         self._current_moves = numpy.zeros(num_envs, dtype=numpy.int32)
         self._targets = numpy.zeros(num_envs, dtype=numpy.float32)
@@ -160,9 +160,7 @@ class HistoryVisualizer(IEpisodeVisualizer):
         Returns:
             A single image showing the performance in all environments."""
 
-        renderings = render.fast_render(
-            self._worlds, self._move_histories.most_recent_events(), (600, 600)
-        )
+        renderings = self._renderer.render(600)
 
         graphs = [self._visualize_single_history(i) for i in range(self._num_envs)]
 

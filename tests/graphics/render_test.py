@@ -80,52 +80,40 @@ class RenderTest(testing.CUDATestCase):
         )
 
 
-class FastRenderTest(testing.CUDATestCase):
-    """Test cases for reinfocus.graphics.render.fast_[device_]render."""
+class FastRendererTest(testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.render.FastRenderer."""
 
-    def test_device_average_colour(self):
-        """Tests that fast_device_render produces a known image for a known set of
-        parameters."""
+    def test_render(self):
+        """Tests that render produces a known image for a known set of parameters."""
 
-        frame_shape = (1, 300, 300)
+        targets = [10]
 
-        frame = render.make_render_target(frame_shape)
+        testee = render.FastRenderer(r_size=30)
+        testee.update_targets(targets)
+        testee.update_focus_planes(targets)
 
-        world_data = world.FocusWorlds(1)
-        world_data.update_targets([10], r_size=30)
-
-        cameras = camera.FastCameras([10])
-
-        cutil.launcher(render.fast_device_render, frame_shape)(
-            frame,
-            cameras.device_data(),
-            100,
-            random.make_random_states(int(numpy.prod(frame_shape)), 0),
-            world_data.device_data(),
-        )
-
-        average_colour = numpy.average(frame.copy_to_host(), axis=(0, 1, 2))
+        average_colour = numpy.average(testee.render(300), axis=(0, 1, 2))
 
         self.assertTrue(numpy.all(average_colour >= numpy.multiply([0.25, 0.25, 0], 255)))
         self.assertTrue(numpy.all(average_colour <= numpy.multiply([0.5, 0.5, 0], 255)))
 
-    def test_average_colour(self):
-        """Tests that fast_render produces a known image for a known set of parameters."""
+    def test_random_states_grow(self):
+        """Tests that enough random states are created if the frame grows, and that
+        they're still usable with smaller frames."""
 
-        world_data = world.FocusWorlds(1)
-        world_data.update_targets([10], r_size=30)
+        targets = [10]
 
-        average_colour = numpy.average(
-            render.fast_render(
-                world_data=world_data,
-                focus_distances=[10],
-                frame_shape=(300, 300),
-            ),
-            axis=(0, 1, 2),
-        )
+        testee = render.FastRenderer()
+        testee.update_targets(targets)
+        testee.update_focus_planes(targets)
 
-        self.assertTrue(numpy.all(average_colour >= numpy.multiply([0.25, 0.25, 0], 255)))
-        self.assertTrue(numpy.all(average_colour <= numpy.multiply([0.5, 0.5, 0], 255)))
+        testee.render(300)
+        testee.render(600)
+
+        result = testee.render(300)
+
+        self.assertTrue(numpy.all(result <= 255))
+        self.assertTrue(numpy.all(result >= 0))
 
 
 if __name__ == "__main__":

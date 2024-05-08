@@ -8,6 +8,9 @@ import numpy
 
 from numba import cuda
 from numba.cuda.cudadrv.devicearray import DeviceNDArray
+from numpy.typing import NDArray
+
+from reinfocus.graphics import device_data
 from reinfocus.graphics import random
 from reinfocus.graphics import ray
 from reinfocus.graphics import vector
@@ -88,7 +91,7 @@ class Cameras:
         return self._d_cameras
 
 
-class FastCameras:
+class FastCameras(device_data.DeviceData):
     # pylint: disable=too-few-public-methods
     """A collection of cameras that can be conveniently transfered to the GPU. Reduces the
     amound of GPU data needed by assuming all cameras will have the same properties except
@@ -96,7 +99,6 @@ class FastCameras:
 
     def __init__(
         self,
-        focus_planes: Collection[float],
         aspect_ratio: float = 1,
         look_from: vector.V3F = vector.v3f(0, 0, 0),
         look_at: vector.V3F = vector.v3f(0, 0, -10),
@@ -108,7 +110,6 @@ class FastCameras:
         """Creates a FastCameras.
 
         Args:
-            focus_planes: The focus planes of the various cameras to create.
             aspect_ratio: The aspect ratio of all cameras.
             look_from: The position of all cameras.
             look_at: The direction all cameras are looking in.
@@ -116,49 +117,66 @@ class FastCameras:
             aperture: The aperture of all cameras.
             vfov: The vertical field of view of all cameras."""
 
-        half_height = math.tan((vfov * math.pi / 180.0) / 2.0)
-        half_width = aspect_ratio * half_height
+        super().__init__()
 
-        w = vector.norm_v3f(vector.sub_v3f(look_from, look_at))
-        u = vector.norm_v3f(vector.cross_v3f(up, w))
-        v = vector.cross_v3f(w, u)
+        self._look_from = look_from
 
-        parameters = numpy.array(
-            [
-                [
-                    vector.sub_v3f(
-                        look_from,
-                        vector.add_v3f(
-                            (
-                                vector.smul_v3f(u, half_width * focus_plane),
-                                vector.smul_v3f(v, half_height * focus_plane),
-                                vector.smul_v3f(w, focus_plane),
-                            )
-                        ),
-                    ),
-                    vector.smul_v3f(u, 2.0 * half_width * focus_plane),
-                    vector.smul_v3f(v, 2.0 * half_height * focus_plane),
-                ]
-                for focus_plane in focus_planes
-            ],
-            dtype=numpy.float32,
-        )
+        self._half_aperture = numpy.divide(aperture, 2.0)
+        self._half_height = math.tan((vfov * math.pi / 180.0) / 2.0)
+        self._half_width = aspect_ratio * self._half_height
 
-        self._d_fast_cameras = (
-            cuda.to_device(parameters),
-            look_from,
-            u,
-            v,
-            numpy.divide(aperture, 2.0),
-        )
+        self._w = vector.norm_v3f(vector.sub_v3f(look_from, look_at))
+        self._u = vector.norm_v3f(vector.cross_v3f(up, self._w))
+        self._v = vector.cross_v3f(self._w, self._u)
 
-    def device_data(self) -> FastGpuCameras:
-        """Returns a tuple containing all the properties of these cameras.
+    def _make_device_data(self, data: NDArray[numpy.float32]) -> FastGpuCameras:
+        """Calculates the final camera data needed to run the ray tracer by transforming
+        data, a list containing the focus plane position of each environment.
+
+        Args:
+            data: A list of floats containing the focus plane position of each
+                environment.
 
         Returns:
-            A tuple containing all the properties of these cameras."""
+            The processed data necessary for rendering scenes from the viewpoints of the
+            contained cameras."""
 
-        return self._d_fast_cameras
+        return (
+            cuda.to_device(
+                numpy.array(
+                    [
+                        [
+                            vector.sub_v3f(
+                                self._look_from,
+                                vector.add_v3f(
+                                    (
+                                        vector.smul_v3f(
+                                            self._u, self._half_width * focus_plane
+                                        ),
+                                        vector.smul_v3f(
+                                            self._v, self._half_height * focus_plane
+                                        ),
+                                        vector.smul_v3f(self._w, focus_plane),
+                                    )
+                                ),
+                            ),
+                            vector.smul_v3f(
+                                self._u, 2.0 * self._half_width * focus_plane
+                            ),
+                            vector.smul_v3f(
+                                self._v, 2.0 * self._half_height * focus_plane
+                            ),
+                        ]
+                        for focus_plane in data
+                    ],
+                    dtype=numpy.float32,
+                )
+            ),
+            self._look_from,
+            self._u,
+            self._v,
+            self._half_aperture,
+        )
 
 
 def make_gpu_camera(

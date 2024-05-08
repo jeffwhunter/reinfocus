@@ -6,7 +6,9 @@ import numpy
 
 from numba import cuda
 from numba.cuda.cudadrv.devicearray import DeviceNDArray
+from numpy.typing import NDArray
 
+from reinfocus.graphics import device_data
 from reinfocus.graphics import hit_record
 from reinfocus.graphics import ray
 from reinfocus.graphics import rectangle
@@ -80,53 +82,41 @@ class Worlds:
         return (self._d_shape_params, self._d_shape_types, self._d_environment_sizes)
 
 
-class FocusWorlds:
+class FastWorlds(device_data.DeviceData):
     """A collection of sets of shapes that can be conveniently transfered to the GPU.
     Reduces the amount of GPU data needed by assuming all environments only contain one
     z-axis aligned square each."""
 
-    def __init__(self, num_envs: int):
-        """Creates a FocusWorlds.
+    def __init__(self, r_size: float = 20):
+        """Creates a FastWorlds.
 
         Args:
-            num_envs: How many worlds this collection should hold."""
-
-        self._targets = numpy.full(num_envs, numpy.nan, dtype=numpy.float32)
-        self._d_parameters = None
-
-    def device_data(self) -> DeviceNDArray:
-        """Returns a device array containing the parameters of each shape in this world.
-
-        Returns:
-            A device array containing the parameters of each shape in this world."""
-
-        return self._d_parameters
-
-    def update_targets(self, new_targets: Collection[float], r_size: float = 20):
-        """Updates the position of the various targets in each world.
-
-        Args:
-            new_targets: How far along the negative z-axis each target should be
-                positioned.
             r_size: How many degrees of field of view each target should occupy."""
 
-        new_targets = numpy.asarray(new_targets)
+        super().__init__()
 
-        if all(self._targets == new_targets):
-            return
+        self._r_size = r_size
 
-        self._targets = new_targets
+    def _make_device_data(self, data: NDArray[numpy.float32]) -> DeviceNDArray:
+        """Calculates the target data needed to run the ray tracer by transforming data, a
+        list containing the target position of each environment.
 
-        self._d_parameters = cuda.to_device(
+        Args:
+            data: A list of floats containing the target position of each environment.
+
+        Returns:
+            The processed data necessary for rendering scenes of the contained targets."""
+
+        return cuda.to_device(
             numpy.array(
                 [
                     [
                         shape_factory.get_absolute_size(
-                            shape_factory.ShapeParameters(target, r_size=r_size)
+                            shape_factory.ShapeParameters(target, r_size=self._r_size)
                         ),
                         -target,
                     ]
-                    for target in new_targets
+                    for target in data
                 ],
                 dtype=numpy.float32,
             )

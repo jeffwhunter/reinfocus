@@ -3,11 +3,11 @@
 import argparse
 import pathlib
 import sys
-import yaml
 
 from typing import Any
 
 import optuna
+import yaml
 
 from rl_zoo3 import hyperparams_opt
 from rl_zoo3 import train

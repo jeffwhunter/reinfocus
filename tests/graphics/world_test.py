@@ -102,22 +102,22 @@ class WorldTest(cuda_testing.CUDATestCase):
         )
 
 
-class FocusWorldTest(cuda_testing.CUDATestCase):
-    """Test cases for reinfocus.graphics.world.FocusWorld."""
+class FastWorldTest(cuda_testing.CUDATestCase):
+    """Test cases for reinfocus.graphics.world.FastWorld."""
 
     def test_world_parameters(self):
         """Tests that device_data contains the proper rectangle parameters."""
 
-        testee = world.FocusWorlds(3)
+        testee = world.FastWorlds()
 
-        testee.update_targets([1, 2, 3])
+        testee.update([1, 2, 3])
 
         sizes = testee.device_data()[:, 0]
 
         numpy_testing.assert_allclose(testee.device_data()[:, 1], [-1, -2, -3])
         numpy_testing.assert_array_less(0, sizes)
 
-        testee.update_targets([3, 2, 1])
+        testee.update([3, 2, 1])
 
         reversed_sizes = testee.device_data()[:, 0]
 

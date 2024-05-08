@@ -65,7 +65,8 @@ class FastCamerasTest(cuda_testing.CUDATestCase):
     def test_device_data(self):
         """Tests that FastCameras produces device data with the expected elements."""
 
-        testee = camera.FastCameras([10])
+        testee = camera.FastCameras()
+        testee.update([10])
 
         numpy_testing.assert_allclose(
             testee.device_data()[camera.FCAM_DYNAMIC][0],
@@ -99,9 +100,10 @@ class FastCamerasTest(cuda_testing.CUDATestCase):
 
         cpu_array = numpy.zeros((1, 19), dtype=numpy.float32)
 
-        cutil.launcher(from_fast_cameras, 1)(
-            cpu_array, camera.FastCameras([10]).device_data()
-        )
+        cameras = camera.FastCameras()
+        cameras.update([10])
+
+        cutil.launcher(from_fast_cameras, 1)(cpu_array, cameras.device_data())
 
         numpy_testing.assert_allclose(
             cpu_array[0],

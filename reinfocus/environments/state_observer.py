@@ -300,7 +300,7 @@ class DeltaObserver(WrapperObserver):
 
 
 @functools.cache
-def cached_focus_extrema(ends: tuple[float, float], frame_shape: tuple[int, int]):
+def cached_focus_extrema(ends: tuple[float, float], frame_height: int):
     """A cached function that finds the maximum and minimum focus over some range of
     positions for the target and focus plane. Will only run once per set of inputs,
     subsequent runs will used the cached result. Checks for minimum focus when the target
@@ -310,7 +310,7 @@ def cached_focus_extrema(ends: tuple[float, float], frame_shape: tuple[int, int]
     Args:
         ends: A tuple containing the minimum and maximum (respectively) positions that
             the target and focus plane can exist between.
-        frame_shape: The resolution at which the focus extrema should be found.
+        frame_height: The height of the images in which the focus extrema should be found.
 
     Returns:
         A tuple containing the minimum and maximum (respectively) focus values that are
@@ -318,26 +318,19 @@ def cached_focus_extrema(ends: tuple[float, float], frame_shape: tuple[int, int]
 
     max_targets = numpy.linspace(*ends, 11)
 
-    worlds = world.FocusWorlds(13)
-    worlds.update_targets(numpy.append(ends, max_targets))
+    renderer = render.FastRenderer()
+    renderer.update_targets(numpy.append(ends, max_targets))
+    renderer.update_focus_planes(numpy.append(ends[::-1], max_targets))
 
-    focus_values = vision.focus_values(
-        render.fast_render(
-            worlds,
-            numpy.append(ends[::-1], max_targets),
-            frame_shape=frame_shape,
-        )
-    )
+    focus_values = vision.focus_values(renderer.render(frame_height))
 
     return min(focus_values[0:2]), max(focus_values[2:13])
 
 
 class FocusObserver(BaseObserver):
     # pylint: disable=too-few-public-methods
-    """A scalar state observer that calculates the focus value of a simple rendered scene,
-    where the state has the location of a target and focus plane within that scene."""
-
-    _frame_shape = (300, 300)
+    """A state observer that calculates the focus value of a simple rendered scene, where
+    the state has the location of a target and focus plane within that scene."""
 
     def __init__(
         self,
@@ -345,7 +338,8 @@ class FocusObserver(BaseObserver):
         target_index: int,
         focus_plane_index: int,
         ends: tuple[float, float],
-        worlds: world.FocusWorlds,
+        renderer: render.FastRenderer,
+        frame_height: int = 300,
     ):
         # pylint: disable=too-many-arguments
         """Creates a FocusObserver.
@@ -356,17 +350,18 @@ class FocusObserver(BaseObserver):
             focus_plane_index: The index of the location of the focus plane in the state.
             ends: The minimum and maximum possible positions for the target and focus
                 plane.
-            worlds: These worlds will be rendered, and the focus value of the resulting
-                images will be returned as observations.
+            renderer: The render used to produce images of the scene.
+            frame_height: How high in pixels the rendered images should be.
         """
 
-        min_focus, max_focus = cached_focus_extrema(ends, FocusObserver._frame_shape)
+        min_focus, max_focus = cached_focus_extrema(ends, frame_height)
 
         super().__init__(num_envs, min_focus, max_focus)
 
         self._target_index = target_index
         self._focus_plane_index = focus_plane_index
-        self._worlds = worlds
+        self._renderer = renderer
+        self._frame_height = frame_height
 
     def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
         """Produces a batch of observations calulated from the focus values of simple
@@ -380,16 +375,11 @@ class FocusObserver(BaseObserver):
             A batch of observations calculated from the focus values of scenes defined by
             the state."""
 
-        self._worlds.update_targets(states[:, self._target_index])
+        self._renderer.update_targets(states[:, self._target_index])
+        self._renderer.update_focus_planes(states[:, self._focus_plane_index])
 
         return numpy.reshape(
-            vision.focus_values(
-                render.fast_render(
-                    self._worlds,
-                    states[:, self._focus_plane_index],
-                    FocusObserver._frame_shape,
-                )
-            ),
+            vision.focus_values(self._renderer.render(self._frame_height)),
             self.observation_space.shape,
         )
 

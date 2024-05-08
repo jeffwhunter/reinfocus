@@ -14,7 +14,7 @@ from numpy import testing
 from numpy.typing import NDArray
 
 from reinfocus.environments import state_observer
-from reinfocus.graphics import world
+from reinfocus.graphics import render
 
 
 def make_observer(
@@ -395,11 +395,11 @@ class FocusObserverTest(cuda_testing.CUDATestCase):
         num_envs = 5
         ends = (5, 10)
 
-        worlds = world.FocusWorlds(num_envs)
+        renderer = render.FastRenderer()
 
         testees = [
-            state_observer.FocusObserver(num_envs, 0, 1, ends, worlds),
-            state_observer.FocusObserver(num_envs, 1, 0, ends, worlds),
+            state_observer.FocusObserver(num_envs, 0, 1, ends, renderer),
+            state_observer.FocusObserver(num_envs, 1, 0, ends, renderer),
         ]
 
         for mid_point in numpy.linspace(*ends, num_envs):

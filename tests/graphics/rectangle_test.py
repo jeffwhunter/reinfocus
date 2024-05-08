@@ -89,8 +89,8 @@ class FastHitTest(cuda_testing.CUDATestCase):
 
         cpu_array = numpy.zeros((1, 13), dtype=numpy.float32)
 
-        world_data = world.FocusWorlds(1)
-        world_data.update_targets([1])
+        world_data = world.FastWorlds(1)
+        world_data.update([1])
 
         cutil.launcher(fast_hit_rectangle, 1)(
             cpu_array,

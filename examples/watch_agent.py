@@ -47,6 +47,7 @@ sys.argv = [
     "--exp-id",
     args.exp_id,
     "--deterministic",
+    "--load-best",
     "--device",
     "cuda",
 ]

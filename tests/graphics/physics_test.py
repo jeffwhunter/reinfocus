@@ -271,8 +271,8 @@ class FastFindColourTest(cuda_testing.CUDATestCase):
 
         cpu_array = numpy.zeros((1, 3), dtype=numpy.float32)
 
-        world_data = world.FocusWorlds(1)
-        world_data.update_targets([1])
+        world_data = world.FastWorlds()
+        world_data.update([1])
 
         cutil.launcher(find_fast_colour, 1)(
             cpu_array,

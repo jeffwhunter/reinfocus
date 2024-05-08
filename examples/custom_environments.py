@@ -2,8 +2,6 @@
 
 import numpy
 
-from reinfocus.graphics import world
-
 from reinfocus.environments import environment
 from reinfocus.environments import episode_ender
 from reinfocus.environments import episode_rewarder
@@ -12,6 +10,7 @@ from reinfocus.environments import state_initializer
 from reinfocus.environments import state_observer
 from reinfocus.environments import state_transformer
 from reinfocus.environments import vector_environment
+from reinfocus.graphics import render
 
 
 class DiscreteSteps(environment.Environment):
@@ -49,12 +48,13 @@ class DiscreteSteps(environment.Environment):
         # focus_position_change_o_index = 2
         # focus_value_change_o_index = 3
 
-        worlds = world.FocusWorlds(1)
+        renderer = render.FastRenderer()
 
         ender = episode_ender.DivergingEnder(
             1,
             (target_position_s_index, focus_position_s_index),
             max_focus_position_move * 0.1,
+            early_end_steps=3,
         )
 
         super().__init__(
@@ -71,7 +71,7 @@ class DiscreteSteps(environment.Environment):
                             target_position_s_index,
                             focus_position_s_index,
                             ends,
-                            worlds,
+                            renderer,
                         ),
                     ],
                     True,
@@ -96,7 +96,7 @@ class DiscreteSteps(environment.Environment):
                 target_position_s_index,
                 focus_position_s_index,
                 focus_value_o_index,
-                worlds,
+                renderer,
                 ends,
                 ender=ender,
                 target_radius=target_radius,
@@ -141,12 +141,13 @@ class VectorDiscreteSteps(vector_environment.VectorEnvironment):
         # focus_position_change_o_index = 2
         # focus_value_change_o_index = 3
 
-        worlds = world.FocusWorlds(num_envs)
+        renderer = render.FastRenderer()
 
         ender = episode_ender.DivergingEnder(
             num_envs,
             (target_position_s_index, focus_position_s_index),
             max_focus_position_move * 0.1,
+            early_end_steps=3,
         )
 
         super().__init__(
@@ -163,7 +164,7 @@ class VectorDiscreteSteps(vector_environment.VectorEnvironment):
                             target_position_s_index,
                             focus_position_s_index,
                             ends,
-                            worlds,
+                            renderer,
                         ),
                     ],
                     True,
@@ -188,7 +189,7 @@ class VectorDiscreteSteps(vector_environment.VectorEnvironment):
                 target_position_s_index,
                 focus_position_s_index,
                 focus_value_o_index,
-                worlds,
+                renderer,
                 ends,
                 ender=ender,
                 target_radius=target_radius,
@@ -233,12 +234,12 @@ class ContinuousJumps(environment.Environment):
         # focus_position_change_o_index = 2
         # focus_value_change_o_index = 3
 
-        worlds = world.FocusWorlds(1)
-
+        renderer = render.FastRenderer()
         ender = episode_ender.DivergingEnder(
             1,
             (target_position_s_index, focus_position_s_index),
             max_focus_position_move * 0.1,
+            early_end_steps=3,
         )
 
         super().__init__(
@@ -255,7 +256,7 @@ class ContinuousJumps(environment.Environment):
                             target_position_s_index,
                             focus_position_s_index,
                             ends,
-                            worlds,
+                            renderer,
                         ),
                     ],
                     True,
@@ -279,7 +280,7 @@ class ContinuousJumps(environment.Environment):
                 target_position_s_index,
                 focus_position_s_index,
                 focus_value_o_index,
-                worlds,
+                renderer,
                 ends,
                 ender=ender,
                 target_radius=target_radius,
