@@ -42,7 +42,7 @@ def make_initializer(*initial_states: IState) -> mock.Mock:
 
     Returns:
         A mocked state initializer."""
-    
+
     assert len(initial_states) > 0
 
     initializer = mock.Mock()
@@ -189,7 +189,7 @@ class VectorEnvironmentTest(unittest.TestCase):
         """Tests that the environment correctly rewards episodes with it's rewarder."""
 
         rewarder = mock.Mock()
-        rewarder.reward.side_effect = lambda s, o, a: s[:, 0] + o[:, 0] + a[:, 0]
+        rewarder.reward.side_effect = lambda s, o: s[:, 0] + o[:, 0]
 
         testee = make_testee(
             initializer=make_initializer(numpy.array([[-4], [8]])), rewarder=rewarder
@@ -197,7 +197,7 @@ class VectorEnvironmentTest(unittest.TestCase):
 
         testee.reset()
 
-        testing.assert_allclose(testee.step(numpy.array([[3], [5]]))[1], [-5, 21])
+        testing.assert_allclose(testee.step(numpy.array([[3], [5]]))[1], [-8, 16])
 
     def test_terminated_and_truncated(self):
         """Tests that the environment correctly reports termination and truncation from

@@ -159,7 +159,7 @@ class EnvironmentTest(unittest.TestCase):
         """Tests that the environment correctly rewards episodes with it's rewarder."""
 
         rewarder = mock.Mock()
-        rewarder.reward.side_effect = lambda a, s, o: s[0] + o[0][1] + a
+        rewarder.reward.side_effect = lambda s, o: s[0] + o[0][1]
 
         testee = make_testee(
             initializer=make_initializer(numpy.array([[-4, 8]])), rewarder=rewarder
@@ -167,7 +167,7 @@ class EnvironmentTest(unittest.TestCase):
 
         testee.reset()
 
-        self.assertEqual(testee.step(3)[1], 7)
+        self.assertEqual(testee.step(0)[1], 4)
 
     def test_terminated_and_truncated(self):
         """Tests that the environment correctly reports termination and truncation from

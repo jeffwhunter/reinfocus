@@ -56,6 +56,18 @@ class DeviceDataTest(unittest.TestCase):
 
         testing.assert_allclose(testee.device_data(), targets[-1])
 
+    def test_update_change_shape(self):
+        """Tests that update can handle changes in data shape."""
+
+        target = [1, 2, 3, 4]
+
+        testee = DeviceDataTest._DeviceData(mock.Mock(side_effect=lambda d: d))
+
+        testee.update([1, 2, 3])
+        testee.update(target)
+
+        testing.assert_allclose(testee.device_data(), target)
+
 
 if __name__ == "__main__":
     unittest.main()

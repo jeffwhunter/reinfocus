@@ -1,28 +1,39 @@
 """Functions that produce rewards from Observations."""
 
+from __future__ import annotations
+
+from collections.abc import Callable
 from typing import Generic, Protocol
 
 import numpy
 
 from numpy.typing import NDArray
 
-from reinfocus.environments.types import (
-    ActionT,
-    ActionT_contra,
-    ObservationT_contra,
-    StateT_contra,
-)
+from reinfocus.environments.types import ObservationT_contra, StateT_contra
 
 
-class IEpisodeRewarder(
-    Protocol, Generic[ActionT_contra, ObservationT_contra, StateT_contra]
-):
+class IEpisodeRewarder(Protocol, Generic[ObservationT_contra, StateT_contra]):
     # pylint: disable=too-few-public-methods, unnecessary-ellipsis
     """The base that episode rewarders must follow."""
 
+    def reset(
+        self,
+        states: StateT_contra,
+        observations: NDArray[ObservationT_contra],
+        dones: NDArray[numpy.bool_] | None = None,
+    ):
+        """Informs the episode rewarder that some episodes have restarted.
+
+        Args:
+            states: The first states of the new episodes that reset marks the start of.
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        ...
+
     def reward(
         self,
-        actions: NDArray[ActionT_contra],
         states: StateT_contra,
         observations: NDArray[ObservationT_contra],
     ) -> NDArray[numpy.float32]:
@@ -30,7 +41,6 @@ class IEpisodeRewarder(
         new_states, which produced new_observations.
 
         Args:
-            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
 
@@ -40,7 +50,40 @@ class IEpisodeRewarder(
         ...
 
 
-class DeltaRewarder(IEpisodeRewarder, Generic[ActionT]):
+class BaseRewarder(IEpisodeRewarder):
+    # pylint: disable=unnecessary-ellipsis
+    """An episode rewarder that can be combined with arithmetic operations."""
+
+    def __add__(self, other: IEpisodeRewarder) -> BaseRewarder:
+        """Combines this with another rewarder to produce a third. The outputs of the new
+        rewarder will be those of the initial two combined with plus."""
+
+        return OpRewarder(self, other, numpy.add)
+
+    def __mul__(self, other: IEpisodeRewarder) -> BaseRewarder:
+        """Combines this with another rewarder to produce a third. The outputs of the new
+        rewarder will be those of the initial two combined with times."""
+
+        return OpRewarder(self, other, numpy.multiply)
+
+    def reset(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+        dones: NDArray[numpy.bool_] | None = None,
+    ):
+        """Informs the episode rewarder that some episodes have restarted.
+
+        Args:
+            states: The first states of the new episodes that reset marks the start of.
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        ...
+
+
+class DeltaRewarder(BaseRewarder):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces a reward proportional to a change in state."""
 
@@ -54,8 +97,10 @@ class DeltaRewarder(IEpisodeRewarder, Generic[ActionT]):
 
         Args:
             check_index: The index of the state element of interest.
-            threshold: The distance the state has to move to earn reward.
-            reward: The potentially emitted reward."""
+            scale: The distance the state has to move to earn reward.
+            reward: The reward when the change in state is equal to scale."""
+
+        super().__init__()
 
         self._check_index = check_index
         self._scale = scale
@@ -63,37 +108,55 @@ class DeltaRewarder(IEpisodeRewarder, Generic[ActionT]):
 
         self._old_states = None
 
+    def reset(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+        dones: NDArray[numpy.bool_] | None = None,
+    ):
+        """Informs the episode rewarder that some episodes have restarted.
+
+        Args:
+            states: The first states of the new episodes that reset marks the start of.
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        if self._old_states is not None and dones is not None:
+            self._old_states[dones] = states[:, self._check_index]
+        else:
+            self._old_states = states[:, self._check_index]
+
     def reward(
         self,
-        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
     ) -> NDArray[numpy.float32]:
-        """Produces a batch of rewards, where the rewards will be emitted if some state
-        element changes more than some threshold.
+        """Produces a batch of rewards, where the emitted rewards are proportional to the
+        change in some state element.
 
         Args:
-            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
 
         Returns:
-            A numpy array of potentially emitted rewards."""
+            A numpy array of rewards which are proportional to the distance some element
+            of the state has moved."""
 
-        if self._old_states is not None:
-            diff = states[:, self._check_index] - self._old_states
-            abs_diff = abs(diff)
-            scale_diff = abs_diff / self._scale
-            reward = scale_diff * self._reward
-        else:
-            reward = numpy.zeros(states.shape[0], dtype=numpy.float32)
+        assert self._old_states is not None
+
+        reward = (
+            abs(states[:, self._check_index] - self._old_states)
+            * self._reward
+            / self._scale
+        )
 
         self._old_states = states[:, self._check_index]
 
         return reward
 
 
-class DistanceRewarder(IEpisodeRewarder, Generic[ActionT]):
+class DistanceRewarder(BaseRewarder):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces a reward proportional to the distance between two specific
     elements of the state."""
@@ -114,6 +177,8 @@ class DistanceRewarder(IEpisodeRewarder, Generic[ActionT]):
             low: The reward when the lens is a distance of span from the target.
             high: The reward when the lens is on the target."""
 
+        super().__init__()
+
         self._check_indices = check_indices
         self._span = span
         self._low = low
@@ -121,7 +186,6 @@ class DistanceRewarder(IEpisodeRewarder, Generic[ActionT]):
 
     def reward(
         self,
-        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
     ) -> NDArray[numpy.float32]:
@@ -129,7 +193,6 @@ class DistanceRewarder(IEpisodeRewarder, Generic[ActionT]):
         distance between two specific elements of the state.
 
         Args:
-            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
 
@@ -144,7 +207,7 @@ class DistanceRewarder(IEpisodeRewarder, Generic[ActionT]):
         ) * (self._high - self._low) + self._low
 
 
-class ObservationRewarder(IEpisodeRewarder, Generic[ActionT]):
+class ObservationRewarder(BaseRewarder):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces rewards by copying them from a specific element of the
     observation."""
@@ -156,11 +219,12 @@ class ObservationRewarder(IEpisodeRewarder, Generic[ActionT]):
             reward_observation_index: The index of the observation element to return as a
                 reward."""
 
+        super().__init__()
+
         self._reward_observation_index = reward_observation_index
 
     def reward(
         self,
-        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
     ) -> NDArray[numpy.float32]:
@@ -168,7 +232,6 @@ class ObservationRewarder(IEpisodeRewarder, Generic[ActionT]):
         the observations.
 
         Args:
-            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
 
@@ -178,7 +241,7 @@ class ObservationRewarder(IEpisodeRewarder, Generic[ActionT]):
         return observations[:, self._reward_observation_index]
 
 
-class OnTargetRewarder(IEpisodeRewarder, Generic[ActionT]):
+class OnTargetRewarder(BaseRewarder):
     # pylint: disable=too-few-public-methods
     """A rewarder that produces two different rewards, produced when two elements of the
     state are and aren't close enough."""
@@ -200,14 +263,15 @@ class OnTargetRewarder(IEpisodeRewarder, Generic[ActionT]):
             off: The reward emitted when the two state elements differ by more than span.
             on: The reward emitted when the two state elements are closer than span."""
 
+        super().__init__()
+
         self._check_indices = check_indices
         self._span = span
         self._off = off
-        self._on = on
+        self._delta = on - off
 
     def reward(
         self,
-        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
     ) -> NDArray[numpy.float32]:
@@ -215,7 +279,6 @@ class OnTargetRewarder(IEpisodeRewarder, Generic[ActionT]):
         elements of the state are close enough, and another value otherwise.
 
         Args:
-            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
 
@@ -223,51 +286,144 @@ class OnTargetRewarder(IEpisodeRewarder, Generic[ActionT]):
             A numpy array of rewards which take on of two values depending on if two
             specific elements of the state are or aren't close enough."""
 
-        rewards = numpy.full(states.shape[0], self._off)
-
-        rewards[
+        return (
             abs(states[:, self._check_indices[0]] - states[:, self._check_indices[1]])
             < self._span
-        ] = self._on
-
-        return rewards
+        ) * self._delta + self._off
 
 
-class SumRewarder(IEpisodeRewarder, Generic[ActionT]):
-    # pylint: disable=too-few-public-methods
-    """A rewarder that returns the sum of other rewarder's rewards as it's own reward."""
+class OpRewarder(BaseRewarder):
+    """An episode rewarder that combines rewards from other rewarders using some
+    arithmetic operation."""
 
-    def __init__(self, *rewarders: IEpisodeRewarder):
-        """Creates a SumRewarder.
+    def __init__(
+        self,
+        l_rewarder: IEpisodeRewarder,
+        r_rewarder: IEpisodeRewarder,
+        op: Callable[
+            [NDArray[numpy.float32], NDArray[numpy.float32]], NDArray[numpy.float32]
+        ],
+    ):
+        """Creates an OpRewarder.
 
         Args:
-            check_index: The index of the state element of interest.
-            threshold: How much the state element must change before reward is emitted.
-            reward: The potentially emitted reward."""
+            l_rewarder: One of the two child rewarders whose output will be combined to
+                produce the rewarder of this ender.
+            r_rewarder: One of the two child rewarders whose output will be combined to
+                produce the rewarder of this ender.
+            op: The arithmetic operation that will combine the rewards from the child
+                rewarders."""
 
-        self._rewarders = rewarders
+        super().__init__()
+
+        self._l_rewarder = l_rewarder
+        self._r_rewarder = r_rewarder
+        self._op = op
+
+    def reset(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+        dones: NDArray[numpy.bool_] | None = None,
+    ):
+        """Informs the child episode rewarders that some episodes have restarted.
+
+        Args:
+            states: The first states of the new episodes that reset marks the start of.
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        self._l_rewarder.reset(states, observations, dones)
+        self._r_rewarder.reset(states, observations, dones)
 
     def reward(
         self,
-        actions: NDArray[ActionT],
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
     ) -> NDArray[numpy.float32]:
-        """Produces a batch of rewards, where the rewards will be the sum of rewards
-        produced by other rewarders.
+        """Produces a batch of rewards, where the emitted rewards are arithmetically
+        combined from the rewards of the child rewarders.
 
         Args:
-            actions: The actions that lead to states and observations.
             states: The states that resulted from taking actions.
             observations: The observations seen during states.
 
         Returns:
-            A numpy array of the summed rewards"""
+            The arithmetically combined rewards from the two child rewarders."""
 
-        return numpy.sum(
-            [
-                rewarder.reward(actions, states, observations)
-                for rewarder in self._rewarders
-            ],
-            axis=0,
+        return self._op(
+            self._l_rewarder.reward(states, observations),
+            self._r_rewarder.reward(states, observations),
         )
+
+
+class StoppedRewarder(BaseRewarder):
+    # pylint: disable=too-few-public-methods
+    """A rewarder that produces a reward if some element of the state is stopped."""
+
+    def __init__(
+        self,
+        check_index: int,
+        threshold: float,
+        reward: float = 1.0,
+    ):
+        """Creates a StoppedRewarder.
+
+        Args:
+            check_index: The index of the state element of interest.
+            threshold: The maximum distance the state element can move and still earn
+                reward.
+            reward: The potentially emitted reward."""
+
+        super().__init__()
+
+        self._check_index = check_index
+        self._threshold = abs(threshold)
+        self._reward = reward
+
+        self._old_states = None
+
+    def reset(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+        dones: NDArray[numpy.bool_] | None = None,
+    ):
+        """Informs the child episode rewarders that some episodes have restarted.
+
+        Args:
+            states: The first states of the new episodes that reset marks the start of.
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        if self._old_states is not None and dones is not None:
+            self._old_states[dones] = states[:, self._check_index]
+        else:
+            self._old_states = states[:, self._check_index]
+
+    def reward(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+    ) -> NDArray[numpy.float32]:
+        """Produces a batch of rewards, where the rewards will be emitted if some state
+        element changes less than some threshold.
+
+        Args:
+            states: The states that resulted from taking actions.
+            observations: The observations seen during states.
+
+        Returns:
+            A numpy array of potentially emitted rewards."""
+
+        assert self._old_states is not None
+
+        reward = (
+            abs(states[:, self._check_index] - self._old_states) < self._threshold
+        ) * self._reward
+
+        self._old_states = states[:, self._check_index]
+
+        return reward

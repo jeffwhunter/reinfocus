@@ -21,8 +21,8 @@ def make_observer(
     num_envs: int = 1,
     space: spaces.Space = spaces.Box(0, 1),
     observe: Callable[
-        [NDArray[numpy.float32]], NDArray[numpy.float32]
-    ] = lambda state: state,
+        [NDArray[numpy.float32], NDArray[numpy.bool_] | None], NDArray[numpy.float32]
+    ] = lambda state, _: state,
 ) -> state_observer.BaseObserver:
     """Creates a mock scalar observer.
 
@@ -38,7 +38,7 @@ def make_observer(
     observer.single_observation_space = space
     observer.observation_space = utils.batch_space(space, num_envs)
     observer.observe.side_effect = observe
-    observer.reset.side_effect = lambda state, _: observe(state)
+    observer.reset.side_effect = lambda state, dones: observe(state, dones)
     return observer
 
 
@@ -50,7 +50,11 @@ class BaseObserverTest(unittest.TestCase):
 
         class _ScalarObserver(state_observer.BaseObserver):
             # pylint: disable=too-few-public-methods
-            def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+            def observe(
+                self,
+                states: NDArray[numpy.float32],
+                dones: NDArray[numpy.bool_] | None = None,
+            ) -> NDArray[numpy.float32]:
                 """A dummy function needed to implement BaseObserver."""
 
                 raise NotImplementedError
@@ -81,7 +85,11 @@ class BaseObserverTest(unittest.TestCase):
 
         class _ArrayObserver(state_observer.BaseObserver):
             # pylint: disable=too-few-public-methods
-            def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+            def observe(
+                self,
+                states: NDArray[numpy.float32],
+                dones: NDArray[numpy.bool_] | None = None,
+            ) -> NDArray[numpy.float32]:
                 """A dummy function needed to implement BaseObserver."""
 
                 raise NotImplementedError
@@ -113,7 +121,11 @@ class WrapperObserverTest(unittest.TestCase):
 
     class _WrapperObserver(state_observer.WrapperObserver):
         # pylint: disable=too-few-public-methods
-        def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+        def observe(
+            self,
+            states: NDArray[numpy.float32],
+            dones: NDArray[numpy.bool_] | None = None,
+        ) -> NDArray[numpy.float32]:
             """A dummy function needed to implement WrapperObserver."""
 
             raise NotImplementedError
@@ -151,7 +163,7 @@ class WrapperObserverTest(unittest.TestCase):
         n_observations = sum(len(coefficients) for coefficients in observer_coefficients)
 
         def _multiplier(coefficients: Sequence[float]):
-            return lambda state: numpy.hstack(
+            return lambda state, _: numpy.hstack(
                 [state * coefficient for coefficient in coefficients]
             )
 
@@ -209,6 +221,7 @@ class DeltaObserverTest(unittest.TestCase):
         testing.assert_allclose(
             observation_space.low, numpy.full(target_shape, -target_diff)
         )
+
         testing.assert_allclose(
             observation_space.high, numpy.full(target_shape, target_diff)
         )
@@ -230,6 +243,7 @@ class DeltaObserverTest(unittest.TestCase):
         testing.assert_allclose(
             observation_space.low, numpy.full(target_shape, -target_diff)
         )
+
         testing.assert_allclose(
             observation_space.high, numpy.full(target_shape, target_diff)
         )
@@ -255,6 +269,7 @@ class DeltaObserverTest(unittest.TestCase):
         testing.assert_allclose(
             observation_space.low, numpy.full(target_shape, [-1, -2, -3])
         )
+
         testing.assert_allclose(
             observation_space.high, numpy.full(target_shape, [1, 2, 3])
         )
@@ -281,6 +296,7 @@ class DeltaObserverTest(unittest.TestCase):
             observation_space.low,
             numpy.full(target_shape, numpy.append(original_low, -target_diff)),
         )
+
         testing.assert_allclose(
             observation_space.high,
             numpy.full(target_shape, numpy.append(original_high, target_diff)),
@@ -300,8 +316,36 @@ class DeltaObserverTest(unittest.TestCase):
         testing.assert_allclose(
             testee.reset(numpy.reshape([0, 1, 2], state_shape)), [[0], [0], [0]]
         )
+
         testing.assert_allclose(
             testee.observe(numpy.reshape([0, 2, 4], state_shape)), [[0], [1], [2]]
+        )
+
+    def test_partial_observation(self):
+        """Tests that partial observations correctly observe only some environments."""
+
+        num_envs = 4
+
+        observer = make_observer(num_envs=num_envs)
+
+        testee = state_observer.DeltaObserver(observer)
+
+        testing.assert_allclose(
+            testee.reset(numpy.reshape([0, 1, 2, 3], (num_envs, 1))), [[0], [0], [0], [0]]
+        )
+
+        testing.assert_allclose(
+            testee.observe(
+                numpy.reshape([3, 6], (2, 1)), numpy.array([False, True, False, True])
+            ),
+            [[2], [3]],
+        )
+
+        testing.assert_allclose(
+            testee.observe(
+                numpy.reshape([-2, 1], (2, 1)), numpy.array([True, True, False, False])
+            ),
+            [[-2], [-2]],
         )
 
     def test_observation_with_original(self):
@@ -314,7 +358,7 @@ class DeltaObserverTest(unittest.TestCase):
         observer = make_observer(
             num_envs=num_envs,
             space=spaces.Box(0, 1, (2,)),
-            observe=lambda state: numpy.hstack([-state, state]),
+            observe=lambda state, _: numpy.hstack([-state, state]),
         )
 
         testee = state_observer.DeltaObserver(observer, include_original=True)
@@ -323,6 +367,7 @@ class DeltaObserverTest(unittest.TestCase):
             testee.reset(numpy.reshape([0, 1, 2], state_shape)),
             [[0, 0, 0, 0], [-1, 1, 0, 0], [-2, 2, 0, 0]],
         )
+
         testing.assert_allclose(
             testee.observe(numpy.reshape([0, 3, 6], state_shape)),
             [[0, 0, 0, 0], [-3, 3, -2, 2], [-6, 6, -4, 4]],
@@ -360,7 +405,7 @@ class DeltaObserverTest(unittest.TestCase):
 
         observers = [
             make_observer(num_envs=num_envs),
-            make_observer(num_envs=num_envs, observe=lambda state: -state),
+            make_observer(num_envs=num_envs, observe=lambda state, _: -state),
         ]
 
         testee = state_observer.DeltaObserver(observers)
@@ -414,6 +459,26 @@ class FocusObserverTest(cuda_testing.CUDATestCase):
 
             self.assertTrue(numpy.all(observations[:, 1:] > observations[:, :-1]))
 
+    def test_partial_observation(self):
+        """Tests that partial observations correctly observe only some environments."""
+
+        num_envs = 5
+        ends = (5, 10)
+
+        renderer = render.FastRenderer()
+
+        testee = state_observer.FocusObserver(num_envs, 0, 1, ends, renderer)
+
+        dones = numpy.array([True, False, True, False, True])
+
+        observations = testee.observe(
+            numpy.array([[5, 10], [7.5, 10], [10, 10]]),
+            dones,
+        )
+
+        self.assertTrue(numpy.all(observations[1:] > observations[:-1]))
+        self.assertEqual(len(observations), dones.sum())
+
 
 class IndexedElementObserverTest(unittest.TestCase):
     """Test cases for reinfocus.environments.state_observer.IndexedElementObserver."""
@@ -435,6 +500,29 @@ class IndexedElementObserverTest(unittest.TestCase):
         testing.assert_allclose(
             state_observer.IndexedElementObserver(num_envs, 1, 0, 9).observe(state),
             numpy.reshape([1, 3, 5, 7, 9], target_shape),
+        )
+
+    def test_partial_observation(self):
+        """Tests that partial observations correctly observe only some environments."""
+
+        num_envs = 5
+
+        state = numpy.array([[0, 1], [1, 3], [2, 5], [3, 7], [4, 9]])
+        even_i = numpy.arange(num_envs) % 2 == 0
+        odd_i = numpy.arange(num_envs) % 2 == 1
+
+        testing.assert_allclose(
+            state_observer.IndexedElementObserver(num_envs, 0, 0, 4).observe(
+                state[even_i], even_i
+            ),
+            numpy.reshape([0, 2, 4], (3, 1)),
+        )
+
+        testing.assert_allclose(
+            state_observer.IndexedElementObserver(num_envs, 1, 0, 9).observe(
+                state[odd_i], odd_i
+            ),
+            numpy.reshape([3, 7], (2, 1)),
         )
 
 
@@ -502,6 +590,23 @@ class NormalizedObserverTest(unittest.TestCase):
             [[-1.0, -1.0], [0.0, -1.0], [1.0, -(1 / 3)], [1.0, (1 / 3)], [1.0, 1.0]],
         )
 
+    def test_partial_observation(self):
+        """Tests that partial observations correctly observe only some environments."""
+
+        dones = numpy.arange(5) % 2 == 0
+
+        testee = state_observer.NormalizedObserver(
+            [
+                make_observer(space=spaces.Box(0, 2)),
+                make_observer(space=spaces.Box(1, 4)),
+            ]
+        )
+
+        testing.assert_allclose(
+            testee.observe(numpy.array([[0], [2], [4]]), dones),
+            [[-1.0, -1.0], [1.0, -(1 / 3)], [1.0, 1.0]],
+        )
+
     def test_reset(self):
         """Tests that NormalizedObserver correctly normalizes observations from reset."""
 
@@ -528,12 +633,12 @@ class NormalizedObserverTest(unittest.TestCase):
                 make_observer(
                     num_envs=num_envs,
                     space=spaces.Box(numpy.array([-2, -1]), numpy.array([-1, 0])),
-                    observe=lambda state: numpy.hstack([state, -state]),
+                    observe=lambda state, _: numpy.hstack([state, -state]),
                 ),
                 make_observer(
                     num_envs=num_envs,
                     space=spaces.Box(numpy.array([0, 1]), numpy.array([1, 2])),
-                    observe=lambda state: numpy.hstack([-state, state]),
+                    observe=lambda state, _: numpy.hstack([-state, state]),
                 ),
             ]
         )

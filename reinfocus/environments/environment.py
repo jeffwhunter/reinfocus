@@ -27,7 +27,7 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
         ender: episode_ender.IEpisodeEnder[StateT],
         initializer: state_initializer.IStateInitializer[StateT],
         observer: state_observer.IStateObserver[ObservationT, StateT],
-        rewarder: episode_rewarder.IEpisodeRewarder[ActionT, ObservationT, StateT],
+        rewarder: episode_rewarder.IEpisodeRewarder[ObservationT, StateT],
         transformer: state_transformer.IStateTransformer[ActionT, StateT],
         visualizer: episode_visualizer.IEpisodeVisualizer[ObservationT, StateT],
         render_mode: str | None = None,
@@ -85,6 +85,8 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
 
         observations = self._observer.reset(self._state)
 
+        self._rewarder.reset(self._state, observations)
+
         if self.render_mode == "rgb_array":
             self._visualizer.reset()
             self._visualizer.step(self._state, observations)
@@ -120,7 +122,7 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
 
         return (
             observations[0],
-            self._rewarder.reward(actions, self._state, observations)[0],
+            self._rewarder.reward(self._state, observations)[0],
             self._ender.is_terminated()[0],
             self._ender.is_truncated()[0],
             {},

@@ -53,7 +53,11 @@ class DeviceData(Generic[DeviceDataT], abc.ABC):
 
         data = numpy.asarray(data, dtype=numpy.float32)
 
-        if self._data is not None and all(self._data == data):
+        if (
+            self._data is not None
+            and self._data.shape == data.shape
+            and all(self._data == data)
+        ):
             return
 
         self._data = data

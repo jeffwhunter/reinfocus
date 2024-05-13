@@ -27,7 +27,7 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
         ender: episode_ender.IEpisodeEnder[StateT],
         initializer: state_initializer.IStateInitializer[StateT],
         observer: state_observer.IStateObserver[ObservationT, StateT],
-        rewarder: episode_rewarder.IEpisodeRewarder[ActionT, ObservationT, StateT],
+        rewarder: episode_rewarder.IEpisodeRewarder[ObservationT, StateT],
         transformer: state_transformer.IStateTransformer[ActionT, StateT],
         visualizer: episode_visualizer.IEpisodeVisualizer[ObservationT, StateT],
         num_envs: int = 2,
@@ -94,6 +94,8 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
 
         observations = self._observer.reset(self._state, None)
 
+        self._rewarder.reset(self._state, observations)
+
         if self.render_mode == "rgb_array":
             self._visualizer.reset()
             self._visualizer.step(self._state, observations)
@@ -126,7 +128,7 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
 
         observations = self._observer.observe(self._state)
 
-        rewards = self._rewarder.reward(actions, self._state, observations)
+        rewards = self._rewarder.reward(self._state, observations)
 
         terminated = self._ender.is_terminated()
         truncated = self._ender.is_truncated()
@@ -140,7 +142,11 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
 
             self._ender.reset(new_state, done)
 
-            observations[done] = self._observer.reset(new_state, done)
+            new_observations = self._observer.reset(new_state, done)
+
+            observations[done] = new_observations
+
+            self._rewarder.reset(new_state, new_observations, done)
 
             if self.render_mode == "rgb_array":
                 self._visualizer.reset(done)

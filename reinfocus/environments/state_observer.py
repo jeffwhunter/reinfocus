@@ -1,6 +1,5 @@
 """Functions that normalize environment observations."""
 
-import abc
 import functools
 
 from collections.abc import Sequence
@@ -25,11 +24,14 @@ class IStateObserver(Protocol, Generic[ObservationT_co, StateT_contra]):
     observation_space: spaces.Box
     single_observation_space: spaces.Box
 
-    def observe(self, states: StateT_contra) -> NDArray[ObservationT_co]:
+    def observe(
+        self, states: StateT_contra, dones: NDArray[numpy.bool_] | None = None
+    ) -> NDArray[ObservationT_co]:
         """Returns a batch of observations of state.
 
         Args:
             states: The state of some batch of POMDPs.
+            dones: Which elements of the state to observe.
 
         Returns:
             A batch of observations, one per state."""
@@ -53,7 +55,7 @@ class IStateObserver(Protocol, Generic[ObservationT_co, StateT_contra]):
         ...
 
 
-class BaseObserver(IStateObserver, abc.ABC):
+class BaseObserver(IStateObserver):
     # pylint: disable=too-few-public-methods, unnecessary-ellipsis
     """A state observer that produces observations within some range."""
 
@@ -75,18 +77,6 @@ class BaseObserver(IStateObserver, abc.ABC):
             self.single_observation_space, num_envs
         )  # type: ignore
 
-    @abc.abstractmethod
-    def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
-        """Returns a batch of observations of state.
-
-        Args:
-            states: The state of some batch of POMDPs.
-
-        Returns:
-            A batch of observations, one per state."""
-
-        ...
-
     def reset(
         self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
@@ -104,7 +94,7 @@ class BaseObserver(IStateObserver, abc.ABC):
         if dones is None:
             dones = numpy.full(self.observation_space.shape[0], True)
 
-        return self.observe(states)[dones]
+        return self.observe(states, dones)
 
 
 class WrapperObserver(BaseObserver):
@@ -156,19 +146,20 @@ class WrapperObserver(BaseObserver):
         )
 
     def wrapped_observations(
-        self, states: NDArray[numpy.float32]
+        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Returns the stacked observations of state from all the wrapped observers.
 
         Args:
             states: The state of some batch of POMDPs.
+            dones: Which elements of the state to observe.
 
         Returns:
             Observations from the wrapped observers, stacked along the second dimension,
             in the order the wrapped observers were passed into the constructor."""
 
         return numpy.hstack(
-            [observer.observe(states) for observer in self._observers],
+            [observer.observe(states, dones) for observer in self._observers],
             dtype=numpy.float32,
         )
 
@@ -238,20 +229,26 @@ class DeltaObserver(WrapperObserver):
             dtype=numpy.float32,
         )
 
-    def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+    def observe(
+        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+    ) -> NDArray[numpy.float32]:
         """Produces a batch of observations which are the changes in, and optionally
         include, the observations from the wrapped observers.
 
         Args:
             states: The state of some batch of POMDPs.
+            dones: Which elements of the state to observe.
 
         Returns:
             A batch of observations copied directly from some element of the state, one
             per state."""
 
-        wrapped_observations = self.wrapped_observations(states)
+        if dones is None:
+            dones = numpy.full(self.observation_space.shape[0], True)
 
-        observations = wrapped_observations - self._old_wrapped_observations
+        wrapped_observations = self.wrapped_observations(states, dones)
+
+        observations = wrapped_observations - self._old_wrapped_observations[dones]
 
         if self._include_original:
             observations = numpy.hstack(
@@ -259,7 +256,7 @@ class DeltaObserver(WrapperObserver):
                 dtype=numpy.float32,
             )
 
-        self._old_wrapped_observations = wrapped_observations
+        self._old_wrapped_observations[dones] = wrapped_observations
 
         return observations
 
@@ -359,24 +356,30 @@ class FocusObserver(BaseObserver):
         self._renderer = renderer
         self._frame_height = frame_height
 
-    def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+    def observe(
+        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+    ) -> NDArray[numpy.float32]:
         """Produces a batch of observations calulated from the focus values of simple
         rendered scenes defined by the state.
 
         Args:
             states: The state of some batch of POMDPs where the state has the location of a
                 target and focus plane.
+            dones: Which elements of the state to observe.
 
         Returns:
             A batch of observations calculated from the focus values of scenes defined by
             the state."""
+
+        if dones is None:
+            dones = numpy.full(self.observation_space.shape[0], True)
 
         self._renderer.update_targets(states[:, self._target_index])
         self._renderer.update_focus_planes(states[:, self._focus_plane_index])
 
         return numpy.reshape(
             vision.focus_values(self._renderer.render(self._frame_height)),
-            self.observation_space.shape,
+            (dones.sum(), self.observation_space.shape[1]),
         )
 
 
@@ -397,17 +400,25 @@ class IndexedElementObserver(BaseObserver):
         super().__init__(num_envs, min_obs, max_obs)
         self._element_index = element_index
 
-    def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+    def observe(
+        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+    ) -> NDArray[numpy.float32]:
         """Produces a batch of observations copied directly from elements of the state.
 
         Args:
             states: The state of some batch of POMDPs.
+            dones: Which elements of the state to observe.
 
         Returns:
             A batch of observations copied directly from some element of the state, one
             per state."""
 
-        return states[:, self._element_index].reshape(self.observation_space.shape)
+        if dones is None:
+            dones = numpy.full(self.observation_space.shape[0], True)
+
+        return states[:, self._element_index].reshape(
+            (dones.sum(), self.observation_space.shape[1])
+        )
 
 
 class NormalizedObserver(WrapperObserver):
@@ -458,19 +469,22 @@ class NormalizedObserver(WrapperObserver):
 
         self._scale = diff_div.reshape(n_observations)
 
-    def observe(self, states: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
+    def observe(
+        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+    ) -> NDArray[numpy.float32]:
         """Produces a batch of appended and normalized observations from a number of child
         observers.
 
         Args:
             states: The state of some batch of POMDPs.
+            dones: Which elements of the state to observe.
 
         Returns:
             A batch of observations normalized to [-1, 1], one per state, where each
             pre-normalized observation is formed from appending the observations of this
             observer's children."""
 
-        return self._normalize(self.wrapped_observations(states))
+        return self._normalize(self.wrapped_observations(states, dones))
 
     def reset(
         self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None

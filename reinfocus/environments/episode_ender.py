@@ -1,5 +1,10 @@
 """Objects that inspect batches of states to determine when episodes have ended."""
 
+from __future__ import annotations
+
+import abc
+
+from collections.abc import Callable
 from typing import Any, Generic, Protocol
 
 import numpy
@@ -49,7 +54,7 @@ class IEpisodeEnder(Protocol, Generic[StateT_contra]):
         """Informs the episode ender that some episodes have restarted.
 
         Args:
-            states: The first states of the new episode that reset marks the start of.
+            states: The first states of the new episodes that reset marks the start of.
             dones: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
@@ -68,7 +73,37 @@ class IEpisodeEnder(Protocol, Generic[StateT_contra]):
         ...
 
 
-class DivergingEnder(IEpisodeEnder):
+class BaseEnder(IEpisodeEnder, abc.ABC):
+    """An episode ender that can be combined with logical operations."""
+
+    def __and__(self, other: IEpisodeEnder) -> BaseEnder:
+        """Combines this with another ender to produce a third. The outputs of the new
+        episode ender will be those of the initial two combined with and.
+
+        Args:
+            other: The other episode ender to combine with this.
+
+        Returns:
+            A new episode ender whose output is combined, using and, from the outputs of
+            other and this."""
+
+        return OpEnder(self, other, numpy.bitwise_and)
+
+    def __or__(self, other: IEpisodeEnder) -> BaseEnder:
+        """Combines this with another ender to produce a third. The outputs of the new
+        episode ender will be those of the initial two combined with or.
+
+        Args:
+            other: The other episode ender to combine with this.
+
+        Returns:
+            A new episode ender whose output is combined, using or, from the outputs of
+            other and this."""
+
+        return OpEnder(self, other, numpy.bitwise_or)
+
+
+class DivergingEnder(BaseEnder):
     # pylint: disable=unnecessary-ellipsis
     """An episode ender that handles states in the form of numpy arrays. Will truncate an
     episode if two elements of the state spend enough non-consecutive steps away from each
@@ -89,6 +124,8 @@ class DivergingEnder(IEpisodeEnder):
                 spent enough steps divergine, will terminate the episode.
             early_end_steps: How long the two elements must be diver for before the
             episode truncates."""
+
+        super().__init__()
 
         self._num_envs = num_envs
         self._check_indices = check_indices
@@ -170,7 +207,7 @@ class DivergingEnder(IEpisodeEnder):
         )
 
 
-class EndlessEnder(IEpisodeEnder):
+class EndlessEnder(BaseEnder):
     # pylint: disable=unnecessary-ellipsis
     """An episode ender that handles any state and will never truncate or terminate."""
 
@@ -179,6 +216,8 @@ class EndlessEnder(IEpisodeEnder):
 
         Args:
             num_envs: The number of environments that this episode ender will handle."""
+
+        super().__init__()
 
         self._num_envs = num_envs
 
@@ -231,7 +270,7 @@ class EndlessEnder(IEpisodeEnder):
         return ""
 
 
-class OnTargetEnder(IEpisodeEnder):
+class OnTargetEnder(BaseEnder):
     """An episode ender that handles states in the form of numpy arrays. Will truncate an
     episode if two elements come within some distance for some number of timesteps."""
 
@@ -252,6 +291,8 @@ class OnTargetEnder(IEpisodeEnder):
             early_end_radius: How close the two elements must be to terminate the episode.
             early_end_steps: How long the two elements must be close before the episode
                 truncates."""
+
+        super().__init__()
 
         self._num_envs = num_envs
         self._check_indices = check_indices
@@ -325,7 +366,92 @@ class OnTargetEnder(IEpisodeEnder):
         return f"on target {on_step} / {self._early_end_steps}" if on_step > 0 else ""
 
 
-class StoppedEnder(IEpisodeEnder):
+class OpEnder(BaseEnder):
+    """An episode ender which ends episodes when some logical combination of outputs from
+    other episode enders are true."""
+
+    def __init__(
+        self,
+        l_ender: IEpisodeEnder,
+        r_ender: IEpisodeEnder,
+        op: Callable[[NDArray[numpy.bool_], NDArray[numpy.bool_]], NDArray[numpy.bool_]],
+    ):
+        """Creates an OpEnder.
+
+        Args:
+            l_ender: One of the two child enders whose output will be combined to produce
+                the output of this ender.
+            r_ender: One of the two child enders whose output will be combined to produce
+                the output of this ender.
+            op: The logical operation that will combine the outputs from the child
+                enders."""
+
+        super().__init__()
+
+        self._l_ender = l_ender
+        self._r_ender = r_ender
+        self._op = op
+
+    def step(self, states: NDArray[numpy.float32]):
+        """Informs the two child enders of the new state of some timestep. Should only be
+        called once per timestep.
+
+        Args:
+            states: The new states that were reached on the current timestep."""
+
+        self._l_ender.step(states)
+        self._r_ender.step(states)
+
+    def is_terminated(self) -> NDArray[numpy.bool_]:
+        """Returns an array representing if episodes have terminated, which happens when
+        the combination of is_terminated from the child enders is true.
+
+        Returns:
+            A numpy array of one boolean per environment, where each element is True if
+            the combination of is_terminated from the child enders is true."""
+
+        return self._op(self._l_ender.is_terminated(), self._r_ender.is_terminated())
+
+    def is_truncated(self) -> NDArray[numpy.bool_]:
+        """Returns an array representing if episodes have truncated, which happens when
+        the combination of is_truncated from the child enders is true.
+
+        Returns:
+            A numpy array of one boolean per environment, where each element is True if
+            the combination of is_truncated from the child enders is true."""
+
+        return self._op(self._l_ender.is_truncated(), self._r_ender.is_truncated())
+
+    def reset(
+        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+    ):
+        """Informs the two child enders tha some episodes have restarted.
+
+        Args:
+            states: The first states of the new episode that reset marks the start of.
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        self._l_ender.reset(states, dones)
+        self._r_ender.reset(states, dones)
+
+    def status(self, index: int) -> str:
+        """Returns a string with the status of the two child enders.
+
+        Args:
+            index: The index of the environment that will have it's status returned.
+
+        Returns:
+            A string that describes the progress of some environment towards it's end."""
+
+        l_status = self._l_ender.status(index)
+        r_status = self._r_ender.status(index)
+
+        return l_status + (", " if l_status and r_status else "") + r_status
+
+
+class StoppedEnder(BaseEnder):
     """An episode ender that handles states in the form of numpy arrays. Will truncate an
     episode if some element of the state hasn't moved more than some threshold over some
     amount of prior steps. That is, the episode will end if some element of the state has
@@ -348,6 +474,8 @@ class StoppedEnder(IEpisodeEnder):
                 still being 'stopped'.
             early_end_steps: How many steps the elements of the state must remain
                 'stopped' before the episode ends."""
+
+        super().__init__()
 
         self._num_envs = num_envs
         self._check_index = check_index
@@ -447,3 +575,82 @@ class StoppedEnder(IEpisodeEnder):
             return ""
 
         return f"stopped {n_stopped} / {self._early_end_steps}"
+
+
+class TimeLimitEnder(BaseEnder):
+    """An episode ender that handles states in the form of numpy arrays. Will truncate an
+    episode after some number of steps."""
+
+    def __init__(
+        self,
+        num_envs: int,
+        max_steps: int,
+    ):
+        # pylint: disable=too-many-arguments
+        """Creates a TimeLimitEnder.
+
+        Args:
+            num_envs: The number of environments that this episode ender will handle.
+            max_steps: How many steps episodes will last before truncation."""
+
+        super().__init__()
+
+        self._num_envs = num_envs
+        self._max_steps = max_steps
+        self._steps = numpy.zeros(num_envs, dtype=numpy.int32)
+
+    def step(self, states: NDArray[numpy.float32]):
+        """Informs the episode ender of the new state of some timestep. Should only be
+        called once per timestep.
+
+        Args:
+            states: A numpy array with shape (num_environments, num_state_elements)."""
+
+        self._steps += 1
+
+    def is_terminated(self) -> NDArray[numpy.bool_]:
+        """Always returns an array representing that no episodes have terminated, as the
+        focus problem has an unlimited time horizon.
+
+        Returns:
+            A numpy array of one boolean per environment, where each element is False."""
+
+        return numpy.full(self._num_envs, False)
+
+    def is_truncated(self) -> NDArray[numpy.bool_]:
+        """Returns an array representing if episodes have truncated for being longer than
+        the time limit.
+
+        Returns:
+            A numpy array of one boolean per environment, where each element is True if
+            that environment has running for max_steps, and false otherwise."""
+
+        return self._steps >= self._max_steps
+
+    def reset(
+        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+    ):
+        """Informs the episode ender tha some episodes have restarted.
+
+        Args:
+            states: The first states of the new episode that reset marks the start of.
+            dones: None, or a numpy array of one boolean per environment, where each
+                element is True if that environment has just been reset. If None, all
+                environments are considered reset."""
+
+        if dones is None:
+            dones = numpy.full(self._num_envs, True)
+
+        self._steps[dones] = 0
+
+    def status(self, index: int) -> str:
+        """Returns a string with the current and maximum number of steps, for some
+        specific environment.
+
+        Args:
+            index: The index of the environment that will have it's status returned.
+
+        Returns:
+            A string that describes the progress of some environment towards it's end."""
+
+        return f"step {self._steps[index]} / {self._max_steps}"
