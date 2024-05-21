@@ -2,21 +2,35 @@
 
 from __future__ import annotations
 
-from typing import Protocol, TypeVar
+from typing import Protocol, TypeVar, Generic
 
 import numpy
 from numpy.typing import NDArray
 
 
-class IState(Protocol):
+T = TypeVar("T")
+
+
+class IState(Protocol, Generic[T]):
     # pylint: disable=too-few-public-methods, unnecessary-ellipsis
     """The base that states of vectorized environments must follow."""
 
-    def __setitem__(self, key: NDArray[numpy.bool_], value: IState):
-        """Sets some subset of the state to a new value.
+    def __getitem__(self, key: NDArray[numpy.bool_]) -> T:
+        """Gets some substate.
 
         Args:
-            key: An array of bools defining which elements of this state should be set.
+            key: An array of bools defining which elements should be in the substate.
+
+        Returns:
+            The defined substate."""
+
+        ...
+
+    def __setitem__(self, key: NDArray[numpy.bool_], value: T):
+        """Sets some substate.
+
+        Args:
+            key: An array of bools defining which elements should be in the substate.
             value: A substate that should be applied to the elements defined in key."""
 
         ...

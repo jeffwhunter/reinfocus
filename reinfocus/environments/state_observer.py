@@ -25,13 +25,13 @@ class IStateObserver(Protocol, Generic[ObservationT_co, StateT_contra]):
     single_observation_space: spaces.Box
 
     def observe(
-        self, states: StateT_contra, dones: NDArray[numpy.bool_] | None = None
+        self, states: StateT_contra, indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[ObservationT_co]:
         """Returns a batch of observations of state.
 
         Args:
             states: The state of some batch of POMDPs.
-            dones: Which elements of the state to observe.
+            indices: Which elements of the state to observe.
 
         Returns:
             A batch of observations, one per state."""
@@ -39,13 +39,13 @@ class IStateObserver(Protocol, Generic[ObservationT_co, StateT_contra]):
         ...
 
     def reset(
-        self, states: StateT_contra, dones: NDArray[numpy.bool_] | None = None
+        self, states: StateT_contra, indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[ObservationT_co]:
         """Informs the state observer that some episodes have restarted.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset.
 
@@ -78,23 +78,23 @@ class BaseObserver(IStateObserver):
         )  # type: ignore
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Informs the base episode ender that some episodes have restarted.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset.
 
         Returns:
             A batch of observations from only the reset states."""
 
-        if dones is None:
-            dones = numpy.full(self.observation_space.shape[0], True)
+        if indices is None:
+            indices = numpy.full(self.observation_space.shape[0], True)
 
-        return self.observe(states, dones)
+        return self.observe(states, indices)
 
 
 class WrapperObserver(BaseObserver):
@@ -126,14 +126,14 @@ class WrapperObserver(BaseObserver):
         self._observers = observers
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Informs the episode ender that some episodes have restarted. Also resets all
         the wrapped observers.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset.
 
@@ -141,25 +141,25 @@ class WrapperObserver(BaseObserver):
             A batch of observations from only the reset states."""
 
         return numpy.hstack(
-            [observer.reset(states, dones) for observer in self._observers],
+            [observer.reset(states, indices) for observer in self._observers],
             dtype=numpy.float32,
         )
 
     def wrapped_observations(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Returns the stacked observations of state from all the wrapped observers.
 
         Args:
             states: The state of some batch of POMDPs.
-            dones: Which elements of the state to observe.
+            indices: Which elements of the state to observe.
 
         Returns:
             Observations from the wrapped observers, stacked along the second dimension,
             in the order the wrapped observers were passed into the constructor."""
 
         return numpy.hstack(
-            [observer.observe(states, dones) for observer in self._observers],
+            [observer.observe(states, indices) for observer in self._observers],
             dtype=numpy.float32,
         )
 
@@ -230,25 +230,25 @@ class DeltaObserver(WrapperObserver):
         )
 
     def observe(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Produces a batch of observations which are the changes in, and optionally
         include, the observations from the wrapped observers.
 
         Args:
             states: The state of some batch of POMDPs.
-            dones: Which elements of the state to observe.
+            indices: Which elements of the state to observe.
 
         Returns:
             A batch of observations copied directly from some element of the state, one
             per state."""
 
-        if dones is None:
-            dones = numpy.full(self.observation_space.shape[0], True)
+        if indices is None:
+            indices = numpy.full(self.observation_space.shape[0], True)
 
-        wrapped_observations = self.wrapped_observations(states, dones)
+        wrapped_observations = self.wrapped_observations(states, indices)
 
-        observations = wrapped_observations - self._old_wrapped_observations[dones]
+        observations = wrapped_observations - self._old_wrapped_observations[indices]
 
         if self._include_original:
             observations = numpy.hstack(
@@ -256,29 +256,29 @@ class DeltaObserver(WrapperObserver):
                 dtype=numpy.float32,
             )
 
-        self._old_wrapped_observations[dones] = wrapped_observations
+        self._old_wrapped_observations[indices] = wrapped_observations
 
         return observations
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Informs the episode ender that some episodes have restarted. Also resets all
         the wrapped observers.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset.
 
         Returns:
             A batch of observations from only the reset states."""
 
-        if dones is None:
-            dones = numpy.full(self.observation_space.shape[0], True)
+        if indices is None:
+            indices = numpy.full(self.observation_space.shape[0], True)
 
-        wrapped_observations = super().reset(states, dones)
+        wrapped_observations = super().reset(states, indices)
 
         observations = numpy.zeros(wrapped_observations.shape, dtype=numpy.float32)
 
@@ -287,7 +287,7 @@ class DeltaObserver(WrapperObserver):
                 [wrapped_observations, observations], dtype=numpy.float32
             )
 
-        self._old_wrapped_observations[dones] = wrapped_observations
+        self._old_wrapped_observations[indices] = wrapped_observations
 
         return observations
 
@@ -357,7 +357,7 @@ class FocusObserver(BaseObserver):
         self._frame_height = frame_height
 
     def observe(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Produces a batch of observations calulated from the focus values of simple
         rendered scenes defined by the state.
@@ -365,21 +365,21 @@ class FocusObserver(BaseObserver):
         Args:
             states: The state of some batch of POMDPs where the state has the location of a
                 target and focus plane.
-            dones: Which elements of the state to observe.
+            indices: Which elements of the state to observe.
 
         Returns:
             A batch of observations calculated from the focus values of scenes defined by
             the state."""
 
-        if dones is None:
-            dones = numpy.full(self.observation_space.shape[0], True)
+        if indices is None:
+            indices = numpy.full(self.observation_space.shape[0], True)
 
         self._renderer.update_targets(states[:, self._target_index])
         self._renderer.update_focus_planes(states[:, self._focus_plane_index])
 
         return numpy.reshape(
             vision.focus_values(self._renderer.render(self._frame_height)),
-            (dones.sum(), self.observation_space.shape[1]),
+            (indices.sum(), self.observation_space.shape[1]),
         )
 
 
@@ -401,23 +401,23 @@ class IndexedElementObserver(BaseObserver):
         self._element_index = element_index
 
     def observe(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Produces a batch of observations copied directly from elements of the state.
 
         Args:
             states: The state of some batch of POMDPs.
-            dones: Which elements of the state to observe.
+            indices: Which elements of the state to observe.
 
         Returns:
             A batch of observations copied directly from some element of the state, one
             per state."""
 
-        if dones is None:
-            dones = numpy.full(self.observation_space.shape[0], True)
+        if indices is None:
+            indices = numpy.full(self.observation_space.shape[0], True)
 
         return states[:, self._element_index].reshape(
-            (dones.sum(), self.observation_space.shape[1])
+            (indices.sum(), self.observation_space.shape[1])
         )
 
 
@@ -470,31 +470,31 @@ class NormalizedObserver(WrapperObserver):
         self._scale = diff_div.reshape(n_observations)
 
     def observe(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Produces a batch of appended and normalized observations from a number of child
         observers.
 
         Args:
             states: The state of some batch of POMDPs.
-            dones: Which elements of the state to observe.
+            indices: Which elements of the state to observe.
 
         Returns:
             A batch of observations normalized to [-1, 1], one per state, where each
             pre-normalized observation is formed from appending the observations of this
             observer's children."""
 
-        return self._normalize(self.wrapped_observations(states, dones))
+        return self._normalize(self.wrapped_observations(states, indices))
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ) -> NDArray[numpy.float32]:
         """Informs the episode ender that some episodes have restarted. Also resets all
         the wrapped observers and assembles, then normalizes, their return values.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset.
 
@@ -503,7 +503,7 @@ class NormalizedObserver(WrapperObserver):
             pre-normalized observation is formed from appending the reset observations of
             this observer's children."""
 
-        return self._normalize(super().reset(states, dones))
+        return self._normalize(super().reset(states, indices))
 
     def _normalize(self, values: NDArray[numpy.float32]) -> NDArray[numpy.float32]:
         """Normalizes some values.

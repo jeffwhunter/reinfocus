@@ -178,14 +178,14 @@ class OpRewarderTest(unittest.TestCase):
 
         states = numpy.ones((3, 2), dtype=numpy.float32)
         observations = numpy.zeros((3, 1), dtype=numpy.float32)
-        dones = numpy.arange(3) % 2 == 0
+        indices = numpy.arange(3) % 2 == 0
 
         episode_rewarder.OpRewarder(l_rewarder, r_rewarder, lambda l, r: l + r).reset(
-            states, observations, dones
+            states, observations, indices
         )
 
-        l_rewarder.reset.assert_called_once_with(states, observations, dones)
-        r_rewarder.reset.assert_called_once_with(states, observations, dones)
+        l_rewarder.reset.assert_called_once_with(states, observations, indices)
+        r_rewarder.reset.assert_called_once_with(states, observations, indices)
 
     def test_reward(self):
         """Tests that OpRewarder properly combines the rewards from it's child

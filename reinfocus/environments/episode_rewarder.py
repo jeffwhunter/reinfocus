@@ -20,13 +20,13 @@ class IEpisodeRewarder(Protocol, Generic[ObservationT_contra, StateT_contra]):
         self,
         states: StateT_contra,
         observations: NDArray[ObservationT_contra],
-        dones: NDArray[numpy.bool_] | None = None,
+        indices: NDArray[numpy.bool_] | None = None,
     ):
         """Informs the episode rewarder that some episodes have restarted.
 
         Args:
             states: The first states of the new episodes that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
@@ -70,13 +70,13 @@ class BaseRewarder(IEpisodeRewarder):
         self,
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        dones: NDArray[numpy.bool_] | None = None,
+        indices: NDArray[numpy.bool_] | None = None,
     ):
         """Informs the episode rewarder that some episodes have restarted.
 
         Args:
             states: The first states of the new episodes that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
@@ -112,18 +112,18 @@ class DeltaRewarder(BaseRewarder):
         self,
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        dones: NDArray[numpy.bool_] | None = None,
+        indices: NDArray[numpy.bool_] | None = None,
     ):
         """Informs the episode rewarder that some episodes have restarted.
 
         Args:
             states: The first states of the new episodes that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        if self._old_states is not None and dones is not None:
-            self._old_states[dones] = states[:, self._check_index]
+        if self._old_states is not None and indices is not None:
+            self._old_states[indices] = states[:, self._check_index]
         else:
             self._old_states = states[:, self._check_index]
 
@@ -324,18 +324,18 @@ class OpRewarder(BaseRewarder):
         self,
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        dones: NDArray[numpy.bool_] | None = None,
+        indices: NDArray[numpy.bool_] | None = None,
     ):
         """Informs the child episode rewarders that some episodes have restarted.
 
         Args:
             states: The first states of the new episodes that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        self._l_rewarder.reset(states, observations, dones)
-        self._r_rewarder.reset(states, observations, dones)
+        self._l_rewarder.reset(states, observations, indices)
+        self._r_rewarder.reset(states, observations, indices)
 
     def reward(
         self,
@@ -388,18 +388,18 @@ class StoppedRewarder(BaseRewarder):
         self,
         states: NDArray[numpy.float32],
         observations: NDArray[numpy.float32],
-        dones: NDArray[numpy.bool_] | None = None,
+        indices: NDArray[numpy.bool_] | None = None,
     ):
         """Informs the child episode rewarders that some episodes have restarted.
 
         Args:
             states: The first states of the new episodes that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        if self._old_states is not None and dones is not None:
-            self._old_states[dones] = states[:, self._check_index]
+        if self._old_states is not None and indices is not None:
+            self._old_states[indices] = states[:, self._check_index]
         else:
             self._old_states = states[:, self._check_index]
 

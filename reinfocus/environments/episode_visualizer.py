@@ -12,7 +12,6 @@ from numpy.typing import NDArray
 
 from reinfocus import histories
 from reinfocus.graphics import render
-from reinfocus.graphics import world
 from reinfocus.environments import episode_ender
 from reinfocus.environments.types import ObservationT_contra, StateT_contra
 
@@ -43,21 +42,34 @@ class IEpisodeVisualizer(Protocol, Generic[ObservationT_contra, StateT_contra]):
     # pylint: disable=too-few-public-methods, unnecessary-ellipsis
     """The base that episode visualizers must follow."""
 
-    def step(self, states: StateT_contra, observations: NDArray[ObservationT_contra]):
+    def step(
+        self,
+        states: StateT_contra,
+        observations: NDArray[ObservationT_contra],
+        indices: NDArray[numpy.bool_] | None = None,
+    ):
         """Update the visualizer with a batch of states and observations. Should only be
         called once per timestep.
 
         Args:
             states: The new states that were reached on the current timestep.
-            observations: The observations seen during states."""
+            observations: The observations seen during states.
+            indices: Which environments to update."""
 
         ...
 
-    def reset(self, dones: NDArray[numpy.bool_] | None = None):
+    def reset(
+        self,
+        states: StateT_contra,
+        observations: NDArray[ObservationT_contra],
+        indices: NDArray[numpy.bool_] | None = None,
+    ):
         """Informs the visualizer that some episodes have restarted.
 
         Args:
-            dones: None, or a numpy array of one boolean per environment, where each
+            states: The first states of the new episodes that reset marks the start of.
+            observations: The first observations of the new states of the new episodes.
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
@@ -121,35 +133,57 @@ class HistoryVisualizer(IEpisodeVisualizer):
         self._move_histories = histories.Histories(num_envs, history_length)
         self._focus_histories = histories.Histories(num_envs, history_length)
 
-    def step(self, states: NDArray[numpy.float32], observations: NDArray[numpy.float32]):
+    def step(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+        indices: NDArray[numpy.bool_] | None = None,
+    ):
         """Update the visualizer with a batch of states and observations. Should only be
         called once per timestep.
 
         Args:
             states: The new states that were reached on the current timestep.
-            observations: The observations seen during states."""
+            observations: The observations seen during states.
+            indices: Which environments to update."""
 
-        self._current_moves += 1
+        if indices is None:
+            indices = numpy.full(self._num_envs, True)
 
-        self._targets = states[:, self._target_index]
+        self._current_moves[indices] += 1
 
-        self._move_histories.append_events(states[:, self._focus_plane_index])
-        self._focus_histories.append_events(observations[:, self._focus_value_index])
+        self._move_histories.append_events(states[:, self._focus_plane_index], indices)
+        self._focus_histories.append_events(
+            observations[:, self._focus_value_index], indices
+        )
 
-    def reset(self, dones: NDArray[numpy.bool_] | None = None):
+    def reset(
+        self,
+        states: NDArray[numpy.float32],
+        observations: NDArray[numpy.float32],
+        indices: NDArray[numpy.bool_] | None = None,
+    ):
         """Informs the visualizer that some episodes have restarted.
 
         Args:
-            dones: None, or a numpy array of one boolean per environment, where each
+            states: The first states of the new episode that reset marks the start of.
+            observations: The first observations of the new states of the new episodes.
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        if dones is None:
-            dones = numpy.full(self._num_envs, True)
+        if indices is None:
+            indices = numpy.full(self._num_envs, True)
 
-        self._current_moves[dones] = 0
-        self._move_histories.reset(dones)
-        self._focus_histories.reset(dones)
+        self._current_moves[indices] = 0
+
+        self._targets[indices] = states[:, self._target_index]
+
+        self._move_histories.reset(indices)
+        self._move_histories.append_events(states[:, self._focus_plane_index], indices)
+
+        self._focus_histories.reset(indices)
+        self._focus_histories.append_events(observations[:, self._focus_value_index])
 
     def visualize(self) -> NDArray[numpy.uint8]:
         # pylint: disable=no-member

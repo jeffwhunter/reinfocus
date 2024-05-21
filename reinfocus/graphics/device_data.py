@@ -1,6 +1,7 @@
 """Classes that allow updating of GPU side data only when necessary."""
 
 import abc
+import copy
 
 from collections.abc import Collection
 from typing import Generic, TypeVar
@@ -60,7 +61,7 @@ class DeviceData(Generic[DeviceDataT], abc.ABC):
         ):
             return
 
-        self._data = data
+        self._data = copy.deepcopy(data)
 
         self._d_device_data = self._make_device_data(data)
 

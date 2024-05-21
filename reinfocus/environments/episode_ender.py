@@ -50,12 +50,12 @@ class IEpisodeEnder(Protocol, Generic[StateT_contra]):
 
         ...
 
-    def reset(self, states: StateT_contra, dones: NDArray[numpy.bool_] | None = None):
+    def reset(self, states: StateT_contra, indices: NDArray[numpy.bool_] | None = None):
         """Informs the episode ender that some episodes have restarted.
 
         Args:
             states: The first states of the new episodes that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
@@ -170,23 +170,23 @@ class DivergingEnder(BaseEnder):
         return self._diverging_steps >= self._early_end_steps
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ):
         """Informs the episode ender tha some episodes have restarted.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        if dones is None:
-            dones = numpy.full(self._num_envs, True)
+        if indices is None:
+            indices = numpy.full(self._num_envs, True)
 
         diff = abs(states[:, self._check_indices[0]] - states[:, self._check_indices[1]])
 
-        self._diverging_steps[dones] = 0
-        self._last_diff[dones] = diff
+        self._diverging_steps[indices] = 0
+        self._last_diff[indices] = diff
 
     def status(self, index: int) -> str:
         """Returns a string with the number of steps in total that two elements of the
@@ -247,12 +247,12 @@ class EndlessEnder(BaseEnder):
 
         return numpy.full(self._num_envs, False)
 
-    def reset(self, states: Any, dones: NDArray[numpy.bool_] | None = None):
+    def reset(self, states: Any, indices: NDArray[numpy.bool_] | None = None):
         """Informs the episode ender tha some episodes have restarted.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
@@ -336,20 +336,20 @@ class OnTargetEnder(BaseEnder):
         return self._on_target_steps >= self._early_end_steps
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ):
         """Informs the episode ender tha some episodes have restarted.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        if dones is None:
-            dones = numpy.full(self._num_envs, True)
+        if indices is None:
+            indices = numpy.full(self._num_envs, True)
 
-        self._on_target_steps[dones] = 0
+        self._on_target_steps[indices] = 0
 
     def status(self, index: int) -> str:
         """Returns a string with the number of steps on target and the number of on target
@@ -423,18 +423,18 @@ class OpEnder(BaseEnder):
         return self._op(self._l_ender.is_truncated(), self._r_ender.is_truncated())
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ):
         """Informs the two child enders tha some episodes have restarted.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        self._l_ender.reset(states, dones)
-        self._r_ender.reset(states, dones)
+        self._l_ender.reset(states, indices)
+        self._r_ender.reset(states, indices)
 
     def status(self, index: int) -> str:
         """Returns a string with the status of the two child enders.
@@ -516,22 +516,22 @@ class StoppedEnder(BaseEnder):
         ) & ~numpy.any(numpy.isnan(self._moves.data), 1)
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ):
         """Informs the episode ender tha some episodes have restarted.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        if dones is None:
-            dones = numpy.full(self._num_envs, True)
+        if indices is None:
+            indices = numpy.full(self._num_envs, True)
 
-        self._moves.reset(dones)
+        self._moves.reset(indices)
 
-        self._moves.append_events(states[:, self._check_index], dones)
+        self._moves.append_events(states[:, self._check_index], indices)
 
     def status(self, index: int) -> str:
         """Returns a string with the number of steps on target and the number of on target
@@ -628,20 +628,20 @@ class TimeLimitEnder(BaseEnder):
         return self._steps >= self._max_steps
 
     def reset(
-        self, states: NDArray[numpy.float32], dones: NDArray[numpy.bool_] | None = None
+        self, states: NDArray[numpy.float32], indices: NDArray[numpy.bool_] | None = None
     ):
         """Informs the episode ender tha some episodes have restarted.
 
         Args:
             states: The first states of the new episode that reset marks the start of.
-            dones: None, or a numpy array of one boolean per environment, where each
+            indices: None, or a numpy array of one boolean per environment, where each
                 element is True if that environment has just been reset. If None, all
                 environments are considered reset."""
 
-        if dones is None:
-            dones = numpy.full(self._num_envs, True)
+        if indices is None:
+            indices = numpy.full(self._num_envs, True)
 
-        self._steps[dones] = 0
+        self._steps[indices] = 0
 
     def status(self, index: int) -> str:
         """Returns a string with the current and maximum number of steps, for some

@@ -88,8 +88,7 @@ class Environment(gymnasium.Env, Generic[ActionT, ObservationT, StateT]):
         self._rewarder.reset(self._state, observations)
 
         if self.render_mode == "rgb_array":
-            self._visualizer.reset()
-            self._visualizer.step(self._state, observations)
+            self._visualizer.reset(self._state, observations)
 
         return observations[0], {}
 

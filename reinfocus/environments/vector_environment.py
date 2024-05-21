@@ -97,8 +97,7 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
         self._rewarder.reset(self._state, observations)
 
         if self.render_mode == "rgb_array":
-            self._visualizer.reset()
-            self._visualizer.step(self._state, observations)
+            self._visualizer.reset(self._state, observations)
 
         return observations, {}
 
@@ -149,10 +148,12 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
             self._rewarder.reset(new_state, new_observations, done)
 
             if self.render_mode == "rgb_array":
-                self._visualizer.reset(done)
+                self._visualizer.reset(new_state, new_observations, done)
 
         if self.render_mode == "rgb_array":
-            self._visualizer.step(self._state, observations)
+            not_done = ~done
+
+            self._visualizer.step(self._state[not_done], observations[not_done], not_done)
 
         return (
             observations,
@@ -162,7 +163,7 @@ class VectorEnvironment(vector.VectorEnv, Generic[ActionT, ObservationT, StateT]
             {},
         )
 
-    def render(self) -> None | NDArray:
+    def render(self) -> None | NDArray[numpy.uint8]:
         """Returns a suitable rendering of the environment given the rendering mode.
 
         Returns:

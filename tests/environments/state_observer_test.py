@@ -38,7 +38,7 @@ def make_observer(
     observer.single_observation_space = space
     observer.observation_space = utils.batch_space(space, num_envs)
     observer.observe.side_effect = observe
-    observer.reset.side_effect = lambda state, dones: observe(state, dones)
+    observer.reset.side_effect = lambda state, indices: observe(state, indices)
     return observer
 
 
@@ -53,7 +53,7 @@ class BaseObserverTest(unittest.TestCase):
             def observe(
                 self,
                 states: NDArray[numpy.float32],
-                dones: NDArray[numpy.bool_] | None = None,
+                indices: NDArray[numpy.bool_] | None = None,
             ) -> NDArray[numpy.float32]:
                 """A dummy function needed to implement BaseObserver."""
 
@@ -88,7 +88,7 @@ class BaseObserverTest(unittest.TestCase):
             def observe(
                 self,
                 states: NDArray[numpy.float32],
-                dones: NDArray[numpy.bool_] | None = None,
+                indices: NDArray[numpy.bool_] | None = None,
             ) -> NDArray[numpy.float32]:
                 """A dummy function needed to implement BaseObserver."""
 
@@ -124,7 +124,7 @@ class WrapperObserverTest(unittest.TestCase):
         def observe(
             self,
             states: NDArray[numpy.float32],
-            dones: NDArray[numpy.bool_] | None = None,
+            indices: NDArray[numpy.bool_] | None = None,
         ) -> NDArray[numpy.float32]:
             """A dummy function needed to implement WrapperObserver."""
 
@@ -469,15 +469,15 @@ class FocusObserverTest(cuda_testing.CUDATestCase):
 
         testee = state_observer.FocusObserver(num_envs, 0, 1, ends, renderer)
 
-        dones = numpy.array([True, False, True, False, True])
+        indices = numpy.array([True, False, True, False, True])
 
         observations = testee.observe(
             numpy.array([[5, 10], [7.5, 10], [10, 10]]),
-            dones,
+            indices,
         )
 
         self.assertTrue(numpy.all(observations[1:] > observations[:-1]))
-        self.assertEqual(len(observations), dones.sum())
+        self.assertEqual(len(observations), indices.sum())
 
 
 class IndexedElementObserverTest(unittest.TestCase):
@@ -593,7 +593,7 @@ class NormalizedObserverTest(unittest.TestCase):
     def test_partial_observation(self):
         """Tests that partial observations correctly observe only some environments."""
 
-        dones = numpy.arange(5) % 2 == 0
+        indices = numpy.arange(5) % 2 == 0
 
         testee = state_observer.NormalizedObserver(
             [
@@ -603,7 +603,7 @@ class NormalizedObserverTest(unittest.TestCase):
         )
 
         testing.assert_allclose(
-            testee.observe(numpy.array([[0], [2], [4]]), dones),
+            testee.observe(numpy.array([[0], [2], [4]]), indices),
             [[-1.0, -1.0], [1.0, -(1 / 3)], [1.0, 1.0]],
         )
 

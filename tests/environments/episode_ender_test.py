@@ -62,12 +62,12 @@ class BaseEnderTest(unittest.TestCase):
 
             return self._truncated
 
-        def reset(self, states: Any, dones: NDArray[numpy.bool_] | None = None):
+        def reset(self, states: Any, indices: NDArray[numpy.bool_] | None = None):
             """Required to implement IEpisodeEnder.
 
             Args:
                 states: The states, which will be ignored.
-                dones: Which episodes have ended, which will be ignored."""
+                indices: Which episodes have ended, which will be ignored."""
 
             ...
 
@@ -362,12 +362,12 @@ class OpEnderTest(unittest.TestCase):
         r_ender = mock.Mock()
 
         states = numpy.ones((3, 2), dtype=numpy.float32)
-        dones = numpy.arange(3) % 2 == 0
+        indices = numpy.arange(3) % 2 == 0
 
-        episode_ender.OpEnder(l_ender, r_ender, lambda l, r: l | r).reset(states, dones)
+        episode_ender.OpEnder(l_ender, r_ender, lambda l, r: l | r).reset(states, indices)
 
-        l_ender.reset.assert_called_once_with(states, dones)
-        r_ender.reset.assert_called_once_with(states, dones)
+        l_ender.reset.assert_called_once_with(states, indices)
+        r_ender.reset.assert_called_once_with(states, indices)
 
     def test_status(self):
         """Tests that OpEnder properly combines the status messages from it's child

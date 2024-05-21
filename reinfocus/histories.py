@@ -63,14 +63,14 @@ class Histories:
             dtype=numpy.float32,
         )
 
-    def reset(self, dones: Collection[bool]):
+    def reset(self, indices: Collection[bool]):
         """Resets some specified histories.
 
         Args:
-            dones: A numpy array of bools specifying which histories to reset."""
+            indices: A numpy array of bools specifying which histories to reset."""
 
-        dones = numpy.asarray(dones)
+        indices = numpy.asarray(indices)
 
-        self.data[dones] = numpy.full(
-            (dones.sum(), self.data.shape[1]), numpy.nan, dtype=numpy.float32
+        self.data[indices] = numpy.full(
+            (indices.sum(), self.data.shape[1]), numpy.nan, dtype=numpy.float32
         )
