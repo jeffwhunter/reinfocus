@@ -18,10 +18,13 @@ can be used.
     <img src="./ppo-DiscreteSteps-v0.gif">
     <br/>
     <em>
-        A ppo trained agent acting in DiscreteSteps-v0. The checkerboard target is
-        positioned at some depth, and the agent decides what depth to focus on. It
-        receives as input the focus depth, focus value, and the change in both those since
-        the last time step.
+        A <a href="https://en.wikipedia.org/wiki/Proximal_policy_optimization">PPO</a>
+        trained agent acting in DiscreteSteps-v0. The checkerboard target is placed at a
+        random distance; the agent has to decide which position the rendering should focus
+        on. The agent's input is the focus position, the resuling
+        <a href="https://pyimagesearch.com/2015/09/07/blur-detection-with-opencv/">focus
+        value</a>, and the change in both of those since the last time step. These focus
+        positions and values are graphed in blue, and the target in orange.
     </em>
 </p>
 
