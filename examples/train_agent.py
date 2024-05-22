@@ -8,7 +8,14 @@ from rl_zoo3 import train
 
 algos = {"ppo", "ppo_lstm"}
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="python train_agent.py",
+    description=(
+        "Trains an agent to perform in some environment and saves snapshots of the agent"
+        "over the training process"
+    ),
+)
+
 parser.add_argument(
     "-e",
     "--env",

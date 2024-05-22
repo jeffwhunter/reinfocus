@@ -4,13 +4,18 @@ copies into yml files."""
 import argparse
 import json
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="python translate_hyperparameters.py",
+    description=(
+        "Translates the hyperparameters produed by optimize_hyperparameters into a format"
+        "suitable for the yml configuration files needed by train_agent"
+    ),
+)
+
 parser.add_argument(
-    "-p",
-    "--hyperparameters",
+    "hyperparameters",
     help="A string of hyperparameters copied from optimize_hyperparameters",
     type=str,
-    required=True,
 )
 
 args = parser.parse_args()

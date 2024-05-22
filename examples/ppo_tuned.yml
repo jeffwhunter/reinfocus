@@ -1,22 +1,48 @@
-# Example of potentially tuned hyperparameters for ppo
+# Examples of potentially tuned hyperparameters for ppo
+
 DiscreteSteps-v0:
   normalize: true
   n_envs: 8
-  n_timesteps: !!float 1e5
+  n_timesteps: !!float 5e5
   policy: 'MlpPolicy'
   frame_stack: 5
-  batch_size: 512
-  n_steps: 128
-  gamma: 0.99
-  learning_rate: 0.002029966135987824
-  ent_coef: 4.007159634857137e-06
-  clip_range: 0.1
+  batch_size: 64
+  n_steps: 32
+  gamma: 0.9
+  learning_rate: 3.338099093100241e-05
+  ent_coef: 0.0018133869709102076
+  clip_range: 0.2
   n_epochs: 20
-  gae_lambda: 0.92
-  max_grad_norm: 0.6
-  vf_coef: 0.7642480377692575
+  gae_lambda: 0.99
+  max_grad_norm: 0.3
+  vf_coef: 0.4969606569643988
   policy_kwargs: "dict(
                     ortho_init=False,
                     activation_fn=nn.ReLU,
                     net_arch=dict(pi=[256, 256], vf=[256, 256])
+                  )"
+
+ContinuousJumps-v0:
+  normalize: true
+  n_envs: 8
+  n_timesteps: !!float 5e5
+  policy: 'MlpPolicy'
+  frame_stack: 5
+  use_sde: True
+  batch_size: 512
+  n_steps: 128
+  gamma: 0.95
+  learning_rate: 0.0004305249051633182
+  ent_coef: 3.039717996777601e-08
+  sde_sample_freq: 8
+  clip_range: 0.2
+  n_epochs: 10
+  gae_lambda: 0.9
+  max_grad_norm: 0.8
+  vf_coef: 0.9269765257976839
+  policy_kwargs: "dict(
+                    ortho_init=False,
+                    log_std_init=-0.8696787910863373,
+                    activation_fn=nn.ReLU,
+                    net_arch=dict(pi=[64, 64], vf=[64, 64])
                   )"

@@ -8,7 +8,11 @@ from rl_zoo3 import enjoy
 
 algos = {"ppo", "ppo_lstm"}
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="python watch_agent.py",
+    description="Load a trained agent and watch it's performance in some environment",
+)
+
 parser.add_argument(
     "-e",
     "--env",
@@ -26,6 +30,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "-i", "--exp-id", help="Which run to watch (defaults to latest)", type=int, default=0
+)
+parser.add_argument(
+    "-b", "--best", help="Load best agent instead of last", action="store_true", default=False
 )
 
 args = parser.parse_args()
@@ -45,11 +52,13 @@ sys.argv = [
     "-f",
     "logs/",
     "--exp-id",
-    args.exp_id,
+    str(args.exp_id),
     "--deterministic",
-    "--load-best",
     "--device",
     "cuda",
 ]
+
+if args.best:
+    sys.argv.append("--load-best")
 
 enjoy.enjoy()

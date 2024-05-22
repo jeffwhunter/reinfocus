@@ -1,23 +1,25 @@
 # Example of potentially tuned hyperparameters for ppo_lstm
+
 DiscreteSteps-v0:
+  vec_env_wrapper: reinfocus.environments.experimental.vector_shim.rewrapper
   normalize: true
   n_envs: 8
-  n_timesteps: !!float 1e5
+  n_timesteps: !!float 5e5
   policy: 'MlpLstmPolicy'
-  batch_size: 32
-  n_steps: 32
-  gamma: 0.95
-  learning_rate: 0.0001
-  ent_coef: 0.001
+  batch_size: 8
+  n_steps: 8
+  gamma: 0.98
+  learning_rate: 0.0010897458332287295
+  ent_coef: 0.018408120577291045
   clip_range: 0.3
   n_epochs: 5
-  gae_lambda: 0.95
-  max_grad_norm: 0.5
-  vf_coef: 0.25
+  gae_lambda: 0.98
+  max_grad_norm: 0.3
+  vf_coef: 0.3281607546040628
   policy_kwargs: "dict(
                     ortho_init=False,
                     activation_fn=nn.ReLU,
                     lstm_hidden_size=16,
                     enable_critic_lstm=True,
-                    net_arch=dict(pi=[64], vf=[64])
+                    net_arch=dict(pi=[64, 64], vf=[64, 64])
                   )"

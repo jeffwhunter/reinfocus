@@ -1,4 +1,4 @@
-# Example of untuned hyperparameters for ppo
+# Examples of untuned hyperparameters for ppo
 
 DiscreteSteps-v0:
   normalize: true

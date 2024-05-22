@@ -1,16 +1,15 @@
-# Example of untuned hyperparameters for ppo_lstm
+# Examples of untuned hyperparameters for ppo_lstm
 
 DiscreteSteps-v0:
+  vec_env_wrapper: reinfocus.environments.experimental.vector_shim.rewrapper
   normalize: true
   n_envs: 8
   n_timesteps: !!float 5e4
   policy: 'MlpLstmPolicy'
-  frame_stack: 5
 
 ContinuousJumps-v0:
   normalize: true
   n_envs: 8
   n_timesteps: !!float 5e4
   policy: 'MlpLstmPolicy'
-  frame_stack: 5
   use_sde: True

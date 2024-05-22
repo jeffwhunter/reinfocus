@@ -17,7 +17,14 @@ samplers = {
     "ppo_lstm": hyperparams_opt.sample_ppo_lstm_params,
 }
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="python optimize_hyperparameters.py",
+    description=(
+        "Finds the best set of hyperparameters for training an agent in some"
+        "environment"
+    ),
+)
+
 parser.add_argument(
     "-e",
     "--env",
