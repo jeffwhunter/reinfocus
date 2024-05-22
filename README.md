@@ -1,7 +1,8 @@
 Reinfocus
 ------------------
 
-![Python versions](https://img.shields.io/pypi/pyversions/reinfocus)
+[![Python versions](https://img.shields.io/pypi/pyversions/reinfocus)](
+    https://semver.org/)
 [![PyPI](https://img.shields.io/pypi/v/reinfocus)](https://pypi.org/project/reinfocus/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](
     https://github.com/jeffwhunter/reinfocus/blob/main/LICENSE)

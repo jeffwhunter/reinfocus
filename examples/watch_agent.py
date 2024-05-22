@@ -32,7 +32,11 @@ parser.add_argument(
     "-i", "--exp-id", help="Which run to watch (defaults to latest)", type=int, default=0
 )
 parser.add_argument(
-    "-b", "--best", help="Load best agent instead of last", action="store_true", default=False
+    "-b",
+    "--best",
+    help="Load best agent instead of last",
+    action="store_true",
+    default=False,
 )
 
 args = parser.parse_args()
