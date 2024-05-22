@@ -40,8 +40,6 @@ installation you use:
  [`CUDA_HOME`](
     https://numba.readthedocs.io/en/stable/cuda/overview.html#cudatoolkit-lookup)
 
-Only supports Python 3.11 currently.
-
 Special Thanks
 ------------------
 `reinfocus.graphics` is a [`numba`](
