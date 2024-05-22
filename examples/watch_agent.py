@@ -50,7 +50,7 @@ sys.argv = [
     "--env",
     args.env,
     "-f",
-    "logs/",
+    "logs",
     "--exp-id",
     str(args.exp_id),
     "--deterministic",

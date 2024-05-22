@@ -54,7 +54,7 @@ sys.argv = [
     "20",
     "-P",
     "--tensorboard-log",
-    "tensorboard-log/",
+    "tensorboard-log",
     "--device",
     "cuda",
 ]

@@ -13,6 +13,17 @@ environments that use ray tracing to simulate camera focus. See the
 [examples](https://github.com/jeffwhunter/reinfocus/examples) for an impression of how it
 can be used.
 
+<p align="center">
+    <img src="./ppo-DiscreteSteps-v0.gif">
+    <br/>
+    <em>
+        A ppo trained agent acting in DiscreteSteps-v0. The checkerboard target is
+        positioned at some depth, and the agent decides what depth to focus on. It
+        receives as input the focus depth, focus value, and the change in both those since
+        the last time step.
+    </em>
+</p>
+
 Installation
 ------------------
 To install `reinfocus`, use `pip install reinfocus`.
