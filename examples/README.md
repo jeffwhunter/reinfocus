@@ -5,7 +5,7 @@ reinfocus[examples]`.
 
 To get the examples from github, use:
 ```
-https://github.com/jeffwhunter/reinfocus.git
+git clone https://github.com/jeffwhunter/reinfocus.git
 cd examples
 ```
 
