@@ -20,8 +20,8 @@ can be used.
     <em>
         A <a href="https://en.wikipedia.org/wiki/Proximal_policy_optimization">PPO</a>
         trained agent acting in DiscreteSteps-v0. The checkerboard target is placed at a
-        random distance; the agent has to decide which position the rendering should focus
-        on. The agent's input is the focus position, the resuling
+        random distance from the camera; the agent has to decide which position the camera
+        should focus on. The agent's input is the focus position, the resuling
         <a href="https://pyimagesearch.com/2015/09/07/blur-detection-with-opencv/">focus
         value</a>, and the change in both of those since the last time step. These focus
         positions and values are graphed in blue, and the target in orange.
