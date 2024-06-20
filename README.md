@@ -11,8 +11,8 @@ Reinfocus
 
 `reinfocus` is a python package that makes it easy to create reinforcement learning
 environments that use ray tracing to simulate camera focus. See the
-[examples](https://github.com/jeffwhunter/reinfocus/examples) for an impression of how it
-can be used.
+[examples](https://github.com/jeffwhunter/reinfocus/tree/main/examples) for an impression
+of how it can be used.
 
 <p align="center">
     <img src="./ppo-DiscreteSteps-v0.gif">
